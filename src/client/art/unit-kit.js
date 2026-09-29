@@ -643,6 +643,10 @@ export class ScalePicker {
     this.counts = new Map();
     this.threshold = threshold;
   }
+  /** Déclare une échelle comme stable (préchauffage) : elle sera utilisée telle quelle. */
+  stable(k) {
+    this.counts.set(Math.round(k * 4096) / 4096, this.threshold);
+  }
   /** Renvoie la résolution de cuisson pour une échelle effective k (quantifiée au 1/4096). */
   pick(k) {
     const q = Math.round(k * 4096) / 4096;

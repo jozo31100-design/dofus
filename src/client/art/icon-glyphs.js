@@ -66,17 +66,23 @@ export function gAxe(ctx, x = 32, y = 32, a = -PI / 4, L = 1, head = '#aab2bc', 
   ctx.translate(x, y);
   ctx.rotate(a);
   ctx.scale(L, L);
+  // Manche
   ctx.beginPath();
-  capsule(ctx, -24, 0, 3, 20, 0, 3.2);
+  capsule(ctx, -24, 0, 3.2, 18, 0, 3.4);
   fillInk(ctx, wood, 2.2, 0.3, -0.3, -3, 3);
+  // Fer large à barbe : collet autour du manche, tranchant courbe
   ctx.beginPath();
-  ctx.moveTo(10, -4);
-  ctx.lineTo(18, -4);
-  ctx.quadraticCurveTo(26, -10, 27, -21);
-  ctx.quadraticCurveTo(15, -17, 8, -12);
+  ctx.moveTo(8, -5);
+  ctx.lineTo(19, -5);
+  ctx.quadraticCurveTo(24, -9, 30, -20);
+  ctx.quadraticCurveTo(22, -24, 12, -21);
+  ctx.quadraticCurveTo(13, -12, 8, -5);
   ctx.closePath();
-  fillInk(ctx, head, 2.2, 0.4, -0.25, -21, -4);
-  line(ctx, 25.5, -19, 18, -7, 'rgba(255,255,255,0.85)', 1.5);
+  fillInk(ctx, head, 2.4, 0.4, -0.25, -24, -4);
+  ctx.beginPath();
+  poly(ctx, [7, -5.5, 20, -5.5, 20, 5.5, 7, 5.5]);
+  fillInk(ctx, tone(head, -0.15), 2.2, 0.3, -0.3, -5, 5);
+  line(ctx, 28, -19, 16, -21, 'rgba(255,255,255,0.85)', 2);
   ctx.restore();
 }
 
@@ -86,16 +92,20 @@ export function gPick(ctx, x = 32, y = 32, a = -PI / 4, L = 1, head = '#9aa2ac')
   ctx.rotate(a);
   ctx.scale(L, L);
   ctx.beginPath();
-  capsule(ctx, -24, 0, 3, 18, 0, 3.2);
+  capsule(ctx, -24, 0, 3.2, 16, 0, 3.4);
   fillInk(ctx, '#a8723e', 2.2, 0.3, -0.3, -3, 3);
+  // Fer à deux pointes, épais et courbé
   ctx.beginPath();
-  ctx.moveTo(14, -3);
-  ctx.quadraticCurveTo(22, -14, 12, -26);
-  ctx.quadraticCurveTo(17, -12, 13, 3);
-  ctx.quadraticCurveTo(24, 14, 30, 20);
-  ctx.quadraticCurveTo(22, 4, 14, -3);
+  ctx.moveTo(12, -4);
+  ctx.quadraticCurveTo(22, -14, 14, -28);
+  ctx.quadraticCurveTo(24, -16, 21, -3);
+  ctx.quadraticCurveTo(26, 12, 33, 20);
+  ctx.quadraticCurveTo(20, 12, 12, 4);
   ctx.closePath();
-  fillInk(ctx, head, 2.2, 0.4, -0.25, -26, 20);
+  fillInk(ctx, head, 2.4, 0.45, -0.25, -28, 20);
+  ctx.beginPath();
+  poly(ctx, [10, -5, 22, -5, 22, 5, 10, 5]);
+  fillInk(ctx, tone(head, -0.15), 2.2, 0.3, -0.3, -5, 5);
   ctx.restore();
 }
 

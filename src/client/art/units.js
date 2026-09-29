@@ -346,6 +346,7 @@ function bakeFrame(S, fr, b) {
 const BUDGET_MAX = 16;
 const BUDGET_RATE = 0.3; // ms de cuisson accordées par ms écoulée
 const budget = { tokens: BUDGET_MAX, last: -1, force: false };
+const stats = { baked: 0, fallbacks: 0 };
 const sameFrame = new Map(); // image (toutes résolutions) -> dernier sprite cuit
 const sameAnim = new Map(); // animation (toutes images) -> dernier sprite cuit
 const sameUnit = new Map(); // unité (type, civilisation, équipe) -> dernier sprite cuit
@@ -386,9 +387,11 @@ export function drawUnit(ctx, o) {
     if (!alt || !alive(alt.spr)) alt = sameAnim.get(animKey);
     if (!alt || !alive(alt.spr)) alt = sameUnit.get(unitKey);
     if (alt && alive(alt.spr) && !bakeAllowed()) {
+      stats.fallbacks++;
       blit(ctx, alt.spr, o.sx, o.sy, s, alt.b, m, fr.alpha);
       return;
     }
+    stats.baked++;
     const t0 = performance.now();
     spr = bakeFrame(S, fr, b);
     if (!budget.force) budget.tokens -= performance.now() - t0;
@@ -417,6 +420,7 @@ export function prewarmUnit(type, civ, team, anims = ['idle', 'walk', 'attack'],
     globalAlpha: 1,
   };
   budget.force = true;
+  picker.stable(zoom);
   try {
     for (const anim of anims) {
       const T = anim === 'walk' ? WALK_T : anim === 'attack' ? ATTACK_T : anim === 'die' ? DIE_T : IDLE_T;
@@ -445,4 +449,9 @@ export function prewarmUnit(type, civ, team, anims = ['idle', 'walk', 'attack'],
 /** Nombre de sprites en cache (diagnostic). */
 export function unitCacheSize() {
   return cache.size;
+}
+
+/** Statistiques de cuisson (diagnostic) : sprites en cache, images cuites, replis temporaires. */
+export function unitStats() {
+  return { cached: cache.size, baked: stats.baked, fallbacks: stats.fallbacks };
 }

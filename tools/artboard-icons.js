@@ -49,7 +49,7 @@ function label(ctx, txt, x, y) {
 }
 
 function icons() {
-  const H = 520;
+  const H = 620;
   const ctx = canvas(H);
   panel(ctx, 0, 0, W, H);
   title(ctx, `Icônes génériques (${ICON_NAMES.length}) à 20, 32, 48 et 64 px`, 12, 22);

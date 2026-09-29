@@ -298,7 +298,51 @@ function stamps() {
       c.fillRect(r2() * size, r2() * size, 1, 1);
     }
   });
-  STAMPS = { tufts, flowers, pebbles, dirt, ripples, sparkle, glint, waves, grainA: grain(256, 7000, 11), grainB: grain(331, 9000, 23) };
+  // grandes tuiles périodiques (512 px) : prairie (touffes, cailloux, mottes), fleurs, vaguelettes
+  const T = 512;
+  const scatter = (c, img, n, pick) => {
+    for (let i = 0; i < n; i++) {
+      const im = pick ? pick() : img;
+      const x = rnd() * T;
+      const y = rnd() * T;
+      for (const ox of [0, -T, T]) {
+        for (const oy of [0, -T, T]) {
+          const px = x + ox;
+          const py = y + oy;
+          if (px > -im.width && px < T && py > -im.height && py < T) c.drawImage(im, px | 0, py | 0);
+        }
+      }
+    }
+  };
+  const meadow = mk(T, T, (c) => {
+    scatter(c, null, 1500, () => tufts[(rnd() * tufts.length) | 0]);
+    scatter(c, null, 70, () => pebbles[(rnd() * 3) | 0]);
+    scatter(c, dirt, 22);
+  });
+  const flowerTile = mk(T, T, (c) => {
+    // bouquets groupés par couleur en petites taches
+    for (let k = 0; k < 44; k++) {
+      const fl = flowers[k % flowers.length];
+      const cx = rnd() * T;
+      const cy = rnd() * T;
+      for (let i = 0; i < 6; i++) {
+        const x = cx + (rnd() - 0.5) * 30;
+        const y = cy + (rnd() - 0.5) * 30;
+        for (const ox of [0, -T, T]) for (const oy of [0, -T, T]) c.drawImage(fl, (x + ox) | 0, (y + oy) | 0);
+      }
+    }
+  });
+  const waveTile = mk(256, 256, (c) => {
+    c.fillStyle = c.createPattern(waves, 'repeat');
+    c.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 70; i++) {
+      const im = ripples[(rnd() * ripples.length) | 0];
+      const x = rnd() * 256;
+      const y = rnd() * 256;
+      for (const ox of [0, -256, 256]) for (const oy of [0, -256, 256]) c.drawImage(im, (x + ox) | 0, (y + oy) | 0);
+    }
+  });
+  STAMPS = { tufts, flowers, pebbles, dirt, ripples, sparkle, glint, waves, meadow, flowerTile, waveTile, grainA: grain(256, 7000, 11), grainB: grain(331, 9000, 23) };
   return STAMPS;
 }
 
@@ -316,7 +360,6 @@ export function renderTerrainTexture(terrain, W, H, seed = 1) {
   const N = lw * lh;
   const rnd = mulberry32((seed * 2654435761) >>> 0 || 1);
 
-T.push(['init', performance.now()]);
   // 1. masques eau / eau profonde
   const wet = new Float32Array(N);
   const deep = new Float32Array(N);
@@ -346,13 +389,13 @@ T.push(['init', performance.now()]);
     boxBlur(deepC, lw, lh, 11, 2, tmp);
   }
 
-T.push(['masques+flous', performance.now()]);
+  ctx.getImageData(0, 0, 1, 1); T.push(['masques+flous', performance.now()]);
   // 2. bruits (fin, moyen, large) et couleur de chaque pixel basse résolution
   const nF = valueNoise(lw, lh, 5, rnd);
   const nM = valueNoise(lw, lh, 22, rnd);
   const nL = valueNoise(lw, lh, 70, rnd);
   const nX = valueNoise(lw, lh, 11, rnd);
-T.push(['bruits', performance.now()]);
+  ctx.getImageData(0, 0, 1, 1); T.push(['bruits', performance.now()]);
   const lo = makeCanvas(lw, lh);
   const img = lo.ctx.createImageData(lw, lh);
   const px = img.data;
@@ -462,7 +505,7 @@ T.push(['bruits', performance.now()]);
     px[j + 2] = b;
     px[j + 3] = 255;
   }
-T.push(['pixels', performance.now()]);
+  ctx.getImageData(0, 0, 1, 1); T.push(['pixels', performance.now()]);
   lo.ctx.putImageData(img, 0, 0);
 
   // 3. agrandissement lissé du sol
@@ -472,7 +515,7 @@ T.push(['pixels', performance.now()]);
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(lo.canvas, 0, 0, lw, lh, 0, 0, FW, FH);
 
-T.push(['agrandissement', performance.now()]);
+  ctx.getImageData(0, 0, 1, 1); T.push(['agrandissement', performance.now()]);
   // 4. détails du sol
   const S = stamps();
   const fieldAt = (x, y) => {
@@ -487,76 +530,77 @@ T.push(['agrandissement', performance.now()]);
   ctx.globalAlpha = 0.8;
   ctx.fillRect(0, 0, FW, FH);
   ctx.restore();
-T.push(['grain', performance.now()]);
-  const total = W * H;
-  // touffes, fleurs, cailloux, mottes
-  const nT = total * 7;
-  for (let k = 0; k < nT; k++) {
-    const x = rnd() * FW;
-    const y = rnd() * FH;
-    const i = fieldAt(x, y);
-    const s = anyWet ? shore[i] : 0;
-    const r = rnd();
-    if (s > 0.2) {
-      // rive : galets
-      if (s < 0.5 && r < 0.5) ctx.drawImage(S.pebbles[(rnd() * S.pebbles.length) | 0], x | 0, y | 0);
-      continue;
-    }
-    const dense = nM[i];
-    if (r < 0.8) {
-      if (rnd() > 0.35 + dense * 0.6 + (s > 0.02 ? 0.3 : 0)) continue;
-      const t = S.tufts[(rnd() * S.tufts.length) | 0];
-      ctx.drawImage(t, (x - 12) | 0, (y - 12) | 0);
-    } else if (r < 0.9) {
-      // fleurs groupées dans certaines plages
-      if (nX[i] < 0.55 || s > 0.05) continue;
-      const fl = S.flowers[((nL[i] * 7 + rnd() * 1.5) | 0) % S.flowers.length];
-      ctx.drawImage(fl, x | 0, y | 0);
-    } else if (r < 0.96) {
-      ctx.drawImage(S.pebbles[(rnd() * 3) | 0], x | 0, y | 0);
-    } else {
-      ctx.drawImage(S.dirt, x | 0, y | 0);
+  ctx.getImageData(0, 0, 1, 1); T.push(['grain', performance.now()]);
+  // masques basse résolution de densité : prairie (touffes, cailloux), taches de fleurs
+  const mk2 = () => {
+    const m = makeCanvas(lw, lh);
+    return { ...m, img: m.ctx.createImageData(lw, lh) };
+  };
+  const mM = mk2();
+  const mF = mk2();
+  for (let i = 0; i < N; i++) {
+    const sh = anyWet ? shore[i] : 0;
+    const land = 1 - smooth(0.04, 0.24, sh);
+    const j = i * 4 + 3;
+    mM.img.data[j] = 255 * land * (0.55 + 0.45 * smooth(0.1, 0.7, nM[i]));
+    mF.img.data[j] = 255 * land * smooth(0.5, 0.68, nX[i]) * (1 - smooth(0.0, 0.08, sh));
+  }
+  ctx.getImageData(0, 0, 1, 1); T.push(['masques', performance.now()]);
+  const layer = makeCanvas(FW, FH);
+  const lc = layer.ctx;
+  lc.imageSmoothingQuality = 'high';
+  for (const [msk, tile] of [[mM, S.meadow], [mF, S.flowerTile]]) {
+    msk.ctx.putImageData(msk.img, 0, 0);
+    lc.globalCompositeOperation = 'copy';
+    lc.fillStyle = lc.createPattern(tile, 'repeat');
+    lc.fillRect(0, 0, FW, FH);
+    lc.globalCompositeOperation = 'destination-in';
+    lc.drawImage(msk.canvas, 0, 0, lw, lh, 0, 0, FW, FH);
+    ctx.drawImage(layer.canvas, 0, 0);
+  }
+  ctx.getImageData(0, 0, 1, 1); T.push(['calques prairie+fleurs', performance.now()]);
+  // galets des rives : tamponnés seulement le long du rivage
+  if (anyWet) {
+    for (let i = 0; i < N; i += 1) {
+      const sh = shore[i];
+      if (sh < 0.24 || sh > 0.5 || rnd() > 0.1) continue;
+      const x = ((i % lw) + rnd()) * (PPT / LR);
+      const y = (((i / lw) | 0) + rnd()) * (PPT / LR);
+      ctx.drawImage(S.pebbles[(rnd() * S.pebbles.length) | 0], x | 0, y | 0);
     }
   }
 
-T.push(['touffes', performance.now()]);
-  // 5. eau : calque translucide agrandi, puis cailloux des gués, ondulations et reflets
+  ctx.getImageData(0, 0, 1, 1); T.push(['galets', performance.now()]);
+  // 5. eau : calque translucide agrandi, vaguelettes (motif gardé là où il y a de l'eau), reflets
   if (anyWet) {
     wo.ctx.putImageData(wimg, 0, 0);
     ctx.drawImage(wo.canvas, 0, 0, lw, lh, 0, 0, FW, FH);
-    // vaguelettes fines : motif répété, gardé seulement là où il y a de l'eau
-    const det = makeCanvas(FW, FH);
-    det.ctx.fillStyle = det.ctx.createPattern(S.waves, 'repeat');
-    det.ctx.fillRect(0, 0, FW, FH);
-    det.ctx.globalCompositeOperation = 'destination-in';
-    det.ctx.imageSmoothingQuality = 'high';
-    det.ctx.drawImage(wo.canvas, 0, 0, lw, lh, 0, 0, FW, FH);
-    ctx.drawImage(det.canvas, 0, 0);
-    det.canvas.width = 1;
-T.push(['eau+vaguelettes', performance.now()]);
-    const nW = total * 4;
-    for (let k = 0; k < nW; k++) {
-      const x = rnd() * FW;
-      const y = rnd() * FH;
-      const i = fieldAt(x, y);
-      const s = shore[i];
-      if (s < 0.55) continue;
+    lc.globalCompositeOperation = 'copy';
+    lc.fillStyle = lc.createPattern(S.waveTile, 'repeat');
+    lc.fillRect(0, 0, FW, FH);
+    lc.globalCompositeOperation = 'destination-in';
+    lc.drawImage(wo.canvas, 0, 0, lw, lh, 0, 0, FW, FH);
+    ctx.drawImage(layer.canvas, 0, 0);
+  ctx.getImageData(0, 0, 1, 1); T.push(['eau+vaguelettes', performance.now()]);
+    // reflets, étincelles et galets vus sous l'eau des gués
+    for (let i = 0; i < N; i++) {
+      const sh = shore[i];
+      if (sh < 0.56 || rnd() > 0.06) continue;
+      const x = ((i % lw) + rnd()) * (PPT / LR);
+      const y = (((i / lw) | 0) + rnd()) * (PPT / LR);
       const dp = deepV ? deepV[i] : 0;
       const r = rnd();
       if (dp < 0.35) {
-        // gué : galets vus sous l'eau, rides claires
-        if (r < 0.2) {
-          ctx.globalAlpha = 0.55;
+        if (r < 0.35) {
+          ctx.globalAlpha = 0.5;
           ctx.drawImage(S.pebbles[(rnd() * 4) | 0], x | 0, y | 0);
           ctx.globalAlpha = 1;
-        } else if (r < 0.55) ctx.drawImage(S.ripples[(rnd() * 3) | 0], x | 0, y | 0);
-      } else if (r < 0.3) ctx.drawImage(S.ripples[(rnd() * S.ripples.length) | 0], x | 0, y | 0);
-      else if (r < 0.36) ctx.drawImage(S.glint, x | 0, y | 0);
-      else if (r < 0.39) ctx.drawImage(S.sparkle, x | 0, y | 0);
+        }
+      } else if (r < 0.12) ctx.drawImage(S.glint, x | 0, y | 0);
+      else if (r < 0.15) ctx.drawImage(S.sparkle, x | 0, y | 0);
     }
   }
-  T.push(['rides', performance.now()]);
-  canvas.getContext('2d').getImageData(0, 0, 1, 1);
-  T.push(['flush', performance.now()]);
+  ctx.getImageData(0, 0, 1, 1); T.push(['reflets', performance.now()]);
+  layer.canvas.width = 1;
   return canvas;
 }

@@ -535,7 +535,7 @@ export function drawTechIcon(ctx, techId, size) {
     g.rect(8, 8, 48, 48);
     g.clip();
     g.translate(32, 32);
-    g.scale(0.78, 0.78);
+    g.scale(0.9, 0.9);
     g.translate(-32, -32);
     if (art) art.draw(g);
     else {

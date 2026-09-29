@@ -5,7 +5,7 @@
 // (placement d'un bâtiment, cadre de sélection).
 
 import * as art from './art/index.js';
-import { BUILDINGS, DEFS, UNITS, MAP_SIZE } from '../core/defs.js';
+import { BUILDINGS, DEFS, UNITS, ANIMALS, MAP_SIZE } from '../core/defs.js';
 import { Fx } from './fx.js';
 
 const TW2 = art.TILE_W / 2; // 32 px par unité de (x - y)
@@ -74,7 +74,49 @@ export class Renderer {
       }
     }
     for (const t of ['tree', 'berries', 'gold', 'stone', 'carcass']) for (let v = 0; v < 8; v++) art.getNodeSprite(t, v, 1);
+    onProgress(0.6, 'Préparation des unités…');
+    await tick();
+    await this.warmUnits((p) => onProgress(0.6 + 0.4 * p, 'Préparation des unités…'), tick);
     onProgress(1, 'Prêt');
+  }
+
+  /** Dessine une fois chaque unité dans chaque pose pour remplir les caches du dessin (évite les à-coups en jeu). */
+  async warmUnits(onProgress, tick) {
+    const c = document.createElement('canvas');
+    c.width = 160;
+    c.height = 160;
+    const ctx = c.getContext('2d');
+    const types = Object.keys(UNITS);
+    const works = ['wood', 'mine', 'farm', 'forage', 'build', 'repair', 'hunt', 'butcher'];
+    const carries = [null, 'wood', 'food', 'gold', 'stone'];
+    let n = 0;
+    for (const type of types) {
+      for (const civ of ['franks', 'gauls']) {
+        if (UNITS[type].civ && UNITS[type].civ !== civ) continue;
+        for (const team of [0, 1]) {
+          for (const dir of [1, -1]) {
+            for (const anim of ['idle', 'walk', 'attack', 'work', 'die']) {
+              const list = anim === 'work' ? (type === 'villager' ? works : ['wood']) : [undefined];
+              for (const work of list) {
+                for (const carry of type === 'villager' && (anim === 'idle' || anim === 'walk') ? carries : [null]) {
+                  for (let k = 0; k < 12; k++) {
+                    const t = k * 0.12;
+                    ctx.clearRect(0, 0, 160, 160);
+                    art.drawUnit(ctx, { type, civ, team, sx: 80, sy: 120, t, anim, dir, aim: 0, work, carry, deathT: Math.min(1, t), scale: 1 });
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      onProgress(++n / (types.length + 2));
+      await tick();
+    }
+    for (const type of Object.keys(ANIMALS)) {
+      for (const anim of ['idle', 'walk', 'flee', 'die']) for (const dir of [1, -1]) for (let k = 0; k < 8; k++) art.drawAnimal(ctx, { type, sx: 80, sy: 120, t: k * 0.15, anim, dir, deathT: k / 8 });
+    }
+    onProgress(1);
   }
 
   resize() {

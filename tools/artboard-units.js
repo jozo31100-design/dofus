@@ -4,7 +4,7 @@
 // attaque, mort), détails agrandis ×3, travaux et charges des villageois, animations image par image,
 // foule mélangée à zoom 0,6 sur l'herbe, et mesure de performance (400 drawUnit par image).
 // Une ancre (#revue, #details, #villageois, #anim, #foule, #perf) limite l'affichage à une section.
-import { drawUnit, unitMetrics, prewarmUnit, unitCacheSize } from '../src/client/art/units.js';
+import { drawUnit, unitMetrics, prewarmUnit, unitCacheSize, unitStats } from '../src/client/art/units.js';
 import { mulberry32 } from '../src/client/art/palette.js';
 
 const W = 1600;
@@ -254,6 +254,7 @@ function perf() {
     const warm = performance.now() - t0;
     const n = 30;
     let worst = 0;
+    const st0 = unitStats();
     const t1 = performance.now();
     for (let f = 0; f < n; f++) {
       const tf = performance.now();
@@ -264,7 +265,8 @@ function perf() {
       worst = Math.max(worst, performance.now() - tf);
     }
     const per = (performance.now() - t1) / n;
-    lines.push(`zoom ${zoom} : 400 drawUnit = ${per.toFixed(2)} ms par image (pire ${worst.toFixed(2)} ms) ; préchauffage ${warm.toFixed(0)} ms, ${unitCacheSize()} sprites en cache`);
+    const st1 = unitStats();
+    lines.push(`zoom ${zoom} : 400 drawUnit = ${per.toFixed(2)} ms par image (pire ${worst.toFixed(2)} ms) ; préchauffage ${warm.toFixed(0)} ms, ${unitCacheSize()} sprites en cache ; cuites pendant la mesure : ${st1.baked - st0.baked}, replis : ${st1.fallbacks - st0.fallbacks}`);
   }
   title(ctx, 'Performance (Chromium sans GPU)', 12, 24);
   lines.forEach((l, i) => label(ctx, l, 16, 56 + i * 22));
