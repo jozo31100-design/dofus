@@ -99,10 +99,11 @@ class LineSocket extends EventEmitter {
 
 /** Serveur d'une partie : accepte un seul invité. */
 class GameHost extends EventEmitter {
-  constructor({ name = 'Hôte', info = () => ({}) } = {}) {
+  constructor({ name = 'Hôte', info = () => ({}), build = '' } = {}) {
     super();
     this.name = name;
     this.info = info;
+    this.build = build;
     this.server = null;
     this.port = 0;
     this.guest = null;
@@ -154,6 +155,11 @@ class GameHost extends EventEmitter {
         ls.close('version');
         return;
       }
+      if (this.build && msg.build && msg.build !== this.build) {
+        ls.send(JSON.stringify({ t: 'refused', reason: 'build', host: this.build, you: msg.build }));
+        ls.close('build');
+        return;
+      }
       if (this.guest) {
         ls.send(JSON.stringify({ t: 'refused', reason: 'busy' }));
         ls.close('busy');
@@ -162,7 +168,7 @@ class GameHost extends EventEmitter {
       clearTimeout(drop);
       this.pending.delete(ls);
       this.guest = ls;
-      ls.send(JSON.stringify({ t: 'welcome', v: PROTOCOL_VERSION, host: this.name, ...this.info() }));
+      ls.send(JSON.stringify({ t: 'welcome', v: PROTOCOL_VERSION, host: this.name, build: this.build, ...this.info() }));
       this.emit('guest', msg);
     });
     ls.on('error', () => {});

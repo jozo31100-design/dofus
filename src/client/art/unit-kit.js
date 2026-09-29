@@ -397,8 +397,208 @@ export function bake(box, b, draw, shadow, outline) {
   return { c: out, ox: ox - x0, oy: oy - y0 };
 }
 
+// ---------------------------------------------------------------------------
+// Atlas : les sprites des unités et du gibier sont rangés en étagères dans de grandes pages (moins
+// d'objets, cuisson plus rapide). Quand toutes les pages sont pleines, la plus ancienne est recyclée et
+// les sprites qu'elle contenait deviennent invalides (ils seront recuits au besoin).
+// ---------------------------------------------------------------------------
+
+export class Atlas {
+  constructor(size = 1024, max = 16) {
+    this.size = size;
+    this.max = max;
+    this.pages = [];
+    this.cur = null;
+  }
+  newPage() {
+    let p;
+    if (this.pages.length < this.max) {
+      const c = document.createElement('canvas');
+      c.width = this.size;
+      c.height = this.size;
+      p = { c, g: c.getContext('2d'), gen: 0, x: 0, y: 0, rowH: 0 };
+      this.pages.push(p);
+    } else {
+      p = this.pages.shift();
+      p.gen++;
+      p.g.clearRect(0, 0, this.size, this.size);
+      p.x = 0;
+      p.y = 0;
+      p.rowH = 0;
+      this.pages.push(p);
+    }
+    this.cur = p;
+    return p;
+  }
+  /** Réserve un emplacement w × h (pixels) ; renvoie { p, x, y }. */
+  alloc(w, h) {
+    let p = this.cur || this.newPage();
+    if (p.x + w > this.size) {
+      p.x = 0;
+      p.y += p.rowH + 1;
+      p.rowH = 0;
+    }
+    if (p.y + h > this.size) p = this.newPage();
+    const slot = { p, x: p.x, y: p.y };
+    p.x += w + 1;
+    if (h > p.rowH) p.rowH = h;
+    return slot;
+  }
+}
+
+const atlas = new Atlas();
+
+/** Un sprite d'atlas est-il encore valide (sa page n'a pas été recyclée) ? */
+export function alive(spr) {
+  return !spr.p || spr.p.gen === spr.gen;
+}
+
+let scratchF = null;
+
 /**
- * Cache de sprites cuits, borné (les plus anciens sont oubliés en premier).
+ * Cuisson rapide dans l'atlas. Le sujet est dessiné une fois (vectoriel), ses pixels sont lus une seule
+ * fois ; le contour de silhouette (1 pixel, dilatation en croix) et l'ombre au sol (ellipse douce,
+ * shadow = { cx, cy, rx, ry, a } en unités locales) sont composés en JS puis écrits d'un bloc dans
+ * l'atlas. Renvoie un sprite { c, sx, sy, w, h, ox, oy, p, gen }.
+ */
+export function bakeSprite(box, b, draw, shadow, outline) {
+  const pad = 3;
+  const ox = Math.ceil(-box[0] * b) + pad;
+  const oy = Math.ceil(-box[1] * b) + pad;
+  const W = ox + Math.ceil(box[2] * b) + pad;
+  const H = oy + Math.ceil(box[3] * b) + pad;
+  scratchF = scratch(scratchF, W, H, true);
+  const a = scratchF.ctx;
+  a.setTransform(b, 0, 0, b, ox, oy);
+  a.lineJoin = 'round';
+  a.lineCap = 'round';
+  draw(a);
+  a.setTransform(1, 0, 0, 1, 0, 0);
+  const d = a.getImageData(0, 0, W, H).data;
+
+  // Emprise du sujet (+1 pixel de contour) et de l'ombre
+  let x0 = W;
+  let y0 = H;
+  let x1 = -1;
+  let y1 = -1;
+  for (let y = 0; y < H; y++) {
+    let i = y * W * 4 + 3;
+    for (let x = 0; x < W; x++, i += 4) {
+      if (d[i]) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        y1 = y;
+      }
+    }
+  }
+  const ol = outline ? 1 : 0;
+  if (x1 >= 0) {
+    x0 = Math.max(0, x0 - ol);
+    y0 = Math.max(0, y0 - ol);
+    x1 = Math.min(W - 1, x1 + ol);
+    y1 = Math.min(H - 1, y1 + ol);
+  }
+  let scx = 0;
+  let scy = 0;
+  let srx = 0;
+  let sry = 0;
+  if (shadow) {
+    scx = ox + shadow.cx * b;
+    scy = oy + shadow.cy * b;
+    srx = shadow.rx * b;
+    sry = shadow.ry * b;
+    x0 = Math.min(x0, Math.max(0, Math.floor(scx - srx)));
+    x1 = Math.max(x1, Math.min(W - 1, Math.ceil(scx + srx)));
+    y0 = Math.min(y0, Math.max(0, Math.floor(scy - sry)));
+    y1 = Math.max(y1, Math.min(H - 1, Math.ceil(scy + sry)));
+  }
+  if (x1 < x0 || y1 < y0) {
+    x0 = 0;
+    y0 = 0;
+    x1 = 0;
+    y1 = 0;
+  }
+  const w = x1 - x0 + 1;
+  const h = y1 - y0 + 1;
+  const img = new ImageData(w, h);
+  const o = img.data;
+  const orgb = outline ? hexToRgb(outline[0]) : [0, 0, 0];
+  const oa = outline ? outline[1] : 0;
+  const sa = shadow ? shadow.a : 0;
+  const row = W * 4;
+  for (let y = 0; y < h; y++) {
+    const sy = y + y0;
+    for (let x = 0; x < w; x++) {
+      const sx = x + x0;
+      const si = sy * row + sx * 4;
+      const oi = (y * w + x) * 4;
+      // Ombre au sol (dégradé radial elliptique)
+      let ca = 0;
+      let cr = 0;
+      let cg = 0;
+      let cb = 0;
+      if (sa) {
+        const ex = (sx + 0.5 - scx) / srx;
+        const ey = (sy + 0.5 - scy) / sry;
+        const r = Math.sqrt(ex * ex + ey * ey);
+        if (r < 1) {
+          ca = sa * (r < 0.6 ? 1 - r * 0.42 : 0.75 * (1 - (r - 0.6) / 0.4));
+          cr = 10;
+          cg = 16;
+          cb = 6;
+        }
+      }
+      // Contour : dilatation en croix de l'alpha du sujet
+      const fa = d[si + 3];
+      if (oa && fa < 255) {
+        let n = 0;
+        if (sx > 0 && d[si - 1] > n) n = d[si - 1];
+        if (sx < W - 1 && d[si + 7] > n) n = d[si + 7];
+        if (sy > 0 && d[si - row + 3] > n) n = d[si - row + 3];
+        if (sy < H - 1 && d[si + row + 3] > n) n = d[si + row + 3];
+        if (n) {
+          const la = (oa * n) / 255;
+          const na = la + ca * (1 - la);
+          cr = (orgb[0] * la + cr * ca * (1 - la)) / na;
+          cg = (orgb[1] * la + cg * ca * (1 - la)) / na;
+          cb = (orgb[2] * la + cb * ca * (1 - la)) / na;
+          ca = na;
+        }
+      }
+      // Sujet par-dessus
+      if (fa) {
+        const f = fa / 255;
+        const na = f + ca * (1 - f);
+        cr = (d[si] * f + cr * ca * (1 - f)) / na;
+        cg = (d[si + 1] * f + cg * ca * (1 - f)) / na;
+        cb = (d[si + 2] * f + cb * ca * (1 - f)) / na;
+        ca = na;
+      }
+      if (ca > 0) {
+        o[oi] = cr;
+        o[oi + 1] = cg;
+        o[oi + 2] = cb;
+        o[oi + 3] = ca * 255 + 0.5;
+      }
+    }
+  }
+  if (w > atlas.size / 2 || h > atlas.size / 2) {
+    // Très grand sprite (portrait fortement agrandi) : canvas dédié
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    c.getContext('2d').putImageData(img, 0, 0);
+    return { c, sx: 0, sy: 0, w, h, ox: ox - x0, oy: oy - y0, p: null, gen: 0 };
+  }
+  const slot = atlas.alloc(w, h);
+  slot.p.g.putImageData(img, slot.x, slot.y);
+  return { c: slot.p.c, sx: slot.x, sy: slot.y, w, h, ox: ox - x0, oy: oy - y0, p: slot.p, gen: slot.p.gen };
+}
+
+/**
+ * Cache de sprites cuits, borné (les plus anciens sont oubliés en premier). Les sprites dont la page
+ * d'atlas a été recyclée sont ignorés.
  */
 export class SpriteCache {
   constructor(max) {
@@ -406,7 +606,12 @@ export class SpriteCache {
     this.map = new Map();
   }
   get(key) {
-    return this.map.get(key);
+    const v = this.map.get(key);
+    if (v && v.p && v.p.gen !== v.gen) {
+      this.map.delete(key);
+      return undefined;
+    }
+    return v;
   }
   set(key, v) {
     if (this.map.size >= this.max) {
@@ -467,14 +672,16 @@ export function blit(ctx, spr, sx, sy, s, b, m, alphaMul) {
     ga = ctx.globalAlpha;
     ctx.globalAlpha = ga * alphaMul;
   }
+  const w = spr.w;
+  const h = spr.h;
   if (m.b === 0 && m.c === 0 && m.a > 0 && Math.abs(m.a * inv - 1) < 2e-3 && Math.abs(m.d * inv - 1) < 2e-3) {
     const dx = Math.round(m.a * x + m.e);
     const dy = Math.round(m.d * y + m.f);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(spr.c, dx, dy);
+    ctx.drawImage(spr.c, spr.sx, spr.sy, w, h, dx, dy, w, h);
     ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
   } else {
-    ctx.drawImage(spr.c, x, y, spr.c.width * inv, spr.c.height * inv);
+    ctx.drawImage(spr.c, spr.sx, spr.sy, w, h, x, y, w * inv, h * inv);
   }
   if (ga >= 0) ctx.globalAlpha = ga;
 }

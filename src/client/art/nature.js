@@ -1,5 +1,5 @@
 // Ressources, gibier et projectiles (API publique : getNodeSprite, drawAnimal, drawProjectile).
-import { TAU, PI, clamp, fract, tone, rgba, edge, capsule, ell, poly, paint, line, ballGrad, setLightSide, bake, SpriteCache, ScalePicker, blit } from './unit-kit.js';
+import { TAU, PI, clamp, fract, tone, rgba, edge, capsule, ell, poly, paint, line, ballGrad, setLightSide, bake, bakeSprite, SpriteCache, ScalePicker, blit } from './unit-kit.js';
 import { drawTree, treeShadow, TREE_KINDS } from './nature-trees.js';
 import { drawBerries, drawGold, drawStone } from './nature-nodes.js';
 import { drawBeast, drawCarcass, grazePose, walkPoseA, fleePose, fallPoseA } from './nature-animals.js';
@@ -132,11 +132,11 @@ export function drawAnimal(ctx, o) {
     const box = type === 'sheep' ? [-16, -22, 18, 6] : [-18, -38, 22, 6];
     const bx = dir > 0 ? box : [-box[2], box[1], -box[0], box[3]];
     const rx = type === 'sheep' ? 10 : 12;
-    spr = bake(bx, b, (c) => {
+    spr = bakeSprite(bx, b, (c) => {
       setLightSide(dir);
       c.scale(dir, 1);
       drawBeast(c, type, P);
-    }, groundShadow(a === 3 ? rx + 2 : rx, 4, 1.5), ['#1b120a', 0.5]);
+    }, { cx: 1.5, cy: 1, rx: a === 3 ? rx + 2 : rx, ry: 4, a: 0.28 }, ['#1b120a', 0.5]);
     animalCache.set(key, spr);
   }
   blit(ctx, spr, o.sx, o.sy, s, b, m, 1);

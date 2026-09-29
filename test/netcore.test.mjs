@@ -77,6 +77,18 @@ test('une version différente du jeu est refusée', async () => {
   host.close();
 });
 
+test('une version différente du jeu (même protocole, autre build) est refusée avec un message clair', async () => {
+  const host = new nc.GameHost({ name: 'Jo', build: '0.1.0+aaaaaaa' });
+  const port = await host.listen(47870);
+  const client = new nc.GameClient();
+  await assert.rejects(() => client.connect('127.0.0.1', port, { name: 'Papa', build: '0.1.0+bbbbbbb' }), /build/);
+  const same = new nc.GameClient();
+  const welcome = await same.connect('127.0.0.1', port, { name: 'Papa', build: '0.1.0+aaaaaaa' });
+  assert.equal(welcome.build, '0.1.0+aaaaaaa');
+  same.close();
+  host.close();
+});
+
 test('la déconnexion de l\'invité est signalée à l\'hôte et inversement', async () => {
   const host = new nc.GameHost();
   const port = await host.listen(47840);

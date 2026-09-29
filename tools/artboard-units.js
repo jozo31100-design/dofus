@@ -249,6 +249,8 @@ function perf() {
     for (const civ of CIVS) for (const team of [0, 1]) for (const t of TYPES.slice(0, 10)) prewarmUnit(t, civ, team, ['idle', 'walk', 'attack'], zoom);
     prewarmUnit('villager', 'gauls', 0, ['work'], zoom);
     prewarmUnit('villager', 'franks', 1, ['work'], zoom);
+    prewarmUnit('villager', 'gauls', 1, ['idle', 'walk', 'work'], zoom);
+    prewarmUnit('villager', 'franks', 0, ['idle', 'walk', 'work'], zoom);
     const warm = performance.now() - t0;
     const n = 30;
     let worst = 0;

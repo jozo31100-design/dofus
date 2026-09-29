@@ -2,6 +2,7 @@
 import { build, context } from 'esbuild';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,7 +31,17 @@ const options = {
   logLevel: 'info',
 };
 
+function buildInfo() {
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  let sha = process.env.GITHUB_SHA ? process.env.GITHUB_SHA.slice(0, 7) : '';
+  if (!sha) {
+    try { sha = execSync('git rev-parse --short HEAD', { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch (e) { sha = 'local'; }
+  }
+  return { version: pkg.version, build: `${pkg.version}+${sha}` };
+}
+
 copyStatic();
+fs.writeFileSync(path.join(dist, 'build-info.json'), JSON.stringify(buildInfo()));
 if (watch) {
   const ctx = await context(options);
   await ctx.watch();

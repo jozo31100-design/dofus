@@ -23,7 +23,6 @@ export class ClientState {
     this.snapTime = 0;
     this.snapInterval = 50;
     this.events = []; // événements décodés, consommés par les effets visuels et sonores
-    this.messages = [];
     this.over = null;
     this.stats = null;
     this.paused = false;
@@ -81,7 +80,6 @@ export class ClientState {
       const ev = decodeEvent(a);
       if (!ev) continue;
       if (ev.k === 'dest') destroyed.add(ev.id);
-      if (ev.k === 'msg') this.messages.push(ev);
       this.events.push(ev);
     }
     for (const id of snap.d) {

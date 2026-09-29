@@ -6,7 +6,7 @@
 // la visée et la résolution. La résolution suit l'échelle réelle du contexte (zoom × scale) : à l'écran,
 // le sprite est recopié au pixel près, donc net et rapide (400 unités ≈ 2 ms sans GPU).
 import {
-  PI, TAU, clamp, lerp, smooth, fract, setLightSide, bake, SpriteCache, ScalePicker, blit, rgba, tone,
+  PI, TAU, clamp, lerp, smooth, fract, setLightSide, bakeSprite, alive, SpriteCache, ScalePicker, blit,
 } from './unit-kit.js';
 import { drawHuman } from './unit-human.js';
 import { idlePose, walkPose, attackPose, workPose, diePose, full, WORK, STANCE } from './unit-poses.js';
@@ -55,7 +55,7 @@ function specOf(type, civ, team) {
   return s;
 }
 
-const cache = new SpriteCache(6000);
+const cache = new SpriteCache(12000);
 const picker = new ScalePicker(400);
 
 /** Dimensions pour la sélection et les barres de vie : { h : hauteur en px, w : demi-largeur en px }. */
@@ -313,29 +313,15 @@ function shadowOf(S, fr) {
     rx = 33;
     ry = 11;
     cx = 2;
-    a = 0.3;
     if (fr.anim === 4) a *= 1 - smooth(fr.q) * 0.5;
   }
-  return (ctx) => {
-    const g = ctx.createRadialGradient(cx, 1, 0, cx, 1, rx);
-    g.addColorStop(0, `rgba(10,16,6,${a})`);
-    g.addColorStop(0.6, `rgba(10,16,6,${a * 0.75})`);
-    g.addColorStop(1, 'rgba(10,16,6,0)');
-    ctx.fillStyle = g;
-    ctx.save();
-    ctx.translate(cx, 1);
-    ctx.scale(1, ry / rx);
-    ctx.beginPath();
-    ctx.arc(0, 0, rx, 0, TAU);
-    ctx.restore();
-    ctx.fill();
-  };
+  return { cx, cy: 1, rx, ry, a };
 }
 
 function bakeFrame(S, fr, b) {
   const [l, t, r, bt] = S.box;
   const box = fr.dir > 0 ? [l, t, r, bt] : [-r, t, -l, bt];
-  return bake(
+  return bakeSprite(
     box,
     b,
     (ctx) => {
@@ -362,6 +348,7 @@ const BUDGET_RATE = 0.3; // ms de cuisson accordées par ms écoulée
 const budget = { tokens: BUDGET_MAX, last: -1, force: false };
 const sameFrame = new Map(); // image (toutes résolutions) -> dernier sprite cuit
 const sameAnim = new Map(); // animation (toutes images) -> dernier sprite cuit
+const sameUnit = new Map(); // unité (type, civilisation, équipe) -> dernier sprite cuit
 
 function bakeAllowed() {
   if (budget.force) return true;
@@ -389,13 +376,16 @@ export function drawUnit(ctx, o) {
   const s = o.scale || 1;
   const k = Math.hypot(m.a, m.b) * s;
   const b = picker.pick(k);
-  const animKey = (((((TYPE_IDX[type] * 2 + (civ === 'gauls' ? 1 : 0)) * 8 + team) * 5 + fr.anim) * 9 + fr.work) * 5 + fr.carry) * 2 + (fr.dir > 0 ? 0 : 1);
+  const unitKey = (TYPE_IDX[type] * 2 + (civ === 'gauls' ? 1 : 0)) * 8 + team;
+  const animKey = (((unitKey * 5 + fr.anim) * 9 + fr.work) * 5 + fr.carry) * 2 + (fr.dir > 0 ? 0 : 1);
   const frameKey = (animKey * 16 + fr.f) * 13 + fr.aim;
   const key = frameKey * 65536 + Math.round(b * 4096);
   let spr = cache.get(key);
   if (!spr) {
-    const alt = sameFrame.get(frameKey) || sameAnim.get(animKey);
-    if (alt && !bakeAllowed()) {
+    let alt = sameFrame.get(frameKey);
+    if (!alt || !alive(alt.spr)) alt = sameAnim.get(animKey);
+    if (!alt || !alive(alt.spr)) alt = sameUnit.get(unitKey);
+    if (alt && alive(alt.spr) && !bakeAllowed()) {
       blit(ctx, alt.spr, o.sx, o.sy, s, alt.b, m, fr.alpha);
       return;
     }
@@ -407,6 +397,7 @@ export function drawUnit(ctx, o) {
     if (sameAnim.size > 4000) sameAnim.clear();
     sameFrame.set(frameKey, { spr, b });
     sameAnim.set(animKey, { spr, b });
+    sameUnit.set(unitKey, { spr, b });
   }
   blit(ctx, spr, o.sx, o.sy, s, b, m, fr.alpha);
 }
@@ -414,7 +405,8 @@ export function drawUnit(ctx, o) {
 /**
  * Prépare à l'avance les images d'une unité (écran de chargement) pour qu'elles ne soient pas cuites
  * pendant la partie. anims : liste parmi 'idle', 'walk', 'attack', 'die', 'work'. zoom : échelle prévue
- * (zoom × devicePixelRatio).
+ * (zoom × devicePixelRatio). Pour les villageois, 'idle' et 'walk' incluent les variantes avec outil en
+ * main et avec charge portée.
  */
 export function prewarmUnit(type, civ, team, anims = ['idle', 'walk', 'attack'], zoom = 1) {
   const m = { a: zoom, b: 0, c: 0, d: zoom, e: 0, f: 0 };
@@ -431,12 +423,16 @@ export function prewarmUnit(type, civ, team, anims = ['idle', 'walk', 'attack'],
       const n = anim === 'walk' ? WALK_N : anim === 'attack' ? ATT_N : anim === 'die' ? DIE_N : IDLE_N;
       for (const dir of [1, -1]) {
         for (let i = 0; i < n; i++) {
-          const works = anim === 'work' ? WORKS : [null];
+          const vil = type === 'villager' && (anim === 'idle' || anim === 'walk');
+          const works = anim === 'work' || vil ? WORKS : [null];
           for (const w of works) {
-            const T2 = w ? WORK[w].T : T;
-            const n2 = w ? WORK_N : n;
+            const T2 = anim === 'work' ? WORK[w].T : T;
+            const n2 = anim === 'work' ? WORK_N : n;
             if (i >= n2) continue;
             drawUnit(ctx, { type, civ, team, sx: 0, sy: 0, t: ((i + 0.5) / n2) * T2, anim, dir, work: w });
+          }
+          if (vil) {
+            for (const c of CARRIES) drawUnit(ctx, { type, civ, team, sx: 0, sy: 0, t: ((i + 0.5) / n) * T, anim, dir, carry: c });
           }
         }
       }

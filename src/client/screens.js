@@ -28,6 +28,7 @@ const NET_ERRORS = {
   ENETUNREACH: 'Aucun réseau disponible.',
   busy: 'Cette partie a déjà deux joueurs.',
   version: 'L\'autre joueur n\'a pas la même version du jeu. Installez la même version des deux côtés.',
+  build: 'L\'autre joueur n\'a pas exactement la même version du jeu : envoyez-lui le même fichier .exe que celui que vous utilisez.',
   closed: 'La connexion a été coupée.',
   timeout: 'L\'hôte ne répond pas.',
   EADDRINUSE: 'Le port réseau est déjà utilisé par un autre programme.',
@@ -82,7 +83,7 @@ export class App {
     this.clear();
     const menu = h('div', { id: 'menu' });
     this.backdrop(menu);
-    menu.append(...boxes, h('div', { class: 'version', text: `Terres de Gaule ${this.info.version}` }));
+    menu.append(...boxes, h('div', { class: 'version', text: `Terres de Gaule ${this.info.build || this.info.version}` }));
     this.root.append(menu);
     return menu;
   }

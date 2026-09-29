@@ -27,6 +27,12 @@ let backlogTimer = null;
 
 const isDev = !app.isPackaged;
 
+// identifiant de cette version du jeu (écrit par scripts/build.mjs) : deux joueurs doivent avoir la même
+let buildInfo = { version: app.getVersion(), build: 'dev' };
+try {
+  buildInfo = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'dist', 'build-info.json'), 'utf8'));
+} catch (e) { /* version de développement */ }
+
 function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
@@ -92,6 +98,7 @@ function createWindow() {
 
 ipcMain.handle('app:info', () => ({
   version: app.getVersion(),
+  build: buildInfo.build,
   platform: process.platform,
   hostname: os.hostname(),
   addresses: netcore.localAddresses(),
@@ -101,7 +108,7 @@ ipcMain.handle('app:info', () => ({
 ipcMain.handle('net:host', async (_e, opts = {}) => {
   stopNetwork();
   const name = String(opts.name || 'Hôte').slice(0, 24);
-  const h = new netcore.GameHost({ name });
+  const h = new netcore.GameHost({ name, build: buildInfo.build });
   try {
     await h.listen(Number(opts.port) || netcore.DEFAULT_PORT);
   } catch (err) {
@@ -125,7 +132,7 @@ ipcMain.handle('net:join', async (_e, opts = {}) => {
   const c = new netcore.GameClient();
   try {
     const welcome = await c.connect(String(opts.ip || '').trim(), Number(opts.port) || netcore.DEFAULT_PORT,
-      { name: String(opts.name || 'Invité').slice(0, 24) });
+      { name: String(opts.name || 'Invité').slice(0, 24), build: buildInfo.build });
     client = c;
     c.on('message', (line) => send('net:msg', line));
     c.on('closed', (reason) => send('net:event', { type: 'closed', reason }));
