@@ -1,0 +1,10 @@
+import * as art from '../src/client/art/index.js';
+const c = document.createElement('canvas'); c.width = 600; c.height = 300; document.body.appendChild(c);
+const ctx = c.getContext('2d');
+ctx.fillStyle = '#5b9039'; ctx.fillRect(0, 0, 600, 300);
+const s = art.getBuildingSprite('barracks', 'gauls', 0, 3);
+ctx.drawImage(s.canvas, 100 - s.ax, 200 - s.ay);
+art.drawUnit(ctx, { type: 'villager', team: 1, sx: 300, sy: 200, t: 0, anim: 'idle', dir: 1 });
+const n = art.getNodeSprite('tree', 0, 1);
+ctx.drawImage(n.canvas, 400 - n.ax, 200 - n.ay);
+console.log('api ok', Object.keys(art).join(','));

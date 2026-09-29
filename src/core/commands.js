@@ -1,0 +1,265 @@
+// Commandes des joueurs : validation puis application. Le même code sert l'hôte, l'invité (via le réseau),
+// l'IA et les tests. Une commande est un objet simple : { c: 'move', ids: [...], x, y, q?: true }.
+
+import { UNITS, BUILDINGS, DEFS, RESOURCES } from './defs.js';
+import { setOrder, resetMove, freeSpotAround, isMilitary } from './common.js';
+import { queueUnit, queueTech, cancelQueue, startBuilding, findFarmSlot } from './econ.js';
+import { killEntity, canTarget } from './combat.js';
+
+const num = (v, d = 0) => (Number.isFinite(v) ? v : d);
+
+function ownUnits(world, pi, ids) {
+  const out = [];
+  if (!Array.isArray(ids)) return out;
+  for (const id of ids.slice(0, 300)) {
+    const u = world.get(id);
+    if (u && u.cls === 'unit' && u.owner === pi && !u.dead && !u.inside) out.push(u);
+  }
+  return out;
+}
+
+function ownBuilding(world, pi, id) {
+  const b = world.get(id);
+  return b && b.cls === 'building' && b.owner === pi && !b.dead ? b : null;
+}
+
+/** Positions autour d'un point pour un groupe : anneaux successifs, cases libres uniquement. */
+export function formationSlots(world, n, x, y) {
+  const slots = [];
+  const spacing = 0.9;
+  const S = world.S;
+  const ok = (px, py) => px > 0.4 && py > 0.4 && px < S - 0.4 && py < S - 0.4 && !world.pf.isBlocked(Math.floor(px), Math.floor(py));
+  if (ok(x, y)) slots.push([x, y]);
+  for (let ring = 1; slots.length < n && ring < 12; ring++) {
+    const count = Math.max(6, Math.round((2 * Math.PI * ring * spacing) / spacing));
+    for (let i = 0; i < count && slots.length < n; i++) {
+      const a = (i / count) * Math.PI * 2 + ring * 0.5;
+      const px = x + Math.cos(a) * ring * spacing;
+      const py = y + Math.sin(a) * ring * spacing;
+      if (ok(px, py)) slots.push([px, py]);
+    }
+  }
+  while (slots.length < n) slots.push([x, y]);
+  return slots;
+}
+
+/** Affecte à chaque unité la position libre la plus proche (glouton, limite les croisements). */
+function assignSlots(units, slots) {
+  const free = units.slice();
+  const out = new Map();
+  for (const s of slots) {
+    if (!free.length) break;
+    let bi = 0;
+    let bd = Infinity;
+    for (let i = 0; i < free.length; i++) {
+      const d = Math.hypot(free[i].x - s[0], free[i].y - s[1]);
+      if (d < bd) { bd = d; bi = i; }
+    }
+    out.set(free[bi].id, s);
+    free.splice(bi, 1);
+  }
+  return out;
+}
+
+function cmdMove(world, pi, cmd) {
+  const units = ownUnits(world, pi, cmd.ids);
+  if (!units.length) return;
+  const x = Math.max(0.5, Math.min(world.S - 0.5, num(cmd.x)));
+  const y = Math.max(0.5, Math.min(world.S - 0.5, num(cmd.y)));
+  const slots = assignSlots(units, formationSlots(world, units.length, x, y));
+  let cap = 0;
+  if (units.length > 1) {
+    cap = Infinity;
+    for (const u of units) cap = Math.min(cap, world.stat(u.owner, u.type).speed);
+  }
+  for (const u of units) {
+    const s = slots.get(u.id) || [x, y];
+    setOrder(u, { t: 'move', x: s[0], y: s[1], speedCap: cap, aggressive: !!cmd.aggressive }, !!cmd.q);
+  }
+}
+
+function cmdAttack(world, pi, cmd) {
+  const t = world.get(cmd.tid);
+  if (!t || t.dead) return;
+  for (const u of ownUnits(world, pi, cmd.ids)) {
+    if (canTarget(u, t) && (isMilitary(DEFS[u.type]) || DEFS[u.type].worker)) {
+      setOrder(u, { t: 'attack', target: t.id }, !!cmd.q);
+    } else {
+      setOrder(u, { t: 'move', x: t.x, y: t.y }, !!cmd.q);
+    }
+  }
+}
+
+function cmdGather(world, pi, cmd) {
+  const t = world.get(cmd.tid);
+  if (!t || t.dead) return;
+  const units = ownUnits(world, pi, cmd.ids);
+  const isFarm = t.cls === 'building' && t.type === 'farm' && t.owner === pi;
+  const isNode = t.cls === 'node' && t.amount > 0;
+  const isAnimal = t.cls === 'animal';
+  if (!isFarm && !isNode && !isAnimal) return;
+  let farmUsed = 0;
+  for (const u of units) {
+    if (!UNITS[u.type].worker) {
+      setOrder(u, { t: 'move', x: t.x, y: t.y }, !!cmd.q);
+      continue;
+    }
+    let target = t;
+    if (isFarm && t.done) {
+      // au plus 3 fermiers par ferme : les autres vont à la ferme la plus proche qui a de la place
+      if (t.workers.size + farmUsed >= 3) {
+        const f = findFarmSlot(world, u, t.x, t.y);
+        if (f && f.id !== t.id && f.workers.size < 3) target = f;
+      } else {
+        farmUsed++;
+      }
+    }
+    const kind = target.cls === 'building' ? 'farm' : target.cls === 'animal' ? 'meat' : target.kind;
+    if (target.cls === 'building' && !target.done) setOrder(u, { t: 'build', target: target.id }, !!cmd.q);
+    else setOrder(u, { t: 'gather', target: target.id, phase: 'go', kind, lx: target.x, ly: target.y }, !!cmd.q);
+  }
+}
+
+function cmdBuild(world, pi, cmd) {
+  const pl = world.players[pi];
+  if (!BUILDINGS[cmd.type]) return;
+  const err = startBuilding(world, pl, cmd.type, Math.floor(num(cmd.tx, -1)), Math.floor(num(cmd.ty, -1)), cmd.ids || [], !!cmd.q);
+  if (err) world.say(pi, err, 'warn');
+}
+
+function cmdRepair(world, pi, cmd) {
+  const b = ownBuilding(world, pi, cmd.tid);
+  if (!b) return;
+  for (const u of ownUnits(world, pi, cmd.ids)) {
+    if (!UNITS[u.type].worker) { setOrder(u, { t: 'move', x: b.x, y: b.y }, !!cmd.q); continue; }
+    setOrder(u, { t: b.done ? 'repair' : 'build', target: b.id }, !!cmd.q);
+  }
+}
+
+function cmdTrain(world, pi, cmd) {
+  const pl = world.players[pi];
+  const b = ownBuilding(world, pi, cmd.bid);
+  if (!b) return;
+  const n = Math.max(1, Math.min(10, num(cmd.n, 1)));
+  for (let i = 0; i < n; i++) {
+    const err = queueUnit(world, pl, b, cmd.type);
+    if (err) { world.say(pi, err, 'warn'); break; }
+  }
+}
+
+function cmdResearch(world, pi, cmd) {
+  const pl = world.players[pi];
+  const b = ownBuilding(world, pi, cmd.bid);
+  if (!b) return;
+  const err = queueTech(world, pl, b, cmd.tech);
+  if (err) world.say(pi, err, 'warn');
+}
+
+function cmdRally(world, pi, cmd) {
+  const ids = Array.isArray(cmd.bids) ? cmd.bids : [cmd.bid];
+  const x = Math.max(0.5, Math.min(world.S - 0.5, num(cmd.x)));
+  const y = Math.max(0.5, Math.min(world.S - 0.5, num(cmd.y)));
+  for (const id of ids) {
+    const b = ownBuilding(world, pi, id);
+    if (b && BUILDINGS[b.type].trains.length) b.rally = { x, y, tid: cmd.tid || 0 };
+  }
+}
+
+function cmdGarrison(world, pi, cmd) {
+  const b = ownBuilding(world, pi, cmd.tid);
+  if (!b || !b.done || !BUILDINGS[b.type].garrison) return;
+  for (const u of ownUnits(world, pi, cmd.ids)) setOrder(u, { t: 'garrison', target: b.id }, !!cmd.q);
+}
+
+function cmdUngarrison(world, pi, cmd) {
+  const b = ownBuilding(world, pi, cmd.bid);
+  if (!b) return;
+  const ids = b.garrison.slice();
+  b.garrison.length = 0;
+  for (const id of ids) {
+    const u = world.get(id);
+    if (!u || u.dead) continue;
+    const spot = freeSpotAround(world, b, b.rally ? b.rally.x : undefined, b.rally ? b.rally.y : undefined);
+    u.inside = 0;
+    u.x = spot.x;
+    u.y = spot.y;
+    resetMove(u);
+    if (b.rally) setOrder(u, { t: 'move', x: b.rally.x, y: b.rally.y });
+  }
+}
+
+function cmdStop(world, pi, cmd) {
+  for (const u of ownUnits(world, pi, cmd.ids)) {
+    u.order = null;
+    u.queue.length = 0;
+    u.leash = null;
+    u.speedCap = 0;
+    resetMove(u);
+  }
+}
+
+function cmdHeal(world, pi, cmd) {
+  const t = world.get(cmd.tid);
+  if (!t || t.dead || t.owner !== pi) return;
+  for (const u of ownUnits(world, pi, cmd.ids)) {
+    if (DEFS[u.type].heal) setOrder(u, { t: 'heal', target: t.id }, !!cmd.q);
+    else setOrder(u, { t: 'move', x: t.x, y: t.y }, !!cmd.q);
+  }
+}
+
+function cmdDelete(world, pi, cmd) {
+  if (!Array.isArray(cmd.ids)) return;
+  for (const id of cmd.ids.slice(0, 300)) {
+    const e = world.get(id);
+    if (!e || e.dead || e.owner !== pi) continue;
+    if (e.cls === 'building') {
+      if (e.type === 'hall' && world.playerBuildings(pi, 'hall').length <= 1 && false) continue;
+      if (!e.done) {
+        const st = world.stat(pi, e.type);
+        for (const r of RESOURCES) world.players[pi].res[r] += Math.floor((st.cost[r] || 0) * (1 - e.progress));
+      }
+      killEntity(world, e, null);
+    } else if (e.cls === 'unit') {
+      killEntity(world, e, null);
+    }
+  }
+}
+
+export function applyCommand(world, pi, cmd) {
+  const pl = world.players[pi];
+  if (!pl || !cmd || typeof cmd !== 'object') return;
+  if (!pl.alive && cmd.c !== 'pause') return;
+  switch (cmd.c) {
+    case 'move': cmdMove(world, pi, cmd); break;
+    case 'amove': cmdMove(world, pi, { ...cmd, aggressive: true }); break;
+    case 'attack': cmdAttack(world, pi, cmd); break;
+    case 'gather': cmdGather(world, pi, cmd); break;
+    case 'build': cmdBuild(world, pi, cmd); break;
+    case 'repair': cmdRepair(world, pi, cmd); break;
+    case 'train': cmdTrain(world, pi, cmd); break;
+    case 'research': cmdResearch(world, pi, cmd); break;
+    case 'cancel': cmdCancel(world, pi, cmd); break;
+    case 'rally': cmdRally(world, pi, cmd); break;
+    case 'garrison': cmdGarrison(world, pi, cmd); break;
+    case 'ungarrison': cmdUngarrison(world, pi, cmd); break;
+    case 'stop': cmdStop(world, pi, cmd); break;
+    case 'heal': cmdHeal(world, pi, cmd); break;
+    case 'delete': cmdDelete(world, pi, cmd); break;
+    case 'resign':
+      pl.resigned = true;
+      world.emit({ k: 'msg', to: -1, text: `${pl.name} abandonne la partie.`, kind: 'info' });
+      world.checkVictory();
+      break;
+    case 'pause':
+      world.paused = !world.paused;
+      world.emit({ k: 'msg', to: -1, text: world.paused ? `${pl.name} a mis le jeu en pause.` : 'La partie reprend.', kind: 'info' });
+      break;
+    default: break;
+  }
+}
+
+function cmdCancel(world, pi, cmd) {
+  const pl = world.players[pi];
+  const b = ownBuilding(world, pi, cmd.bid);
+  if (b) cancelQueue(world, pl, b, Math.floor(num(cmd.idx, -1)));
+}
