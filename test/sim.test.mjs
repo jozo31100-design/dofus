@@ -188,18 +188,18 @@ test('la recherche d\'un âge exige les bâtiments et les ressources, puis débl
 test('les technologies et bonus de civilisation modifient les caractéristiques', () => {
   const franks = computeStats('knight', 'franks', []);
   const gauls = computeStats('knight', 'gauls', []);
-  assert.equal(franks.hp, Math.round(115 * 1.2 * 1000) / 1000);
+  assert.equal(franks.hp, 115 * 1.25);
   assert.equal(gauls.hp, 115);
   const w = two();
   const k = w.addUnit('cavalry', 0, 30, 30);
-  assert.equal(k.maxHp, 90); // 75 de base +20 % pour les Francs
+  assert.equal(k.maxHp, 75 * 1.25); // 75 de base +25 % pour les Francs
   w.players[0].res.food = 999;
   w.players[0].res.gold = 999;
   w.players[0].age = 2;
   const stable = w.addBuilding('stable', 0, 10, 60, true);
   w.enqueue(0, { c: 'research', bid: stable.id, tech: 'bloodlines' });
   run(w, 45);
-  assert.equal(k.maxHp, 114); // (75 + 20) x 1,2 : le bonus de civilisation s'applique au total
+  assert.equal(k.maxHp, (75 + 20) * 1.25); // le bonus de civilisation s'applique au total, technologies comprises
   assert.ok(w.players[0].techs.has('bloodlines'));
   // atk_inf ne donne pas d'attaque de mêlée aux tireurs
   assert.equal(computeStats('francisque', 'franks', ['atk_inf1', 'atk_inf2']).atk.melee, 0);

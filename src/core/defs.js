@@ -447,16 +447,18 @@ export const CIVS = {
     tagline: 'Cavaliers lourds et lanceurs de francisques.',
     story: 'Peuple de guerriers germaniques établi dans le nord de la Gaule, dont la cavalerie et les haches de jet sont redoutées.',
     bonuses: [
-      'Cavalerie : +20 % de points de vie',
+      'Cavalerie : +25 % de points de vie',
+      'Écurie : cavaliers formés 20 % plus vite',
       'Fermes : récolte +15 %',
       'Château : −25 % de pierre',
     ],
     uniqueUnit: 'francisque',
     uniqueTech: 'frank_axe',
     effects: [
-      { who: CAV, stat: 'hp', op: 'mul', v: 1.2 },
+      { who: CAV, stat: 'hp', op: 'mul', v: 1.25 },
       { who: VIL, stat: 'gather.farm', op: 'mul', v: 1.15 },
       { who: { ids: ['castle'] }, stat: 'cost.stone', op: 'mul', v: 0.75 },
+      { who: { from: 'stable' }, stat: 'time', op: 'mul', v: 0.8 },
     ],
   },
   gauls: {
@@ -466,14 +468,14 @@ export const CIVS = {
     story: 'Tribus celtes de forêts et d\'oppida, réputées pour leur bravoure, leurs artisans et leurs charges furieuses.',
     bonuses: [
       'Bûcherons : coupe du bois +15 %',
-      'Caserne : fantassins formés 25 % plus vite',
+      'Caserne : fantassins formés 15 % plus vite',
       'Fantassins : −10 % de nourriture',
     ],
     uniqueUnit: 'gesate',
     uniqueTech: 'gaul_fury',
     effects: [
       { who: VIL, stat: 'gather.wood', op: 'mul', v: 1.15 },
-      { who: { from: 'barracks' }, stat: 'time', op: 'mul', v: 0.75 },
+      { who: { from: 'barracks' }, stat: 'time', op: 'mul', v: 0.85 },
       { who: INF, stat: 'cost.food', op: 'mul', v: 0.9 },
     ],
   },

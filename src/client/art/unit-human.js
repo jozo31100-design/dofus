@@ -17,8 +17,8 @@ export const BODY = {
   headR: 3.55,
   hipN: -0.9,
   hipF: 1.1,
-  shN: [-2.2, -7.8],
-  shF: [2.4, -8.0],
+  shN: [-2.5, -7.7],
+  shF: [2.7, -7.9],
   neck: [0.55, -8.5],
 };
 
@@ -95,14 +95,20 @@ export function rig(sp, P) {
     fF = P.aim + 0.02;
     const e = seg(shF[0], shF[1], fU, U);
     const h = seg(e[0], e[1], fF, Fo);
-    const pl = (1.6 + 6.6 * P.pull) * z;
-    [nU, nF] = ik(shN[0], shN[1], h[0] - ax * pl, h[1] - ay * pl, U, Fo, 1);
+    const pl = (1.6 + 6.2 * P.pull) * z;
+    [nU, nF] = ik(shN[0], shN[1], h[0] - ax * pl, h[1] - ay * pl + 0.9 * z * P.pull, U, Fo, -1);
   } else if (mode === 2) {
     // Arbalète épaulée : main proche à la détente, main lointaine sous l'arc
-    const tx = shN[0] + ax * 3.4 * z + 0.6 * z;
-    const ty = shN[1] + ay * 3.4 * z + 1.1 * z;
+    const tx = shN[0] + ax * 3.4 * z + 0.8 * z;
+    const ty = shN[1] + ay * 3.4 * z + 1.0 * z;
     [nU, nF] = ik(shN[0], shN[1], tx, ty, U, Fo, -1);
-    [fU, fF] = ik(shF[0], shF[1], tx + ax * 5.2 * z, ty + ay * 5.2 * z, U, Fo, -1);
+    [fU, fF] = ik(shF[0], shF[1], tx + ax * 5.6 * z, ty + ay * 5.6 * z, U, Fo, -1);
+  } else if (mode === 3) {
+    // Arbalète au repos, tenue en travers du corps, pointée vers le haut
+    const tx = shN[0] + 2.4 * z;
+    const ty = shN[1] + 6.6 * z;
+    [nU, nF] = ik(shN[0], shN[1], tx, ty, U, Fo, -1);
+    [fU, fF] = ik(shF[0], shF[1], tx + ax * 4.8 * z, ty + ay * 4.8 * z, U, Fo, -1);
   }
   // Cibles directes des mains (en px locaux relatifs à l'épaule, × z) : pratique pour porter une charge
   if (P.ikN > 0.5) [nU, nF] = ik(shN[0], shN[1], shN[0] + P.tnx * z, shN[1] + P.tny * z, U, Fo, P.bendN || -1);
@@ -131,8 +137,8 @@ export function rig(sp, P) {
 
 function legPath(ctx, z, hip, knee, ank) {
   ctx.beginPath();
-  capsule(ctx, hip[0], hip[1], 1.5 * z, knee[0], knee[1], 1.2 * z);
-  capsule(ctx, knee[0], knee[1], 1.2 * z, ank[0], ank[1], 0.9 * z);
+  capsule(ctx, hip[0], hip[1], 1.65 * z, knee[0], knee[1], 1.22 * z);
+  capsule(ctx, knee[0], knee[1], 1.22 * z, ank[0], ank[1], 0.92 * z);
 }
 
 function drawLeg(ctx, sp, hip, knee, ank, shinA, far) {
@@ -242,10 +248,10 @@ function drawArm(ctx, sp, sh, el, hand, far) {
   cu = tone(cu, dk);
   cf = tone(cf, dk);
   ctx.beginPath();
-  capsule(ctx, sh[0], sh[1], 1.3 * z, el[0], el[1], 1.05 * z);
-  paint(ctx, cu, edge(cu), 0.65);
+  capsule(ctx, sh[0], sh[1], 1.45 * z, el[0], el[1], 1.1 * z);
+  paint(ctx, sideGrad(ctx, Math.min(sh[0], el[0]) - 1.5 * z, Math.max(sh[0], el[0]) + 1.5 * z, cu, 0.18, -0.2), edge(cu), 0.65);
   ctx.beginPath();
-  capsule(ctx, el[0], el[1], 1.05 * z, hand[0], hand[1], sl === 'robe' ? 1.2 * z : 0.85 * z);
+  capsule(ctx, el[0], el[1], 1.1 * z, hand[0], hand[1], sl === 'robe' ? 1.25 * z : 0.9 * z);
   paint(ctx, cf, edge(cf), 0.65);
   if (sp.paint && sl === 'bare') {
     ctx.strokeStyle = rgba('#2f55b8', far ? 0.5 : 0.8);
@@ -256,9 +262,13 @@ function drawArm(ctx, sp, sh, el, hand, far) {
     ctx.stroke();
   }
   if (sl === 'long' || sl === 'mail') {
-    // Poignet de la manche
-    const t = 0.82;
-    line(ctx, el[0] + (hand[0] - el[0]) * t - 0.7 * z, el[1] + (hand[1] - el[1]) * t, el[0] + (hand[0] - el[0]) * t + 0.7 * z, el[1] + (hand[1] - el[1]) * t, tone(cf, -0.3), 0.55 * z);
+    // Poignet de la manche (galon)
+    const t = 0.8;
+    const wx = el[0] + (hand[0] - el[0]) * t;
+    const wy = el[1] + (hand[1] - el[1]) * t;
+    const ang = Math.atan2(hand[1] - el[1], hand[0] - el[0]) + Math.PI / 2;
+    const c = sp.trim2 && sl === 'long' ? tone(sp.trim2, dk) : tone(cf, -0.32);
+    line(ctx, wx - Math.cos(ang) * 0.85 * z, wy - Math.sin(ang) * 0.85 * z, wx + Math.cos(ang) * 0.85 * z, wy + Math.sin(ang) * 0.85 * z, c, 0.6 * z);
   }
   const hc = tone(sp.gloves || sp.skin, dk);
   ctx.beginPath();
@@ -277,7 +287,7 @@ function legXAt(R, hip, thighA, shinA, d, z) {
   return hip[0] + Math.sin(thighA) * T + Math.sin(shinA) * (d - T);
 }
 
-function drawSkirt(ctx, sp, R, P, color, hem, mail) {
+function drawSkirt(ctx, sp, R, P, color, hem, mail, band) {
   const z = sp.sz;
   const h = hem * z;
   const xn = legXAt(R, R.hipN, P.nT, P.nS, h, z);
@@ -288,14 +298,34 @@ function drawSkirt(ctx, sp, R, P, color, hem, mail) {
   const [t2x, t2y] = rot(3.5 * z, 0, P.lean);
   const top = R.hy - 0.8 * z;
   const bot = R.hy + h;
-  ctx.beginPath();
-  ctx.moveTo(R.hx + t1x, top + t1y);
-  ctx.lineTo(R.hx + t2x, top + t2y);
-  ctx.quadraticCurveTo(xr - 0.2 * z, (top + bot) / 2, xr, bot - 0.3 * z);
-  ctx.quadraticCurveTo((xl + xr) / 2, bot + 1.1 * z, xl, bot - 0.2 * z);
-  ctx.quadraticCurveTo(xl + 0.3 * z, (top + bot) / 2, R.hx + t1x, top + t1y);
-  ctx.closePath();
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(R.hx + t1x, top + t1y);
+    ctx.lineTo(R.hx + t2x, top + t2y);
+    ctx.quadraticCurveTo(xr - 0.2 * z, (top + bot) / 2, xr, bot - 0.3 * z);
+    ctx.quadraticCurveTo((xl + xr) / 2, bot + 1.1 * z, xl, bot - 0.2 * z);
+    ctx.quadraticCurveTo(xl + 0.3 * z, (top + bot) / 2, R.hx + t1x, top + t1y);
+    ctx.closePath();
+  };
+  path();
   paint(ctx, sideGrad(ctx, xl, xr, color, 0.15, -0.3, bot), edge(color), 0.7);
+  if (band) {
+    // Bande brodée aux couleurs de l'équipe au bas de la robe
+    ctx.save();
+    ctx.clip();
+    const robe = color === sp.robe;
+    ctx.strokeStyle = band;
+    ctx.lineWidth = (robe ? 1.7 : 1.0) * z;
+    ctx.beginPath();
+    ctx.moveTo(xr + 1, bot - (robe ? 1.5 : 1.0) * z);
+    ctx.quadraticCurveTo((xl + xr) / 2, bot + (robe ? -0.2 : 0.3) * z, xl - 1, bot - (robe ? 1.4 : 0.9) * z);
+    ctx.stroke();
+    ctx.restore();
+    path();
+    ctx.strokeStyle = edge(color);
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
+  }
   if (mail) mailTexture(ctx, xl, top, xr, bot + 1, z, color);
   else {
     // Plis
@@ -332,11 +362,11 @@ function mailTexture(ctx, x0, y0, x1, y1, z, c) {
 function torsoPath(ctx) {
   ctx.beginPath();
   ctx.moveTo(-3.1, 0.6);
-  ctx.bezierCurveTo(-3.5, -2.0, -3.9, -4.8, -3.5, -7.0);
-  ctx.quadraticCurveTo(-3.2, -8.7, -1.2, -8.9);
-  ctx.lineTo(1.6, -8.9);
-  ctx.quadraticCurveTo(3.4, -8.8, 3.7, -7.1);
-  ctx.bezierCurveTo(4.2, -5.6, 4.0, -3.4, 3.2, -1.6);
+  ctx.bezierCurveTo(-3.4, -2.0, -4.2, -4.6, -4.0, -6.9);
+  ctx.quadraticCurveTo(-3.8, -8.8, -1.4, -9.0);
+  ctx.lineTo(1.7, -9.0);
+  ctx.quadraticCurveTo(4.0, -8.9, 4.2, -7.0);
+  ctx.bezierCurveTo(4.6, -5.4, 4.1, -3.3, 3.2, -1.6);
   ctx.lineTo(3.5, 0.6);
   ctx.closePath();
 }
@@ -402,6 +432,48 @@ function drawTorso(ctx, sp, R, P) {
     paint(ctx, sideGrad(ctx, -3.9, 4.1, sp.mail.c, 0.25, -0.3, -4), edge(sp.mail.c, 0.7), lw);
     mailTexture(ctx, -4, -9, 4.3, 1, 1, sp.mail.c);
   }
+  if (sp.tabard) {
+    // Tabard aux couleurs de l'équipe par-dessus la cotte (lisibilité des camps dans la mêlée)
+    const c = sp.tabard;
+    ctx.beginPath();
+    ctx.moveTo(-2.7, 1.0);
+    ctx.bezierCurveTo(-3.1, -2.0, -3.4, -5.0, -3.0, -7.3);
+    ctx.quadraticCurveTo(-2.4, -8.5, -0.7, -8.5);
+    ctx.lineTo(0.6, -6.9);
+    ctx.lineTo(1.9, -8.5);
+    ctx.quadraticCurveTo(3.2, -8.4, 3.35, -7.1);
+    ctx.bezierCurveTo(3.85, -5.6, 3.65, -3.4, 2.95, -1.6);
+    ctx.lineTo(3.2, 1.0);
+    ctx.closePath();
+    paint(ctx, sideGrad(ctx, -3.4, 3.9, c, 0.22, -0.3, -4), edge(c, 0.7), lw);
+    ctx.strokeStyle = sp.trim || rgba(tone(c, 0.55), 0.8);
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(-0.7, -8.3);
+    ctx.lineTo(0.6, -6.7);
+    ctx.lineTo(1.9, -8.3);
+    ctx.stroke();
+    if (sp.emblem) {
+      ctx.fillStyle = sp.emblem;
+      ctx.beginPath();
+      if (sp.civ === 'gauls') {
+        // Triskèle stylisé
+        for (let i = 0; i < 3; i++) {
+          const a = (i / 3) * PI * 2 - 0.4;
+          ell(ctx, 0.5 + Math.cos(a) * 0.9, -4.6 + Math.sin(a) * 0.9, 0.62, 0.62);
+        }
+      } else {
+        poly(ctx, [0.2, -6.2, 0.9, -6.2, 0.9, -5.0, 2.0, -5.0, 2.0, -4.3, 0.9, -4.3, 0.9, -2.6, 0.2, -2.6, 0.2, -4.3, -0.9, -4.3, -0.9, -5.0, 0.2, -5.0]);
+      }
+      ctx.fill();
+    }
+  }
+  if (sp.sash) {
+    // Baudrier aux couleurs de l'équipe, en travers du torse
+    ctx.beginPath();
+    poly(ctx, [-2.9, -8.2, -1.2, -8.6, 3.6, -1.4, 3.3, 0.2, 1.8, -0.6]);
+    paint(ctx, sideGrad(ctx, -3, 3.6, sp.sash, 0.25, -0.25, -4), edge(sp.sash, 0.75), lw);
+  }
   if (sp.plate) {
     // Plastron de bronze/acier (champions)
     ctx.beginPath();
@@ -414,12 +486,16 @@ function drawTorso(ctx, sp, R, P) {
     line(ctx, -1.6, -6.9, 1.4, -6.1, rgba('#ffffff', 0.45), 0.45);
   }
   if (sp.stole) {
-    // Étole aux couleurs de l'équipe (prêtre, druide)
+    // Étole large aux couleurs de l'équipe (prêtre, druide)
     ctx.beginPath();
-    poly(ctx, [0.3, -8.8, 1.9, -8.8, 2.6, 1.0, 1.2, 1.0]);
-    paint(ctx, sp.stole, edge(sp.stole), lw);
+    poly(ctx, [-0.3, -8.9, 2.3, -8.9, 3.3, 1.0, 0.8, 1.0]);
+    paint(ctx, sideGrad(ctx, -0.3, 3.3, sp.stole, 0.2, -0.25, -4), edge(sp.stole), lw);
     ctx.fillStyle = G.GOLD;
-    ctx.fillRect(1.3, -0.3, 1.2, 0.5);
+    ctx.fillRect(1.0, -0.4, 2.0, 0.6);
+    if (sp.civ === 'franks') {
+      ctx.fillRect(1.2, -6.2, 1.2, 0.5);
+      ctx.fillRect(1.55, -6.9, 0.5, 1.9);
+    }
   }
   if (sp.belt) {
     ctx.beginPath();
@@ -899,8 +975,8 @@ export function drawHuman(ctx, sp, P, opt = {}) {
   }
 
   // 4. Jupe de tunique (ou de robe), puis torse
-  if (sp.robe) drawSkirt(ctx, sp, R, P, sp.robe, sp.hem || 10.6, false);
-  else if (sp.hem) drawSkirt(ctx, sp, R, P, sp.tunic, sp.hem, false);
+  if (sp.robe) drawSkirt(ctx, sp, R, P, sp.robe, sp.hem || 10.6, false, sp.stole);
+  else if (sp.hem) drawSkirt(ctx, sp, R, P, sp.tunic, sp.hem, false, sp.trim2);
   if (sp.mail && sp.mail.hem) drawSkirt(ctx, sp, R, P, sp.mail.c, sp.mail.hem, true);
   if (sp.loin) drawSkirt(ctx, sp, R, P, sp.loin, 2.6, false);
   drawTorso(ctx, sp, R, P);

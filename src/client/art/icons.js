@@ -23,10 +23,19 @@ function cached(ctx, key, size, draw) {
     c.width = Math.max(1, Math.ceil(size * kk));
     c.height = Math.max(1, Math.ceil(size * kk));
     const g = c.getContext('2d');
-    g.scale((size * kk) / 64, (size * kk) / 64);
+    const px = size * kk;
+    g.scale(px / 64, px / 64);
     g.lineJoin = 'round';
     g.lineCap = 'round';
+    // Aux petites tailles : pictogramme un peu agrandi et contours plus épais
+    I.ink.k = px <= 22 ? 1.7 : px <= 34 ? 1.35 : px <= 50 ? 1.12 : 1;
+    if (px <= 34) {
+      g.translate(32, 32);
+      g.scale(1.1, 1.1);
+      g.translate(-32, -32);
+    }
     draw(g);
+    I.ink.k = 1;
     if (iconCache.size > 800) iconCache.clear();
     iconCache.set(full, c);
   }
@@ -331,11 +340,20 @@ export function drawPortrait(ctx, id, civ, teamIdx, size) {
   } else {
     const m = unitMetrics(id);
     const wide = m.w > 12;
-    // Cadrage : buste et arme pour les fantassins, silhouette entière pour montures et engins
-    const k = wide ? Math.min((size * 0.84) / (m.w * 2.4), (size * 0.86) / m.h) : (size * 0.84) / m.h;
-    const fx = wide ? size * 0.46 : size * 0.44;
-    ctx.translate(fx, size * 0.93);
-    ctx.scale(k, k);
+    ctx.beginPath();
+    ctx.rect(0, 0, size, size);
+    ctx.clip();
+    if (wide) {
+      // Montures et engins : silhouette entière
+      const k = Math.min((size * 0.9) / m.h, (size * 0.94) / (m.w * 2.3));
+      ctx.translate(size * (m.h > 45 && m.w < 25 ? 0.42 : 0.47), size * 0.95);
+      ctx.scale(k, k);
+    } else {
+      // Fantassins : cadrés en pied jusqu'aux genoux, tête en haut du cadre
+      const k = (size * 1.08) / m.h;
+      ctx.translate(size * 0.44, size * 1.16);
+      ctx.scale(k, k);
+    }
     drawUnit(ctx, { type: id, civ, team: teamIdx, sx: 0, sy: 0, t: 0.8, anim: 'idle', dir: 1 });
   }
   ctx.restore();

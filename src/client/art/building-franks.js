@@ -35,7 +35,7 @@ function house(g) {
   const tc = g.tc;
   if (st === 3) logPile(g, 0.1, -0.78, 'x', [3, 2], 0.7, 2.4);
   longHouse(g, {
-    x0: -0.62, y0: -0.52, x1: 0.5, y1: 0.3, plinthH: 4, wallH: 19, ridgeH: 48, axis: 'x',
+    x0: -0.62, y0: -0.52, x1: 0.5, y1: 0.3, plinthH: 4, wallH: 19, ridgeH: 45, axis: 'x',
     wallMat: MAT.planks, roofMat: MAT.shingle, heads: true, ov: 0.13, ovg: 0.08, th: 3,
     decoL: (c, w, h) => {
       doorLocal(c, w * 0.34, h, 7, 12);
@@ -55,9 +55,9 @@ function hall(g) {
   const st = g.stage;
   const tc = g.tc;
   longHouse(g, {
-    x0: -1.72, y0: -1.3, x1: 1.35, y1: 0.28, plinthH: 6, wallH: 36, ridgeH: 116, axis: 'x',
+    x0: -1.72, y0: -1.3, x1: 1.35, y1: 0.28, plinthH: 6, wallH: 34, ridgeH: 100, axis: 'x',
     wallMat: MAT.planksGrey, roofMat: MAT.shingle, heads: true, ov: 0.18, ovg: 0.12, th: 3.5,
-    headOpts: { k: 0.28 },
+    headOpts: { len: 10 },
     decoL: (c, w, h) => {
       for (const f of [0.1, 0.24, 0.72, 0.9]) windowLocal(c, w * f, h * 0.4, 4, 6);
       if (st === 3) shieldRow(c, tc, w, h * 0.72, 4, 4, 0.05, 0.3), shieldRow(c, tc, w, h * 0.72, 4, 4, 0.7, 0.95);
@@ -75,7 +75,7 @@ function hall(g) {
   });
   // porche d'entrée, en avant du long mur
   longHouse(g, {
-    x0: -0.42, y0: 0.28, x1: 0.36, y1: 1.02, plinthH: 5, wallH: 26, ridgeH: 70, axis: 'y', ya: -0.05,
+    x0: -0.42, y0: 0.28, x1: 0.36, y1: 1.02, plinthH: 5, wallH: 25, ridgeH: 64, axis: 'y', ya: -0.05,
     wallMat: MAT.planksGrey, roofMat: MAT.shingle, heads: true, ov: 0.12, ovg: 0.1, th: 3, plan: true, scafSides2: 'L',
     decoL: (c, w, h) => {
       doorLocal(c, w / 2, h, 11, 17, { arch: true, open: 0.5 });
@@ -95,8 +95,8 @@ function hall(g) {
 
 function mill(g) {
   const st = g.stage;
-  const z0 = 16;
-  const s = 0.36;
+  const z0 = 14;
+  const s = 0.38;
   if (g.mode === 'plan') {
     g.planRect(-0.5, -0.5, 0.5, 0.5);
     return;
@@ -114,35 +114,39 @@ function mill(g) {
   g.beam(0, 0.4, 5, 0, 0, z0 - 2, WOOD, 2);
   if (st === 1) {
     g.box(-s, -s, s, s, z0, z0 + 3, MAT.planksDark, { ao: false });
-    postsAlong(g, -s, -s, s, -s, 0.36, z0 + 3, 50);
-    postsAlong(g, -s, -s, -s, s, 0.36, z0 + 3, 50);
-    postsAlong(g, s, -s + 0.01, s, s, 0.36, z0 + 3, 50);
-    postsAlong(g, -s + 0.01, s, s - 0.01, s, 0.36, z0 + 3, 50);
+    postsAlong(g, -s, -s, s, -s, 0.38, z0 + 3, 52);
+    postsAlong(g, -s, -s, -s, s, 0.38, z0 + 3, 52);
+    postsAlong(g, s, -s + 0.01, s, s, 0.38, z0 + 3, 52);
+    postsAlong(g, -s + 0.01, s, s - 0.01, s, 0.38, z0 + 3, 52);
     scaffold(g, [[-0.5, 0.55], [0.1, 0.6], [0.55, 0.55]], 44);
     return;
   }
   longHouse(g, {
-    x0: -s, y0: -s, x1: s, y1: s, z0, wallH: 36, ridgeH: 54, axis: 'x', wallMat: MAT.planks, roofMat: MAT.shingle,
+    x0: -s, y0: -s, x1: s, y1: s, z0, wallH: 40, ridgeH: 64, axis: 'y', wallMat: MAT.planks, roofMat: MAT.shingle,
     ov: 0.1, ovg: 0.08, th: 3, heads: false, plan: false, scaffold: false,
     decoR: (c, w, h) => {
-      doorLocal(c, w * 0.5, h, 6, 10, { leaf: true });
+      doorLocal(c, w * 0.5, h, 6, 11, { leaf: true });
+      windowLocal(c, w * 0.5, h * 0.3, 3.5, 4);
     },
+    decoL: (c, w, h) => windowLocal(c, w * 0.5, h * 0.72, 3.5, 4),
   });
   if (st === 2) {
-    scaffold(g, [[-0.5, 0.52], [0.1, 0.58], [0.55, 0.52]], 50);
+    scaffold(g, [[-0.52, 0.52], [0.1, 0.58], [0.55, 0.52]], 50);
     return;
   }
-  // escalier d'accès à l'arrière droit
+  // escalier d'accès et timon d'orientation à l'arrière droit
   const c = g.ctx;
-  const a = g.P(0.72, -0.2, 0);
-  const b = g.P(s, -0.1, z0 + 2);
-  stick(c, a[0], a[1], b[0], b[1], WOOD, 2);
-  // ailes du moulin, sur la face +y
-  sails(g, 0, s + 0.1, z0 + 24, 44);
-  banner(g, 0.62, 0.55, 0, 40, { w: 10, h: 15 });
-  sack(g, -0.55, 0.62);
-  sack(g, -0.35, 0.75, 0, { s: 0.9 });
-  sack(g, 0.62, -0.62, 0, { s: 0.9 });
+  const a = g.P(0.78, -0.25, 0);
+  const b = g.P(s, -0.12, z0 + 2);
+  stick(c, a[0], a[1], b[0], b[1], WOOD, 2.2);
+  stick(c, a[0] + 3, a[1] - 1, b[0] + 3, b[1] - 1, WOOD, 1.2);
+  // ailes du moulin, devant le pignon (+y)
+  sails(g, 0, s + 0.14, z0 + 36, 40);
+  banner(g, 0, 0, z0 + 62, 14, { w: 8, h: 11 });
+  sack(g, -0.6, 0.55);
+  sack(g, -0.42, 0.72, 0, { s: 0.9 });
+  sack(g, 0.66, 0.5, 0, { s: 0.9 });
+  barrel(g, 0.7, 0.2, 0, 0.85);
 }
 
 /** Quatre ailes en treillis (toile blanc cassé) dans le plan y = cste, moyeu en (x, y, z). */
@@ -172,7 +176,9 @@ function sails(g, x, y, z, L) {
     const p2 = pt(a, L, 0);
     const p3 = pt(a, L, 8);
     const p4 = pt(a, L * 0.24, 8);
-    g.fillPoly([p1, p2, p3, p4], 'rgba(238,230,208,0.92)', 'rgba(90,70,50,0.6)');
+    g.fillPoly([p1, p2, p3, p4], 'rgba(236,228,206,0.95)', 'rgba(90,70,50,0.6)');
+    // ombre douce de la toile (moitié éloignée du bras)
+    g.fillPoly([pt(a, L * 0.24, 4), p2 && pt(a, L, 4), p3, p4], 'rgba(120,105,80,0.25)', false);
     // treillis
     c.strokeStyle = '#6a4a2c';
     c.lineWidth = 0.8;
@@ -189,12 +195,6 @@ function sails(g, x, y, z, L) {
     c.moveTo(r1[0], r1[1]);
     c.lineTo(r2[0], r2[1]);
     c.stroke();
-    // bande de toile aux couleurs d'équipe
-    const s1 = pt(a, L * 0.62, 0.5);
-    const s2 = pt(a, L * 0.78, 0.5);
-    const s3 = pt(a, L * 0.78, 7.5);
-    const s4 = pt(a, L * 0.62, 7.5);
-    g.fillPoly([s1, s2, s3, s4], g.tc.main, false);
     // bras
     const b0 = pt(a, 0, 0);
     const b1 = pt(a, L + 2, 0);
@@ -263,8 +263,8 @@ function barracks(g) {
   const st = g.stage;
   const tc = g.tc;
   longHouse(g, {
-    x0: -1.2, y0: -1.25, x1: 0.3, y1: 0.8, plinthH: 5, wallH: 30, ridgeH: 86, axis: 'y',
-    wallMat: MAT.planks, roofMat: MAT.shingle, heads: true, ov: 0.15, ovg: 0.1, th: 3,
+    x0: -1.18, y0: -1.12, x1: 0.3, y1: 0.82, plinthH: 5, wallH: 28, ridgeH: 76, axis: 'y',
+    wallMat: MAT.planks, roofMat: MAT.shingle, heads: true, ov: 0.1, ovg: 0.1, th: 2.5,
     decoL: (c, w, h) => {
       doorLocal(c, w / 2, h, 11, 17, { open: 0.45 });
       if (st === 3) {
@@ -273,7 +273,7 @@ function barracks(g) {
       }
     },
     decoR: (c, w, h) => {
-      if (st === 3) shieldRow(c, tc, w, h * 0.5, 6, 4.4, 0.1, 0.9);
+      if (st === 3) shieldRow(c, tc, w, h * 0.66, 6, 4.4, 0.1, 0.9);
       else for (const f of [0.25, 0.75]) windowLocal(c, w * f, h * 0.45, 4, 6);
     },
     gableDeco: st === 3 ? (c, w, h) => wallBannerLocal(c, tc, w / 2, h * 0.28, 10, 16) : null,
@@ -299,24 +299,63 @@ function barracks(g) {
 
 function archery(g) {
   const st = g.stage;
-  shed(g, {
-    x0: -1.4, y0: -1.4, x1: 0.95, y1: -0.45, zHigh: 42, zLow: 30, dir: 'y', mat: MAT.shingle, th: 3,
-    backWall: MAT.planks, sideWall: MAT.planks,
-    contents: (gg) => {
-      weaponRack(gg, -0.6, -1.15, 'x', 0.9, { bows: true, n: 6 });
-      barrel(gg, 0.3, -1.05, 0, 0.9);
-      barrel(gg, 0.55, -0.95, 0, 0.8);
-      crate(gg, -1.1, -0.8);
-    },
+  const tc = g.tc;
+  const x0 = -1.35;
+  const x1 = 0.72;
+  const y0 = -1.35;
+  const y1 = -0.42;
+  const zw = 27;
+  const zr = 64;
+  const G = gableGeo({ x0, y0, x1, y1, zw, zr, axis: 'x', ov: 0.14, ovg: 0.1 });
+  if (g.mode === 'plan') {
+    g.planRect(x0, y0, x1, y1);
+    return;
+  }
+  const xs = [];
+  for (let i = 0; i <= 4; i++) xs.push(x0 + ((x1 - x0) * i) / 4);
+  if (g.mode === 'shadow') {
+    g.shadowBox(x0, y0, x1, y1, 0, zw);
+    if (st >= 2) gableRoof(g, { x0, y0, x1, y1, zw, zr, axis: 'x', ov: 0.14, ovg: 0.1 });
+    return;
+  }
+  const zt = st === 1 ? zw * 0.45 : zw;
+  // murs du fond et du bout gauche (faces intérieures), sol de planches
+  g.faceL(x0, x1, y0 + 0.04, 0, zt, MAT.planks, { k: 0.72 });
+  g.faceR(x0 + 0.04, y0, y1, 0, zt, MAT.planks, { k: 0.55 });
+  if (st >= 2) {
+    weaponRack(g, -0.7, -1.12, 'x', 1.0, { bows: true, n: 7 });
+    barrel(g, 0.2, -1.05, 0, 0.9);
+    barrel(g, 0.45, -0.95, 0, 0.8);
+    crate(g, -1.12, -0.75);
+  }
+  if (st === 1) {
+    for (const x of xs) g.post(x, y0 + 0.04, 0, zw, WOOD, 3);
+    g.beam(x0, y0, zw, x1, y0, zw, WOOD, 2.2);
+    gableRafters(g, G, 'back');
+  }
+  // façade ouverte sur poteaux, mur du bout droit
+  for (const x of xs.slice(0, -1)) g.post(x + 0.04, y1 - 0.04, 0, zw, WOOD, 3.2);
+  g.faceR(x1, y0, y1, 0, zt, MAT.planks, {
+    eave: st >= 2 ? 5 : 0,
+    deco: st === 3 ? (c, w, h) => wallBannerLocal(c, tc, w / 2, h * 0.14, 9, 16) : null,
   });
+  g.post(x1 - 0.02, y1 - 0.02, 0, zw, WOOD, 3.2);
+  if (st === 1) {
+    g.beam(x0, y1, zw, x1, y1, zw, WOOD, 2.2);
+    gableRafters(g, G, 'front');
+    scaffold(g, [[x1 + 0.15, y0], [x1 + 0.15, y1 + 0.1]], zw + 4);
+  } else {
+    g.beam(x0, y1 - 0.04, zw - 1, x1, y1 - 0.04, zw - 1, WOOD_DARK, 2.4);
+    gableRoof(g, { x0, y0, x1, y1, zw, zr, axis: 'x', ov: 0.14, ovg: 0.1, mat: MAT.shingle, th: 3, gableMat: MAT.planks, heads: true });
+  }
   if (st === 3) {
-    hayBale(g, 1.05, 0.2, 0, 'y');
-    target(g, 1.05, 0.22, 7);
-    hayBale(g, 0.2, 1.05, 0, 'x');
-    target(g, 0.22, 1.05, 7);
-    target(g, 1.12, 1.0, 6);
-    banner(g, -1.2, 0.2, 0, 50, { w: 12, h: 18 });
-    railFence(g, [[1.38, -1.2], [1.38, 1.38], [-1.2, 1.38]], 8);
+    hayBale(g, 1.08, 0.12, 0, 'y');
+    target(g, 1.08, 0.14, 7.5);
+    hayBale(g, 0.18, 1.1, 0, 'x');
+    target(g, 0.2, 1.1, 7.5);
+    target(g, 1.18, 1.0, 6.5);
+    banner(g, -1.2, 0.35, 0, 50, { w: 12, h: 18 });
+    railFence(g, [[1.38, -0.9], [1.38, 1.38], [-0.9, 1.38]], 8);
   }
 }
 
@@ -324,7 +363,7 @@ function stable(g) {
   const st = g.stage;
   const tc = g.tc;
   longHouse(g, {
-    x0: -1.35, y0: -1.35, x1: 0.62, y1: -0.15, plinthH: 4, wallH: 26, ridgeH: 70, axis: 'x',
+    x0: -1.3, y0: -1.3, x1: 0.62, y1: -0.15, plinthH: 4, wallH: 25, ridgeH: 64, axis: 'x',
     wallMat: MAT.planks, roofMat: MAT.shingle, heads: true, ov: 0.15, ovg: 0.1, th: 3,
     decoL: (c, w, h) => {
       // grandes portes de grange
@@ -393,9 +432,9 @@ function forge(g) {
   });
   // cheminée de pierre contre le mur droit
   const cx0 = x1;
-  const cx1 = x1 + 0.3;
-  const cy0 = -0.95;
-  const cy1 = -0.62;
+  const cx1 = x1 + 0.26;
+  const cy0 = -0.92;
+  const cy1 = -0.64;
   const ch = st === 1 ? 14 : st === 2 ? 70 : 96;
   if (g.mode === 'plan') g.planRect(cx0, cy0, cx1, cy1);
   else {

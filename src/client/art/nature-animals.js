@@ -260,7 +260,7 @@ export function fallPoseA(f) {
     hfU: lerp(-0.08, -0.55, e), hfL: lerp(0.06, -0.6, e),
     neck: lerp(0.1, 0.85, e),
     by: lerp(0, 2.0, e),
-    flat: 1 - 0.46 * e,
+    flat: 1 - 0.34 * e,
     tail: 0,
   };
 }

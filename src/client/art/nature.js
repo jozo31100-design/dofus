@@ -29,7 +29,7 @@ function groundShadow(rx, ry, cx = 2, a = 0.28) {
 
 function dirtShadow(c) {
   return (ctx) => {
-    const g = ctx.createRadialGradient(0, 2, 0, 0, 2, 30);
+    const g = ctx.createRadialGradient(0, 2, 0, 0, 2, 34);
     g.addColorStop(0, rgba(c, 0.8));
     g.addColorStop(0.65, rgba(c, 0.5));
     g.addColorStop(1, rgba(c, 0));
@@ -37,7 +37,7 @@ function dirtShadow(c) {
     ctx.translate(0, 2);
     ctx.scale(1, 0.46);
     ctx.beginPath();
-    ctx.arc(0, 0, 30, 0, TAU);
+    ctx.arc(0, 0, 34, 0, TAU);
     ctx.restore();
     ctx.fillStyle = g;
     ctx.fill();
@@ -64,13 +64,13 @@ export function getNodeSprite(type, variant = 0, frac = 1) {
   if (type === 'tree') {
     const kind = v % TREE_KINDS.length;
     const seed = Math.floor(v / TREE_KINDS.length) + 1;
-    r = bake([-40, -84, 46, 16], 1, (ctx) => { h = drawTree(ctx, kind, seed); }, (ctx) => treeShadow(ctx, kind), ['#0f1e08', 0.5]);
+    r = bake([-40, -84, 46, 16], 1, (ctx) => { h = drawTree(ctx, kind, seed); }, (ctx) => treeShadow(ctx, kind), ['#0f1e08', 0.38]);
   } else if (type === 'berries') {
     r = bake([-22, -32, 24, 10], 1, (ctx) => { h = drawBerries(ctx, v, q); }, groundShadow(15, 6, 3), ['#10200a', 0.5]);
   } else if (type === 'gold') {
-    r = bake([-34, -34, 36, 20], 1, (ctx) => { h = drawGold(ctx, v, q); }, dirtShadow('#6e5a40'), ['#1c140a', 0.5]);
+    r = bake([-38, -40, 40, 22], 1, (ctx) => { h = drawGold(ctx, v, q); }, dirtShadow('#6e5a40'), ['#1c140a', 0.5]);
   } else if (type === 'stone') {
-    r = bake([-34, -34, 36, 20], 1, (ctx) => { h = drawStone(ctx, v, q); }, dirtShadow('#766c5c'), ['#1c1a14', 0.5]);
+    r = bake([-38, -40, 40, 22], 1, (ctx) => { h = drawStone(ctx, v, q); }, dirtShadow('#766c5c'), ['#1c1a14', 0.5]);
   } else if (type === 'carcass') {
     r = bake([-22, -22, 24, 10], 1, (ctx) => { drawCarcass(ctx, v === 1 ? 'sheep' : 'deer', q); }, groundShadow(14, 5, 1), ['#1c120a', 0.45]);
     h = 12;
@@ -110,17 +110,18 @@ export function drawAnimal(ctx, o) {
   const type = o.type === 'sheep' ? 'sheep' : 'deer';
   let a = A_ANIMS[o.anim];
   if (a === undefined) a = 0;
-  const t = o.t || 0;
+  const t = Number.isFinite(o.t) ? o.t : 0;
+  const dT = Number.isFinite(o.deathT) ? o.deathT : 0;
   let f;
   if (a === 0) f = Math.floor(fract(t / GRAZE_T) * GRAZE_N);
   else if (a === 1) f = Math.floor(fract(t / WALK_T) * WALK_N);
   else if (a === 2) f = type === 'sheep' ? Math.floor(fract(t / (WALK_T * 0.6)) * WALK_N) : Math.floor(fract(t / FLEE_T) * FLEE_N);
-  else f = Math.min(FALL_N - 1, Math.floor(Math.max(t / FALL_T, o.deathT || 0) * (FALL_N - 1)));
+  else f = Math.min(FALL_N - 1, Math.floor(clamp(Math.max(t / FALL_T, dT)) * (FALL_N - 1)));
   const dir = (o.dir || 1) < 0 ? -1 : 1;
   const m = ctx.getTransform();
   const s = o.scale || 1;
   const b = picker.pick(Math.hypot(m.a, m.b) * s);
-  const key = ((((type === 'sheep' ? 1 : 0) * 4 + a) * 32 + f) * 2 + (dir > 0 ? 0 : 1)) * 1024 + Math.round(b * 64);
+  const key = ((((type === 'sheep' ? 1 : 0) * 4 + a) * 32 + f) * 2 + (dir > 0 ? 0 : 1)) * 65536 + Math.round(b * 4096);
   let spr = animalCache.get(key);
   if (!spr) {
     let P;

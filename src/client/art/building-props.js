@@ -715,6 +715,10 @@ export function glow(g, x, y, z, r = 10, col = [255, 150, 50]) {
 /** Fumée figée : volutes qui montent en dérivant vers la droite. */
 export function smoke(g, x, y, z, o = {}) {
   if (!g.drawing) return;
+  g.late.push(() => smokeNow(g, x, y, z, o));
+}
+
+function smokeNow(g, x, y, z, o) {
   const c = g.ctx;
   const [px, py] = g.P(x, y, z);
   const n = o.n ?? 6;

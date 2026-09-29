@@ -95,6 +95,65 @@ export function ballGrad(ctx, x, y, r, c, k1 = 0.28, k2 = -0.3) {
 }
 
 // ---------------------------------------------------------------------------
+// Motifs (remplissages texturés sans découpage, bien plus rapides qu'un clip)
+// ---------------------------------------------------------------------------
+
+const tiles = new Map();
+/**
+ * Motif répété : tuile de n × n pixels dessinée une fois par draw(g, n), puis appliquée au contexte ctx
+ * avec une période de `period` unités locales. Renvoie un CanvasPattern utilisable comme fillStyle.
+ */
+export function pattern(ctx, key, n, period, draw) {
+  let t = tiles.get(key);
+  if (!t) {
+    t = document.createElement('canvas');
+    t.width = n;
+    t.height = n;
+    draw(t.getContext('2d'), n);
+    tiles.set(key, t);
+  }
+  const p = ctx.createPattern(t, 'repeat');
+  if (p && p.setTransform) p.setTransform(new DOMMatrix([period / n, 0, 0, period / n, 0, 0]));
+  return p;
+}
+
+/** Motif à carreaux (braies gauloises) de deux couleurs, avec un fin liseré clair. */
+export function checkPattern(ctx, c1, c2, period) {
+  return pattern(ctx, 'chk' + c1 + c2, 8, period, (g, n) => {
+    g.fillStyle = c1;
+    g.fillRect(0, 0, n, n);
+    g.fillStyle = c2;
+    g.fillRect(0, 0, n / 2, n / 2);
+    g.fillRect(n / 2, n / 2, n / 2, n / 2);
+    g.fillStyle = rgba(tone(c2, 0.4), 0.55);
+    g.fillRect(n / 4 - 0.5, 0, 1, n);
+  });
+}
+
+/** Motif de cotte de mailles : rangées d'anneaux en quinconce. */
+export function mailPattern(ctx, c, period) {
+  return pattern(ctx, 'mail' + c, 12, period, (g, n) => {
+    g.fillStyle = c;
+    g.fillRect(0, 0, n, n);
+    g.strokeStyle = rgba(tone(c, -0.55), 0.8);
+    g.lineWidth = 1.2;
+    const arc = (x, y) => {
+      g.beginPath();
+      g.arc(x, y, n / 4, 0.15, Math.PI - 0.15);
+      g.stroke();
+    };
+    arc(n / 4, n / 4);
+    arc((3 * n) / 4, n / 4);
+    arc(0, (3 * n) / 4);
+    arc(n / 2, (3 * n) / 4);
+    arc(n, (3 * n) / 4);
+    g.fillStyle = rgba('#ffffff', 0.35);
+    g.fillRect(n / 4 - 1, n / 4 - 2, 2, 1);
+    g.fillRect((3 * n) / 4 - 1, (3 * n) / 4 - 2, 2, 1);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Chemins
 // ---------------------------------------------------------------------------
 
@@ -377,9 +436,9 @@ export class ScalePicker {
     this.counts = new Map();
     this.threshold = threshold;
   }
-  /** Renvoie la résolution de cuisson pour une échelle effective k. */
+  /** Renvoie la résolution de cuisson pour une échelle effective k (quantifiée au 1/4096). */
   pick(k) {
-    const q = Math.round(k * 64) / 64;
+    const q = Math.round(k * 4096) / 4096;
     for (let i = 0; i < STEPS.length; i++) if (STEPS[i] === q) return q;
     // Échelle hors paliers : on la compte ; utilisée telle quelle dès qu'elle est stable.
     let c = this.counts.get(q) || 0;
@@ -406,7 +465,7 @@ export function blit(ctx, spr, sx, sy, s, b, m, alphaMul) {
     ga = ctx.globalAlpha;
     ctx.globalAlpha = ga * alphaMul;
   }
-  if (m.b === 0 && m.c === 0 && m.a > 0 && Math.abs(m.a * inv - 1) < 1e-4 && Math.abs(m.d * inv - 1) < 1e-4) {
+  if (m.b === 0 && m.c === 0 && m.a > 0 && Math.abs(m.a * inv - 1) < 2e-3 && Math.abs(m.d * inv - 1) < 2e-3) {
     const dx = Math.round(m.a * x + m.e);
     const dy = Math.round(m.d * y + m.f);
     ctx.setTransform(1, 0, 0, 1, 0, 0);

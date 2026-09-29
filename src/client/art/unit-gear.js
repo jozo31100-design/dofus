@@ -332,46 +332,68 @@ export function bow(ctx, x, y, a, z, pull, arrow) {
  */
 export function crossbow(ctx, x, y, a, z, loaded, recoil = 0) {
   const [dx, dy, px, py] = dirs(a);
-  const x0 = x - dx * (2.2 + recoil) * z;
-  const y0 = y - dy * (2.2 + recoil) * z;
-  const L = 9.5 * z;
-  const fx = x0 + dx * L;
-  const fy = y0 + dy * L;
-  // Crosse
+  const x0 = x - dx * (3.4 + recoil) * z;
+  const y0 = y - dy * (3.4 + recoil) * z;
+  const fx = x + dx * (8.8 - recoil) * z;
+  const fy = y + dy * (8.8 - recoil) * z;
+  // L'arc (horizontal) est vu de trois-quarts : il suit l'axe latéral qui descend vers le spectateur.
+  const lx = -0.62;
+  const ly = 0.6;
+  const L = 5.4 * z;
+  const cx = fx - dx * 1.1 * z;
+  const cy = fy - dy * 1.1 * z;
+  const bend = (loaded ? 1.7 : 0.7) * z;
+  const tA = [cx + lx * L - dx * bend, cy + ly * L - dy * bend];
+  const tB = [cx - lx * L - dx * bend, cy - ly * L - dy * bend];
+  // Branche lointaine de l'arc (derrière la crosse)
   ctx.beginPath();
-  capsule(ctx, x0 - py * 0.2 * z, y0 + px * 0.2 * z, 1.0 * z, fx, fy, 0.65 * z);
-  paint(ctx, '#7a4e2c', edge('#7a4e2c'), 0.55);
-  // Arc (vu de trois-quarts : ellipse aplatie perpendiculaire à la crosse)
-  const ax = fx - dx * 1.2 * z;
-  const ay = fy - dy * 1.2 * z;
-  const bend = loaded ? 1.6 : 0.6;
-  ctx.beginPath();
-  ctx.moveTo(ax - px * 4.6 * z - dx * bend * z, ay - py * 4.6 * z - dy * bend * z);
-  ctx.quadraticCurveTo(ax + dx * 1.2 * z, ay + dy * 1.2 * z, ax + px * 4.6 * z - dx * bend * z, ay + py * 4.6 * z - dy * bend * z);
-  ctx.strokeStyle = '#3a3f46';
-  ctx.lineWidth = 1.35 * z;
+  ctx.moveTo(tB[0], tB[1]);
+  ctx.quadraticCurveTo(cx - lx * L * 0.4 + dx * 0.6 * z, cy - ly * L * 0.4 + dy * 0.6 * z, cx + dx * 0.4 * z, cy + dy * 0.4 * z);
+  ctx.strokeStyle = '#2c3036';
+  ctx.lineWidth = 1.7 * z;
   ctx.stroke();
-  ctx.strokeStyle = IRON;
-  ctx.lineWidth = 0.75 * z;
+  ctx.strokeStyle = '#7c848c';
+  ctx.lineWidth = 0.95 * z;
   ctx.stroke();
-  // Corde
-  const cx = loaded ? x0 + dx * 4.2 * z : ax - dx * 0.8 * z;
-  const cy = loaded ? y0 + dy * 4.2 * z : ay - dy * 0.8 * z;
+  // Crosse, plus épaisse à l'arrière
   ctx.beginPath();
-  ctx.moveTo(ax - px * 4.6 * z - dx * bend * z, ay - py * 4.6 * z - dy * bend * z);
-  ctx.lineTo(cx, cy);
-  ctx.lineTo(ax + px * 4.6 * z - dx * bend * z, ay + py * 4.6 * z - dy * bend * z);
-  ctx.strokeStyle = 'rgba(240,232,210,0.85)';
+  capsule(ctx, x0, y0, 1.4 * z, fx, fy, 0.8 * z);
+  paint(ctx, sideGrad(ctx, x0 - 2 * z, fx + 2 * z, '#7a4a28', 0.2, -0.25), 'rgba(40,22,10,0.85)', 0.55);
+  // Étrier de fer à l'avant
+  ctx.beginPath();
+  ell(ctx, fx + dx * 0.9 * z, fy + dy * 0.9 * z, 1.0 * z, 1.0 * z);
+  ctx.strokeStyle = '#4a5058';
+  ctx.lineWidth = 0.55 * z;
+  ctx.stroke();
+  // Corde (tendue vers la noix quand l'arme est chargée)
+  const nx = loaded ? x + dx * 0.6 * z : cx - dx * 0.9 * z;
+  const ny = loaded ? y + dy * 0.6 * z : cy - dy * 0.9 * z;
+  ctx.beginPath();
+  ctx.moveTo(tA[0], tA[1]);
+  ctx.lineTo(nx, ny);
+  ctx.lineTo(tB[0], tB[1]);
+  ctx.strokeStyle = 'rgba(240,232,210,0.9)';
   ctx.lineWidth = 0.4 * z;
   ctx.stroke();
   if (loaded) {
-    line(ctx, cx, cy, fx + dx * 1.2 * z, fy + dy * 1.2 * z, '#6b4a2a', 0.6 * z);
+    // Carreau sur la crosse
+    line(ctx, nx, ny, fx + dx * 1.4 * z, fy + dy * 1.4 * z, '#5a3a1e', 0.7 * z);
     ctx.beginPath();
-    poly(ctx, [fx + dx * 2.4 * z, fy + dy * 2.4 * z, fx + dx * 1.0 * z + px * 0.6 * z, fy + dy * 1.0 * z + py * 0.6 * z, fx + dx * 1.0 * z - px * 0.6 * z, fy + dy * 1.0 * z - py * 0.6 * z]);
-    ctx.fillStyle = IRON;
+    poly(ctx, [fx + dx * 2.8 * z, fy + dy * 2.8 * z, fx + dx * 1.2 * z + px * 0.7 * z, fy + dy * 1.2 * z + py * 0.7 * z, fx + dx * 1.2 * z - px * 0.7 * z, fy + dy * 1.2 * z - py * 0.7 * z]);
+    ctx.fillStyle = STEEL;
     ctx.fill();
   }
-  return [fx - dx * 2.6 * z, fy - dy * 2.6 * z];
+  // Branche proche de l'arc (devant)
+  ctx.beginPath();
+  ctx.moveTo(cx + dx * 0.4 * z, cy + dy * 0.4 * z);
+  ctx.quadraticCurveTo(cx + lx * L * 0.4 + dx * 0.6 * z, cy + ly * L * 0.4 + dy * 0.6 * z, tA[0], tA[1]);
+  ctx.strokeStyle = '#2c3036';
+  ctx.lineWidth = 1.8 * z;
+  ctx.stroke();
+  ctx.strokeStyle = '#aab2ba';
+  ctx.lineWidth = 1.0 * z;
+  ctx.stroke();
+  return [cx, cy];
 }
 
 /** Lance de chevalier avec fanion. */

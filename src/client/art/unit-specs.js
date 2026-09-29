@@ -79,6 +79,7 @@ function base(civ, tm, z) {
     shoes: P.shoes,
     belt: P.belt,
     buckle: g ? BRONZE : '#b8a060',
+    trim2: g ? '#efd894' : '#e2d6b8',
     hilt: g ? BRONZE : '#a9a28e',
   };
 }
@@ -142,6 +143,7 @@ export function unitSpec(type, civ, teamIdx) {
       sp = base(civ, tm, 1.14);
       sp.mail = { c: g ? GAUL.mail : FRANK.mail, hem: g ? 3.4 : 5.6 };
       sp.sleeves = 'mail';
+      sp.tabard = tm.main;
       if (g) {
         sp.hair = GAUL.red;
         sp.moustache = GAUL.red;
@@ -163,12 +165,14 @@ export function unitSpec(type, civ, teamIdx) {
       sp.mail = { c: g ? '#a7acae' : '#a2aab2', hem: g ? 3.8 : 6.0 };
       sp.sleeves = 'mail';
       sp.gloves = '#6a4428';
+      sp.tabard = tm.main;
+      sp.trim = GOLD;
+      sp.emblem = GOLD;
       if (g) {
         sp.helmet = { kind: 'winged', c: GOLD, wing: '#f4f1e8' };
         sp.shield = { kind: 'oval', face: tm.main, s: 1.08, deco: 'boar' };
         sp.torque = true;
-        sp.cape = tm.dark;
-        sp.plate = BRONZE;
+        sp.cape = tm.main;
         sp.weapon = 'longsword';
         sp.hem = 4.8;
       } else {
@@ -198,6 +202,7 @@ export function unitSpec(type, civ, teamIdx) {
       sp = base(civ, tm, 1.11);
       sp.mail = { c: g ? GAUL.mail : FRANK.mail, hem: g ? 3.2 : 5.0 };
       sp.sleeves = 'mail';
+      sp.tabard = tm.main;
       sp.helmet = g ? { kind: 'montefortino', c: '#a8aaa4' } : { kind: 'kettle', c: IRON };
       sp.weapon = 'crossbow';
       sp.back = 'quiver';
@@ -212,6 +217,7 @@ export function unitSpec(type, civ, teamIdx) {
       sp.hairStyle = 'long';
       sp.mail = { c: FRANK.mail, hem: 4.6 };
       sp.sleeves = 'mail';
+      sp.sash = tm.main;
       sp.weapon = 'francisca';
       sp.back = 'shield';
       sp.shieldFace = tm.main;
@@ -307,6 +313,7 @@ function mountedSpec(type, civ, tm) {
     sp = base(civ, tm, 1.08);
     sp.mail = { c: P.mail, hem: 3.0 };
     sp.sleeves = 'mail';
+    sp.tabard = tm.main;
     if (g) {
       sp.helmet = { kind: 'agen', c: '#a3a8ab' };
       sp.shield = { kind: 'oval', face: tm.main, s: 0.85 };
@@ -325,11 +332,13 @@ function mountedSpec(type, civ, tm) {
     sp.mail = { c: P.mail, hem: 3.0 };
     sp.sleeves = 'mail';
     sp.gloves = '#6a4428';
+    sp.tabard = tm.main;
+    sp.trim = GOLD;
     if (g) {
       sp.helmet = { kind: 'winged', c: GOLD, wing: '#f4f1e8' };
       sp.shield = { kind: 'oval', face: tm.main, s: 0.9, deco: 'boar' };
       sp.torque = true;
-      sp.cape = tm.dark;
+      sp.cape = tm.main;
     } else {
       sp.helmet = { kind: 'crest', c: '#b0b8c0', crest: tm.main, band: GOLD };
       sp.shield = { kind: 'round', face: tm.main, s: 0.9, deco: 'segments' };

@@ -14,9 +14,12 @@ import { App } from '../src/client/screens.js';
   const mode = location.hash.slice(1) || 'game';
   if (mode === 'menu') return;
   if (mode === 'solo') { app.showSolo(); return; }
+  const t0 = performance.now();
   await app.startLocal({ seed: 4, mapSeed: 1789, players: [{ name: 'Jo', civ: 'franks' }, { name: 'Ordinateur', civ: 'gauls', ai: 'moyen' }], startRes: 'riche', speed: 1 }, null);
+  console.log('chargement (terrain + sprites) :', Math.round(performance.now() - t0), 'ms');
   const s = window.__game.session;
   for (let i = 0; i < 20 * 100; i++) { s.world.step(); const ev = s.world.events; s.world.events = []; s.builder.pushEvents(ev); }
   s.publish(performance.now());
+  window.__ready = true;
   console.log('partie lancée');
 })();

@@ -35,7 +35,7 @@ const REST = {
   sword: { nU: 0.28, nF: 1.15, wA: 2.25, fU: 0.2, fF: 1.3 },
   spear: { nU: 0.32, nF: 2.05, wA: 3.08, fU: 0.2, fF: 1.3 },
   bow: { nU: 0.08, nF: 0.35, fU: 0.2, fF: 0.75, aim: 0.55 },
-  xbow: { ik: 2, aim: 2.45 },
+  xbow: { ik: 3, aim: 2.3 },
   staff: { nU: 0.34, nF: 1.95, wA: 3.04, fU: 0.14, fF: 0.75 },
   fury: { nU: 0.5, nF: 1.45, wA: 2.1, fU: 0.35, fF: 1.1, lean: 0.1 },
 };
@@ -157,10 +157,12 @@ export function attackPose(hold, q, aimA) {
     return o;
   }
   if (hold === 'xbow') {
-    const up = smooth(clamp(q / 0.25));
+    // Épauler (l'arme passe de la position de repos à la visée), tirer, recul, garder la visée
+    if (q < 0.1) return full({ ...STANCE, ik: 3, aim: lerp(2.3, 1.9, q / 0.1) });
+    const up = smooth(clamp((q - 0.1) / 0.18));
     const shot = q >= 0.45 && q < 0.97 ? 1 : 0;
     const rec = shot ? 1 - clamp((q - 0.45) / 0.2) : 0;
-    return full({ ...STANCE, ik: 2, aim: lerp(2.45, aimA, up) - rec * 0.12, shot, pull: 1 - rec, lean: -0.05 - rec * 0.08, bx: -rec * 0.4 });
+    return full({ ...STANCE, ik: 2, aim: lerp(1.9, aimA, up) - rec * 0.12, shot, pull: 1 - rec, lean: -0.05 - rec * 0.08, bx: -rec * 0.4 });
   }
   if (hold === 'spear') return full(keyPose(THRUST, q));
   if (hold === 'throw') return full(keyPose(THROW, q));

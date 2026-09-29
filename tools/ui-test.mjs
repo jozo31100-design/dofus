@@ -19,9 +19,12 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 await page.goto('file://' + path.join(tmp, 'page.html') + '#game');
-await page.waitForFunction(() => window.__game && window.__game.state.ents.size > 0, null, { timeout: 30000 });
-await page.waitForTimeout(800);
+page.on('console', (m) => { if (/chargement/.test(m.text())) console.log('  ' + m.text()); });
+await page.waitForFunction(() => window.__ready === true, null, { timeout: 60000 });
+await page.waitForFunction(() => window.__game.ui.renderer.hits.length > 20, null, { timeout: 10000 });
+await page.waitForTimeout(300);
 
+process.on('uncaughtException', (e) => { console.log('ÉCHEC :', e.message); if (errors.length) console.log('ERREURS DE LA PAGE :\n' + errors.slice(0, 5).join('\n')); process.exit(1); });
 const G = (fn, arg) => page.evaluate(fn, arg);
 let step = 0;
 const log = (m) => console.log(`  ${++step}. ${m}`);
@@ -140,6 +143,30 @@ await page.keyboard.press('Escape');
 log('menu ouvert et fermé');
 
 await page.screenshot({ path: path.join(root, '.scratch', 'ui-test-final.png') });
+
+// 8. fin de partie : défaite par abandon, écran de statistiques, retour au menu
+await G(() => window.__game.session.command({ c: 'resign' }));
+await page.waitForSelector('.dialog.end', { timeout: 8000 });
+const endTitle = await page.textContent('.dialog.end h1');
+assert.equal(endTitle, 'Défaite…');
+assert.ok((await page.textContent('.dialog.end table')).includes('Unités formées'));
+await page.screenshot({ path: path.join(root, '.scratch', 'ui-end.png') });
+log('écran de défaite avec statistiques');
+await page.click('text=Retour au menu principal');
+await page.waitForSelector('text=Jouer contre l\'ordinateur');
+log('retour au menu principal');
+
+// 9. nouvelle partie juste après (rien ne doit traîner) puis victoire en détruisant l'adversaire
+await G(() => { window.__prevGame = window.__game; });
+await page.click('text=Jouer contre l\'ordinateur');
+await page.click('text=Lancer la partie');
+await page.waitForFunction(() => window.__game !== window.__prevGame && window.__game.ui.renderer.hits.length > 20 && window.__game.state.tick > 5, null, { timeout: 60000 });
+await G(() => { const w = window.__game.session.world; for (const b of w.playerBuildings(1)) w.removeEntity(b); for (const u of w.playerUnits(1)) w.removeEntity(u); w.sweepDead(); });
+await page.waitForSelector('.dialog.end', { timeout: 10000 });
+assert.equal(await page.textContent('.dialog.end h1'), 'Victoire !');
+log('deuxième partie lancée puis victoire affichée');
+await page.click('text=Retour au menu principal');
+await page.waitForSelector('text=Jouer contre l\'ordinateur');
 await browser.close();
 const relevant = errors.filter((e) => !/AudioContext/.test(e));
 if (relevant.length) { console.log('ERREURS DE LA PAGE :\n' + relevant.join('\n')); process.exit(1); }

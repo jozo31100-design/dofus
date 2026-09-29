@@ -48,7 +48,7 @@ function nugget(ctx, x, y, r) {
 export function drawGold(ctx, variant, frac) {
   const rnd = mulberry32(9001 + variant * 77);
   const all = [
-    [-12, 4, 9, 9], [11, 5, 9, 8], [0, 8, 10, 8], [-4, -3, 11, 12], [8, -4, 9, 10], [-15, -4, 7, 7], [15, -3, 6, 6],
+    [-14, 4, 10.5, 10], [13, 5, 10.5, 9], [0, 9, 12, 9], [-5, -3, 13, 14], [9, -4, 11, 12], [-18, -4, 8, 8], [18, -3, 7, 7],
   ];
   const n = Math.max(2, Math.round(all.length * (0.35 + 0.65 * frac)));
   const rocks = all.slice(0, n).sort((a, b) => a[1] - b[1]);
@@ -72,7 +72,7 @@ export function drawGold(ctx, variant, frac) {
     ctx.stroke();
   }
   // Pépites au pied du tas
-  const nug = [[-6, 10, 2.4], [5, 11, 2.1], [14, 9, 1.8], [-14, 9, 1.9], [1, 3, 2.6], [-8, 2, 2.2], [9, 2, 2.0]];
+  const nug = [[-7, 12, 2.7], [6, 13, 2.4], [16, 10, 2.0], [-16, 10, 2.1], [1, 4, 2.9], [-9, 3, 2.5], [10, 3, 2.3]];
   const m = Math.max(1, Math.round(nug.length * frac));
   for (let i = 0; i < m; i++) nugget(ctx, nug[i][0], nug[i][1] - (i > 3 ? 4 : 0), nug[i][2]);
   // Étincelles
@@ -82,14 +82,14 @@ export function drawGold(ctx, variant, frac) {
     poly(ctx, [x, y - 2.2, x + 0.5, y - 0.5, x + 2.2, y, x + 0.5, y + 0.5, x, y + 2.2, x - 0.5, y + 0.5, x - 2.2, y, x - 0.5, y - 0.5]);
     ctx.fill();
   }
-  return Math.round(14 + 10 * frac);
+  return Math.round(17 + 12 * frac);
 }
 
 /** Carrière : blocs de pierre grise taillés et empilés. */
 export function drawStone(ctx, variant, frac) {
   const rnd = mulberry32(4201 + variant * 53);
   const all = [
-    [-12, 5, 9, 8], [11, 6, 9, 7], [0, 9, 10, 7], [-5, -2, 10, 11], [8, -3, 9, 10], [-15, -3, 7, 7], [2, -9, 8, 8], [15, -2, 6, 6],
+    [-14, 5, 10.5, 9.5], [13, 6, 10.5, 8.5], [0, 10, 12, 8.5], [-6, -2, 12, 13], [9, -3, 11, 12], [-18, -3, 8, 8], [2, -10, 9.5, 9.5], [18, -2, 7, 7],
   ];
   const n = Math.max(2, Math.round(all.length * (0.3 + 0.7 * frac)));
   const rocks = all.slice(0, n).sort((a, b) => a[1] - b[1]);
@@ -105,7 +105,7 @@ export function drawStone(ctx, variant, frac) {
     poly(ctx, [x - 1.6, y, x, y - 1.3, x + 1.8, y - 0.2, x + 0.4, y + 1]);
     paint(ctx, '#c8c6bc', 'rgba(60,60,55,0.6)', 0.4);
   }
-  return Math.round(14 + 10 * frac);
+  return Math.round(17 + 12 * frac);
 }
 
 /** Buisson de baies (~28 px) ; le nombre de baies visibles suit frac. */

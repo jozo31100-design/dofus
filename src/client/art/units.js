@@ -67,7 +67,7 @@ const RANGED = { bow: 1, xbow: 1 };
 
 /** Image d'animation à afficher (quantifiée) pour un état d'unité. */
 function frameOf(o, S) {
-  const t = o.t || 0;
+  const t = Number.isFinite(o.t) ? o.t : 0;
   let anim = ANIM_IDX[o.anim] === undefined ? 0 : ANIM_IDX[o.anim];
   let f = 0;
   let q = 0;
@@ -82,7 +82,7 @@ function frameOf(o, S) {
       f = Math.min(ATT_N - 1, Math.floor((t / ATTACK_T) * ATT_N));
       q = f / ATT_N;
       if (RANGED[S.hold]) {
-        let a = o.aim || 0;
+        let a = Number.isFinite(o.aim) ? o.aim : 0;
         if ((o.dir || 1) < 0) a = PI - a;
         a = Math.atan2(Math.sin(a), Math.cos(a));
         aim = Math.round(((clamp(a, -AIM_MAX, AIM_MAX) + AIM_MAX) / (2 * AIM_MAX)) * (AIM_N - 1));
@@ -110,7 +110,7 @@ function frameOf(o, S) {
   } else if (anim === 4) {
     f = Math.min(DIE_N - 1, Math.floor((Math.max(0, t) / DIE_T) * (DIE_N - 1)));
     q = f / (DIE_N - 1);
-    const d = o.deathT || 0;
+    const d = Number.isFinite(o.deathT) ? o.deathT : 0;
     alpha = clamp((1 - d) / 0.35);
   }
   if (isVil && (anim === 0 || anim === 1)) {
@@ -368,7 +368,7 @@ export function drawUnit(ctx, o) {
   const b = picker.pick(k);
   const key =
     ((((((((TYPE_IDX[type] * 2 + (civ === 'gauls' ? 1 : 0)) * 8 + team) * 5 + fr.anim) * 9 + fr.work) * 5 + fr.carry) * 16 + fr.f) * 2 +
-      (fr.dir > 0 ? 0 : 1)) * 13 + fr.aim) * 1024 + Math.round(b * 64);
+      (fr.dir > 0 ? 0 : 1)) * 13 + fr.aim) * 65536 + Math.round(b * 4096);
   let spr = cache.get(key);
   if (!spr) {
     spr = bakeFrame(S, fr, b);

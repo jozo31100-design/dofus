@@ -288,15 +288,17 @@ export function gableGeo(o) {
   const axis = o.axis || 'x';
   const ov = o.ov ?? 0.14;
   const ovg = o.ovg ?? 0.1;
+  // coyau : le débord d'égout descend moins vite que le pan (laisse voir davantage le mur)
+  const kick = o.kick ?? 0.35;
   // o.xa / o.ya : prolonge le faîtage vers l'arrière (toit qui vient s'appuyer sur un autre toit)
   if (axis === 'x') {
     const yc = (y0 + y1) / 2;
     const slope = (zr - zw) / ((y1 - y0) / 2);
-    return { axis, x0, y0, x1, y1, zw, zr, yc, ze: zw - ov * slope, xa: o.xa ?? x0 - ovg, xb: x1 + ovg, ya: y0 - ov, yb: y1 + ov };
+    return { axis, x0, y0, x1, y1, zw, zr, yc, ze: zw - ov * slope * kick, xa: o.xa ?? x0 - ovg, xb: x1 + ovg, ya: y0 - ov, yb: y1 + ov };
   }
   const xc = (x0 + x1) / 2;
   const slope = (zr - zw) / ((x1 - x0) / 2);
-  return { axis, x0, y0, x1, y1, zw, zr, xc, ze: zw - ov * slope, xa: x0 - ov, xb: x1 + ov, ya: o.ya ?? y0 - ovg, yb: y1 + ovg };
+  return { axis, x0, y0, x1, y1, zw, zr, xc, ze: zw - ov * slope * kick, xa: x0 - ov, xb: x1 + ov, ya: o.ya ?? y0 - ovg, yb: y1 + ovg };
 }
 
 /** Pignon triangulaire sur une face droite (x = x) ou gauche (y = y). */
@@ -397,30 +399,45 @@ function partialRoofDeco(mat, frac = 0.5) {
 /** Têtes sculptées croisées au sommet d'un pignon (Francs). pf, pb : égouts avant / arrière ; pr : faîte. */
 export function gableHeads(g, pf, pb, pr, o = {}) {
   const c = g.ctx;
-  const k = o.k ?? 0.3;
+  const L = o.len ?? 7.5; // longueur (px) des planches prolongées au-dessus du faîte
   const col = o.col || '#5a3a20';
-  const e1 = [pr[0] + (pr[0] - pf[0]) * k, pr[1] + (pr[1] - pf[1]) * k];
-  const e2 = [pr[0] + (pr[0] - pb[0]) * k, pr[1] + (pr[1] - pb[1]) * k];
-  stick(c, pr[0], pr[1] + 1, e1[0], e1[1], col, 2);
-  stick(c, pr[0], pr[1] + 1, e2[0], e2[1], col, 2);
-  for (const [e, d] of [[e1, e1[0] >= pr[0] ? 1 : -1], [e2, e2[0] >= pr[0] ? 1 : -1]]) {
-    // tête de dragon / cheval stylisée : volute et museau tournés vers l'extérieur
-    c.fillStyle = col;
+  for (const p of [pf, pb]) {
+    const dx = pr[0] - p[0];
+    const dy = pr[1] - p[1];
+    const n = Math.hypot(dx, dy) || 1;
+    const ux = dx / n;
+    const uy = dy / n;
+    const d = ux >= 0 ? 1 : -1; // la tête regarde vers l'extérieur
+    const ex = pr[0] + ux * L;
+    const ey = pr[1] + uy * L;
+    // planche de rive prolongée, légèrement recourbée vers l'extérieur
+    c.lineCap = 'round';
     c.strokeStyle = ink(col, 0.8);
-    c.lineWidth = 0.8;
+    c.lineWidth = 2.6;
     c.beginPath();
-    c.ellipse(e[0], e[1] - 0.5, 2.3, 1.9, 0, 0, 2 * PI);
-    c.fill();
+    c.moveTo(pr[0], pr[1] + 0.5);
+    c.quadraticCurveTo(pr[0] + ux * L * 0.6, pr[1] + uy * L * 0.6, ex + d * 0.8, ey);
     c.stroke();
+    c.strokeStyle = col;
+    c.lineWidth = 1.7;
+    c.stroke();
+    // tête de dragon stylisée : crâne, museau pointé vers l'extérieur, œil doré
+    c.fillStyle = col;
+    c.strokeStyle = ink(col, 0.85);
+    c.lineWidth = 0.7;
     c.beginPath();
-    c.moveTo(e[0] + d * 1.2, e[1] - 1.6);
-    c.lineTo(e[0] + d * 4.6, e[1] - 0.2);
-    c.lineTo(e[0] + d * 1.5, e[1] + 1.1);
+    c.moveTo(ex - d * 1.4, ey + 1);
+    c.quadraticCurveTo(ex - d * 1.2, ey - 2.4, ex + d * 1, ey - 2.2);
+    c.lineTo(ex + d * 4, ey - 0.8);
+    c.lineTo(ex + d * 3.6, ey + 0.4);
+    c.lineTo(ex + d * 1.2, ey + 0.2);
+    c.lineTo(ex + d * 0.6, ey + 1.6);
     c.closePath();
     c.fill();
     c.stroke();
     c.fillStyle = o.eye || '#e6b93c';
-    c.fillRect(e[0] + d * 0.6 - 0.5, e[1] - 1.3, 1, 1);
+    c.fillRect(ex + d * 0.5 - 0.45, ey - 1.5, 0.9, 0.9);
+    c.lineCap = 'butt';
   }
 }
 
@@ -875,9 +892,9 @@ export function roundHut(g, o) {
   const r = o.r;
   const z0 = o.z0 ?? 0;
   const zw = z0 + o.wallH;
-  const R = o.R ?? r + 0.17;
+  const R = o.R ?? r + 0.13;
   const za = o.apex;
-  const zb = zw - (o.drop ?? 3);
+  const zb = zw - (o.drop ?? 2);
   const wall = o.wallMat || MAT.daub;
   const roof = o.roofMat || MAT.thatch;
   if (g.mode === 'plan') {
@@ -889,7 +906,7 @@ export function roundHut(g, o) {
     return;
   }
   g.cyl(x, y, r, z0, zw, wall, { eave: 5, deco: (c, X, Y, rx, ry) => roundWallDeco(c, X, Y, rx, ry, z0, zw, o) });
-  thatchCone(g, { x, y, zb, R, za, mat: roof, th: o.th ?? 5, band: o.roofBand, cap: o.cap });
+  thatchCone(g, { x, y, zb, R, za, mat: roof, th: o.th ?? 4.5, band: o.roofBand, bandF1: o.bandF1, bandF2: o.bandF2, cap: o.cap });
 }
 
 /** Stade 1 d'une hutte ronde : murs à 40 %, poteaux, sablière, chevrons. */

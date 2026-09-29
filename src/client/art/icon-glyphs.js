@@ -4,6 +4,9 @@ import { TAU, PI, tone, rgba, capsule, ell, poly, line } from './unit-kit.js';
 
 const INK = '#23170e';
 
+/** Épaississement des contours pour les petites tailles (réglé par l'appelant avant de dessiner). */
+export const ink = { k: 1 };
+
 /** Remplit le chemin courant avec un dégradé vertical de la couleur, puis un contour épais. */
 export function fillInk(ctx, c, w = 2.4, k1 = 0.3, k2 = -0.25, y0 = 8, y1 = 56) {
   const g = ctx.createLinearGradient(0, y0, 0, y1);
@@ -11,7 +14,7 @@ export function fillInk(ctx, c, w = 2.4, k1 = 0.3, k2 = -0.25, y0 = 8, y1 = 56) 
   g.addColorStop(1, tone(c, k2));
   ctx.fillStyle = g;
   ctx.fill();
-  ctx.lineWidth = w;
+  ctx.lineWidth = w * ink.k;
   ctx.strokeStyle = INK;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';

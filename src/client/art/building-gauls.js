@@ -108,8 +108,8 @@ function house(g) {
   const st = g.stage;
   if (st === 3) logPile(g, 0.6, -0.48, 'y', [3, 2], 0.55, 2.5);
   roundHut(g, {
-    x: -0.08, y: -0.08, r: 0.64, wallH: 17, R: 0.86, apex: 50, door: 2.05, doorW: 8, doorH: 12, posts: 6,
-    roofBand: g.tc.main, band: '#b5603a', th: 5,
+    x: -0.08, y: -0.08, r: 0.64, wallH: 19, R: 0.79, apex: 53, door: 2.05, doorW: 8, doorH: 13, posts: 6,
+    roofBand: g.tc.main, band: '#b5603a', th: 4.5,
   });
   if (st === 3) {
     wickerFence(g, arcPts(-0.08, -0.08, 0.98, 0.05, 0.85, 0.2), 6);
@@ -125,10 +125,10 @@ function hall(g) {
   ringWall(g, ring, 'back');
   if (st >= 2) stakes(g, arcPts(0, 0, 1.8, 3 * PI / 4 + 0.03, 7 * PI / 4 - 0.03, 0.11), 17, { z0: 14 });
   roundHut(g, {
-    x: 0, y: 0, r: 1.12, wallH: 28, R: 1.42, apex: 118, drop: 4, door: PI / 2, doorW: 13, doorH: 20, posts: 11,
-    roofBand: tc.main, bandF1: 0.14, th: 7, band: '#a8553a', bandAt: 0.75,
+    x: 0, y: 0, r: 1.1, wallH: 31, R: 1.3, apex: 120, drop: 2, door: PI / 2, doorW: 13, doorH: 21, posts: 11,
+    roofBand: tc.main, bandF1: 0.14, th: 6, band: '#a8553a', bandAt: 0.78,
     wallDeco: st === 3 ? (c, X, Y, rx, ry) => {
-      for (const [t, v] of [[0.72, 0], [1.05, 1], [2.1, 1], [2.43, 0]]) roundShield(c, tc, X, Y, rx, ry, t, 13, 5.5, v);
+      for (const [t, v] of [[0.62, 0], [0.98, 1], [2.16, 1], [2.52, 0]]) roundShield(c, tc, X, Y, rx, ry, t, 14, 6, v);
     } : null,
   });
   ringWall(g, ring, 'front');
@@ -143,18 +143,18 @@ function hall(g) {
     g.post(p1[0], p1[1], 0, 34, WOOD_DARK, 4);
     g.beam(p2[0] - 0.06, p2[1] + 0.06, 32, p1[0] + 0.06, p1[1] - 0.06, 32, WOOD_DARK, 3.2);
     if (st === 3) {
-      carnyx(g, p2[0] - 0.1, p2[1] + 0.22, 14, 34, { dir: -1 });
-      carnyx(g, p1[0] + 0.22, p1[1] - 0.1, 14, 34, { dir: 1 });
+      carnyx(g, p2[0] - 0.1, p2[1] + 0.22, 14, 40, { dir: -1, s: 1.6 });
+      carnyx(g, p1[0] + 0.22, p1[1] - 0.1, 14, 40, { dir: 1, s: 1.6 });
     }
   }
-  apexPennant(g, 0, 0, 118, 24, 26);
+  apexPennant(g, 0, 0, 120, 24, 26);
 }
 
 function mill(g) {
   const st = g.stage;
   granary(g, 0.46, -0.44, { stilts: 10, body: 12, roof: 18 });
-  roundHut(g, { x: -0.26, y: 0.06, r: 0.52, wallH: 15, R: 0.72, apex: 72, door: 1.75, doorW: 7, doorH: 11, posts: 6, roofBand: g.tc.main, th: 5 });
-  apexPennant(g, -0.26, 0.06, 72, 16, 18);
+  roundHut(g, { x: -0.26, y: 0.06, r: 0.54, wallH: 18, R: 0.67, apex: 70, door: 1.75, doorW: 7, doorH: 12, posts: 6, roofBand: g.tc.main, band: '#b5603a', th: 4.5 });
+  apexPennant(g, -0.26, 0.06, 70, 16, 18);
   if (st === 3) {
     millstone(g, 0.62, 0.12, 0, 0.15, 4);
     millstoneUp(g, 0.34, 0.5, 6);
@@ -167,37 +167,53 @@ mill.found = { logs: true };
 
 function lumber(g) {
   const st = g.stage;
-  shed(g, {
-    x0: -0.88, y0: -0.88, x1: 0.34, y1: 0.02, zHigh: 38, zLow: 26, dir: 'y', mat: MAT.thatch, th: 5, edge: THATCH_EDGE,
-    backWall: MAT.wicker,
-    contents: (gg) => {
-      logPile(gg, -0.28, -0.46, 'x', [4, 3, 2], 1.0, 3);
-    },
+  if (st === 3) logPile(g, 0.72, -0.42, 'y', [3, 2, 1], 0.72, 2.8);
+  roundPavilion(g, {
+    x: -0.32, y: -0.3, r: 0.56, R: 0.74, zb: 24, za: 50, posts: 6,
+    contents: (gg) => logPile(gg, -0.32, -0.3, 'x', [4, 3, 2], 0.8, 3),
   });
   if (st === 3) {
-    logPile(g, 0.68, -0.42, 'y', [3, 2, 1], 0.72, 2.8);
-    sawhorse(g, 0.42, 0.5, 'x');
-    stumpAxe(g, -0.42, 0.56);
-    debris(g, 0.1, 0.62, 10, ['#e0c38e', '#c9a46c']);
-    pennant(g, -0.88, 0.06, 0, 48, { len: 18, h: 8 });
+    sawhorse(g, 0.45, 0.5, 'x');
+    stumpAxe(g, -0.45, 0.6);
+    debris(g, 0.12, 0.66, 10, ['#e0c38e', '#c9a46c']);
+    logH(g, 0.1, 0.22, 0, 'x', 0.6, 3.4);
+    pennant(g, -0.86, 0.3, 0, 44, { len: 18, h: 8 });
   }
 }
 
 function mining(g) {
   const st = g.stage;
-  shed(g, {
-    x0: -0.88, y0: -0.88, x1: 0.2, y1: 0.2, zHigh: 38, zLow: 26, dir: 'x', mat: MAT.thatch, th: 5, edge: THATCH_EDGE,
-    sideWall: MAT.dryStone,
-    contents: (gg) => {
-      sack(gg, -0.45, -0.25, 0, { col: '#b9a57a' });
-      sack(gg, -0.2, -0.5, 0, { col: '#c7b184', s: 0.9 });
-      crate(gg, -0.55, 0.0, 0);
-    },
+  roundHut(g, {
+    x: -0.4, y: -0.4, r: 0.44, wallH: 15, R: 0.56, apex: 44, door: 1.35, doorW: 7, doorH: 11, posts: 0,
+    wallMat: MAT.dryStone, roofBand: g.tc.main, th: 4,
   });
   if (st === 3) {
-    cart(g, 0.52, 0.3, 'y', 'gold');
+    // tas de minerai et de pierres
     const c = g.ctx;
-    for (const [x, y] of [[0.26, 0.28], [0.3, 0.12]]) {
+    const heap = (x, y, col, n, gold) => {
+      const rnd = g.rng(x, y, 4);
+      const items = [];
+      for (let i = 0; i < n; i++) items.push([x + (rnd() - 0.5) * 0.36, y + (rnd() - 0.5) * 0.3, rnd()]);
+      items.sort((a, b) => a[0] + a[1] - (b[0] + b[1]));
+      for (const [px, py, k] of items) {
+        const [sx, sy] = g.P(px, py, 0);
+        c.fillStyle = tone(col, 0.75 + k * 0.4);
+        c.strokeStyle = 'rgba(40,35,30,0.5)';
+        c.lineWidth = 0.7;
+        c.beginPath();
+        c.ellipse(sx, sy - 2.5, 3.2 + k, 2.4 + k * 0.6, 0, 0, 2 * PI);
+        c.fill();
+        c.stroke();
+        if (gold && k > 0.4) {
+          c.fillStyle = '#f2cc4a';
+          c.fillRect(sx - 1, sy - 4, 1.6, 1.2);
+        }
+      }
+    };
+    heap(0.55, -0.62, '#8e8a82', 11, true);
+    heap(-0.62, 0.5, '#a9a498', 9, false);
+    cart(g, 0.5, 0.32, 'y', 'gold');
+    for (const [x, y] of [[0.05, -0.02], [0.14, -0.1]]) {
       const [px, py] = g.P(x, y, 0);
       stick(c, px, py, px - 3, py - 16, '#7a5634', 1.3);
       c.fillStyle = '#8f969e';
@@ -209,9 +225,9 @@ function mining(g) {
       c.closePath();
       c.fill();
     }
-    g.box(-0.62, 0.52, -0.38, 0.72, 0, 6, MAT.stone, { ao: false });
-    g.box(-0.3, 0.62, -0.1, 0.8, 0, 5, MAT.stone, { ao: false });
-    pennant(g, 0.24, -0.84, 0, 46, { len: 18, h: 8 });
+    sack(g, -0.1, 0.62, 0, { col: '#b9a57a' });
+    sack(g, 0.12, 0.75, 0, { col: '#c7b184', s: 0.9 });
+    pennant(g, 0.72, -0.1, 0, 44, { len: 18, h: 8 });
   }
 }
 
@@ -219,58 +235,89 @@ function barracks(g) {
   const st = g.stage;
   const tc = g.tc;
   roundHut(g, {
-    x: -0.34, y: -0.34, r: 0.92, wallH: 22, R: 1.12, apex: 82, drop: 3, door: 1.62, doorW: 10, doorH: 15, posts: 9,
-    roofBand: tc.main, th: 6, band: '#a8553a', bandAt: 0.7,
+    x: -0.42, y: -0.36, r: 0.86, wallH: 23, R: 1.0, apex: 86, door: 1.5, doorW: 11, doorH: 16, posts: 9,
+    roofBand: tc.main, th: 5.5, band: '#a8553a', bandAt: 0.74,
     wallDeco: st === 3 ? (c, X, Y, rx, ry) => {
-      for (const [t, v] of [[0.55, 0], [0.9, 1], [1.2, 0], [2.05, 1], [2.38, 0], [2.7, 1]]) roundShield(c, tc, X, Y, rx, ry, t, 11, 5, v);
+      for (const [t, v] of [[0.55, 0], [0.9, 1], [2.1, 1], [2.45, 0], [2.8, 1]]) roundShield(c, tc, X, Y, rx, ry, t, 12, 5.5, v);
     } : null,
   });
-  apexPennant(g, -0.34, -0.34, 82, 16, 20);
+  roundHut(g, { x: 0.72, y: -0.86, r: 0.38, wallH: 14, R: 0.47, apex: 44, door: 2.3, doorW: 6, doorH: 10, posts: 4, roofBand: tc.main, th: 4 });
+  apexPennant(g, -0.42, -0.36, 86, 16, 20);
   if (st === 3) {
-    weaponRack(g, 1.1, -0.35, 'y', 0.7);
-    // mannequin d'entraînement (poteau et botte de paille)
-    const [px, py] = g.P(0.72, 0.78, 0);
+    weaponRack(g, 1.12, -0.05, 'y', 0.7);
+    // trophée : poteau portant boucliers et casque
     const c = g.ctx;
-    postScreen(c, px, py, 20, 3, '#7a5634');
-    c.fillStyle = '#d9b45e';
+    const [px, py] = g.P(0.62, 0.72, 0);
+    postScreen(c, px, py, 24, 3, '#6a4a2c');
+    stick(c, px - 8, py - 17, px + 8, py - 18, '#6a4a2c', 1.6);
+    shieldLocal(c, tc, px - 6, py - 13, 4.2, 'gauls', 0);
+    shieldLocal(c, tc, px + 6, py - 14, 4.2, 'gauls', 1);
+    c.fillStyle = '#9aa0a6';
     c.beginPath();
-    c.ellipse(px, py - 14, 4.5, 6, 0, 0, 2 * PI);
+    c.arc(px, py - 25, 3.4, PI, 0);
     c.fill();
-    c.strokeStyle = 'rgba(120,80,20,0.7)';
-    c.lineWidth = 0.8;
-    c.stroke();
-    stick(c, px - 7, py - 16, px + 7, py - 17, '#7a5634', 1.4);
-    boarStandard(g, 1.1, 0.95, 0, 56, { dir: -1 });
-    wickerFence(g, [[0.35, 1.3], [0.95, 1.3], [1.3, 1.3], [1.3, 0.35]], 6);
-    barrel(g, 0.25, 1.05, 0, 0.9);
+    c.fillStyle = '#e8e2d0';
+    c.beginPath();
+    c.moveTo(px - 3, py - 26);
+    c.quadraticCurveTo(px - 8, py - 31, px - 5, py - 33);
+    c.quadraticCurveTo(px - 5, py - 29, px - 2, py - 27);
+    c.moveTo(px + 3, py - 26);
+    c.quadraticCurveTo(px + 8, py - 31, px + 5, py - 33);
+    c.quadraticCurveTo(px + 5, py - 29, px + 2, py - 27);
+    c.fill();
+    boarStandard(g, 1.05, 1.05, 0, 58, { dir: -1, s: 1.3 });
+    wickerFence(g, [[-0.2, 1.36], [0.4, 1.36], [1.36, 1.36], [1.36, 0.45]], 6);
+    barrel(g, 0.12, 1.02, 0, 0.9);
   }
 }
 
 function archery(g) {
   const st = g.stage;
-  roundPavilion(g, {
-    x: -0.42, y: -0.42, r: 0.78, R: 1.02, zb: 25, za: 62, posts: 8, backWall: 9,
-    contents: (gg) => {
-      weaponRack(gg, -0.7, -0.4, 'y', 0.6, { bows: true, n: 5 });
-      barrel(gg, -0.2, -0.75, 0, 0.9);
-      barrel(gg, -0.05, -0.55, 0, 0.8);
-    },
-  });
-  apexPennant(g, -0.42, -0.42, 62, 16, 20);
+  const x0 = -1.36;
+  const x1 = 0.62;
+  const y0 = -1.34;
+  const y1 = -0.46;
+  const G = gableGeo({ x0, y0, x1, y1, zw: 26, zr: 62, axis: 'x', ov: 0.16, ovg: 0.1 });
+  if (g.mode === 'plan') {
+    g.planRect(x0, y0, x1, y1);
+    return;
+  }
+  const xs = [x0, (x0 * 2 + x1) / 3, (x0 + x1 * 2) / 3, x1];
+  for (const x of xs) g.post(x, y0, 0, 26, WOOD, 3);
+  g.post(x0, y1, 0, 26, WOOD, 3);
+  if (st === 1) {
+    g.beam(x0, y0, 26, x1, y0, 26, WOOD, 2.2);
+    gableRafters(g, G, 'back');
+  }
+  if (st >= 2) {
+    wickerFence(g, [[x0 + 0.05, y0 + 0.05], [x1 - 0.05, y0 + 0.05]], 12);
+    weaponRack(g, -0.8, -1.0, 'x', 0.8, { bows: true, n: 6 });
+    barrel(g, 0.05, -0.95, 0, 0.9);
+    barrel(g, 0.3, -0.85, 0, 0.8);
+  }
+  for (const x of xs.slice(1)) g.post(x, y1, 0, 26, WOOD, 3);
+  if (st === 1) {
+    g.beam(x0, y1, 26, x1, y1, 26, WOOD, 2.2);
+    gableRafters(g, G, 'front');
+    scaffold(g, [[x1 + 0.15, y0], [x1 + 0.15, y1 + 0.1]], 32);
+  } else {
+    gableRoof(g, { x0, y0, x1, y1, zw: 26, zr: 62, axis: 'x', ov: 0.16, ovg: 0.1, mat: MAT.thatch, th: 5, edge: THATCH_EDGE, gableMat: MAT.wicker, ridge: '#8a6a30', ridgeW: 3.5 });
+  }
   if (st === 3) {
-    hayBale(g, 1.05, -0.2, 0, 'y');
-    target(g, 1.05, -0.18, 7);
-    hayBale(g, 0.5, 1.02, 0, 'x');
-    target(g, 0.52, 1.02, 7);
-    target(g, 1.15, 0.72, 6);
-    wickerFence(g, [[1.35, -1.1], [1.35, 1.35], [-1.1, 1.35]], 6);
+    pennant(g, x0 + 0.1, y1 + 0.05, 58, 14, { len: 18, h: 8 });
+    hayBale(g, 1.08, 0.12, 0, 'y');
+    target(g, 1.08, 0.14, 7.5);
+    hayBale(g, 0.18, 1.1, 0, 'x');
+    target(g, 0.2, 1.1, 7.5);
+    target(g, 1.18, 1.0, 6.5);
+    wickerFence(g, [[1.38, -0.9], [1.38, 1.38], [-0.9, 1.38]], 6);
   }
 }
 
 function stable(g) {
   const st = g.stage;
   roundHut(g, {
-    x: -0.48, y: -0.48, r: 0.8, wallH: 20, R: 1.0, apex: 66, door: 1.95, doorW: 14, doorH: 15, posts: 8, roofBand: g.tc.main, th: 6,
+    x: -0.48, y: -0.48, r: 0.8, wallH: 21, R: 0.94, apex: 66, door: 1.95, doorW: 14, doorH: 16, posts: 8, roofBand: g.tc.main, th: 5,
   });
   apexPennant(g, -0.48, -0.48, 66, 15, 18);
   if (st >= 2) {
@@ -292,8 +339,8 @@ function stable(g) {
 function forge(g) {
   const st = g.stage;
   roundHut(g, {
-    x: -0.42, y: -0.42, r: 0.8, wallH: 20, R: 1.0, apex: 70, door: 1.9, doorW: 10, doorH: 14, posts: 0,
-    wallMat: MAT.dryStone, roofBand: g.tc.main, th: 6,
+    x: -0.42, y: -0.42, r: 0.8, wallH: 21, R: 0.94, apex: 70, door: 1.9, doorW: 11, doorH: 15, posts: 0,
+    wallMat: MAT.dryStone, roofBand: g.tc.main, th: 5,
     wallDeco: (c, X, Y, rx, ry) => {
       // lueur du foyer par la porte
       const t = 1.9;
@@ -443,16 +490,10 @@ function temple(g) {
       d: s.x + s.y,
       f: () => {
         if (st === 1 && s.i % 2) {
-          // pierre encore couchée sur ses rondins
-          logH(g, s.x - 0.05, s.y, 0, 'x', 0.35, 1.6);
-          const [px, py] = g.P(s.x, s.y, 3);
-          const c = g.ctx;
-          c.fillStyle = '#a4a197';
-          c.beginPath();
-          c.ellipse(px, py - 2, 11, 4, 0.45, 0, 2 * PI);
-          c.fill();
-          c.strokeStyle = 'rgba(40,40,40,0.5)';
-          c.stroke();
+          // pierre encore couchée sur ses rondins de transport
+          logH(g, s.x - 0.12, s.y + 0.02, 0, 'y', 0.3, 1.6);
+          logH(g, s.x + 0.12, s.y + 0.02, 0, 'y', 0.3, 1.6);
+          g.box(s.x - 0.26, s.y - 0.07, s.x + 0.26, s.y + 0.07, 3, 9, { col: '#a4a197', tex: MAT.dryStone.tex }, { ao: false, topMat: { col: '#b3b0a6' } });
         } else menhir(g, s.x, s.y, st === 1 ? s.h * 0.9 : s.h, { carve: s.i % 3 === 0 });
       },
     });
@@ -726,8 +767,6 @@ function keep(g, x, y) {
         c.fillStyle = INTERIOR;
         c.fillRect(X + rx * Math.cos(t) - 1, Y - zg + 6 + ry * Math.sin(t), 2.2 * Math.sin(t) + 0.4, 6);
       }
-      c.fillStyle = tc(g).main;
-      c.fillRect(X - rx, Y - hs - 2 + ry, rx * 2, 0);
     },
   });
   // corbeaux sous la galerie
@@ -746,10 +785,6 @@ function keep(g, x, y) {
   carnyx(g, x + 0.75, y + 0.55, zg - 6, 30, { dir: 1 });
   thatchCone(g, { x, y, zb: zg + 2, R: 1.24, za: 186, th: 7, band: g.tc.main, bandF1: 0.12, bandF2: 0.2 });
   pennant(g, x, y, 182, 22, { len: 26, h: 11 });
-}
-
-function tc(g) {
-  return g.tc;
 }
 
 /** Tour de guet de bois sur le rempart. */

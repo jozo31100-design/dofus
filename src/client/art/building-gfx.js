@@ -329,16 +329,19 @@ export function texThatch(c, w, h, rnd, col, m = {}) {
   }
 }
 
-/** Bardeaux / ardoises : rangs posés de l'égout (bas) vers le faîte (haut). m.rh, m.tw, m.round. */
+/** Bardeaux / ardoises : rangs posés de l'égout (bas) vers le faîte (haut). m.rh, m.tw, m.round, m.moss. */
 export function texShingles(c, w, h, rnd, col, m = {}) {
   const rh = m.rh || 4;
   const tw = m.tw || 5;
-  const seam = rgba(tone(col, 0.4), 0.7);
+  const seam = rgba(tone(col, 0.4), 0.6);
   let row = 0;
   for (let v = h; v > -rh; v -= rh, row++) {
     const off = (row % 2) * tw * 0.5 + (rnd() - 0.5) * 1.2;
     for (let u = -tw + off; u < w + tw; u += tw) {
-      c.fillStyle = tone(col, 0.84 + rnd() * 0.28);
+      const r = rnd();
+      // quelques bardeaux neufs (clairs) ou très patinés (sombres)
+      const k = r < 0.07 ? 1.14 + rnd() * 0.1 : r < 0.14 ? 0.72 + rnd() * 0.08 : 0.88 + rnd() * 0.2;
+      c.fillStyle = tone(col, k);
       if (m.round) {
         c.beginPath();
         c.moveTo(u, v - rh - 0.5);
@@ -350,14 +353,29 @@ export function texShingles(c, w, h, rnd, col, m = {}) {
         c.fill();
       } else {
         c.fillRect(u, v - rh - 0.3, tw, rh + 0.6);
+        // fil du bois
+        c.fillStyle = 'rgba(40,25,10,0.12)';
+        c.fillRect(u + tw * (0.3 + rnd() * 0.4), v - rh, 0.5, rh);
       }
       c.fillStyle = seam;
       c.fillRect(u, v - rh, 0.55, rh * (m.round ? 0.6 : 1));
     }
-    c.fillStyle = 'rgba(10,5,20,0.3)';
+    c.fillStyle = 'rgba(10,5,20,0.24)';
     c.fillRect(-1, v - rh, w + 2, 0.9);
-    c.fillStyle = 'rgba(255,245,220,0.16)';
+    c.fillStyle = 'rgba(255,245,220,0.14)';
     c.fillRect(-1, v - 1.1, w + 2, 0.6);
+  }
+  if (m.moss !== false) {
+    // mousse et lichens, surtout vers l'égout
+    const n = Math.ceil((w * h) / 260);
+    for (let i = 0; i < n; i++) {
+      const x = rnd() * w;
+      const y = h - Math.pow(rnd(), 1.8) * h;
+      c.fillStyle = rnd() < 0.7 ? 'rgba(96,118,52,0.22)' : 'rgba(200,190,120,0.2)';
+      c.beginPath();
+      c.ellipse(x, y, 2 + rnd() * 5, 1 + rnd() * 1.8, 0, 0, 7);
+      c.fill();
+    }
   }
 }
 
@@ -522,8 +540,8 @@ export const MAT = {
   dryStone: { col: '#a79c86', tex: texDryStone, ctex: ctexStone, dry: true },
   murus: { col: '#a79c86', tex: texDryStone, ctex: ctexStone, dry: true, beams: true },
   thatch: { col: '#c9a257', tex: texThatch, lh: 7 },
-  shingle: { col: '#7c6857', tex: texShingles, rh: 4, tw: 5 },
-  slate: { col: '#5d6b7c', tex: texShingles, rh: 3.5, tw: 4.5, round: true },
+  shingle: { col: '#86705c', tex: texShingles, rh: 4, tw: 5 },
+  slate: { col: '#5f6d7f', tex: texShingles, rh: 3.5, tw: 4.5, round: true, moss: false },
   wicker: { col: '#9a7a4c', tex: texWicker },
   earth: { col: '#8e7152', tex: texEarth },
   timber: { col: '#6f4a2a' },
@@ -553,6 +571,7 @@ export class Gfx {
     this.mode = 'draw';
     this.shadows = [];
     this.plans = [];
+    this.late = []; // dessins différés (fumée) : peints après la mesure de la hauteur du sprite
   }
 
   get drawing() {
@@ -709,6 +728,8 @@ export class Gfx {
    */
   plane(O, U, V, w, h, mat, k, o = {}) {
     const c = this.ctx;
+    const X = globalThis.__exp || {};
+    if (X.flat) { c.save(); c.setTransform(U[0], U[1], V[0], V[1], O[0], O[1]); c.beginPath(); if (o.shape) o.shape(c, w, h); else c.rect(0, 0, w, h); c.fillStyle = tone(mat.col, k); c.fill(); c.restore(); return; }
     c.save();
     c.setTransform(U[0], U[1], V[0], V[1], O[0], O[1]);
     c.beginPath();
@@ -717,9 +738,9 @@ export class Gfx {
     c.clip();
     c.fillStyle = mat.col;
     c.fillRect(-2, -2, w + 4, h + 4);
-    if (mat.tex) mat.tex(c, w, h, o.rnd || this.rng(O[0], O[1], w, h, k), mat.col, mat);
+    if (mat.tex && !X.notex) mat.tex(c, w, h, o.rnd || this.rng(O[0], O[1], w, h, k), mat.col, mat);
     if (o.deco) o.deco(c, w, h);
-    if (o.ao !== false && h > 4) {
+    if (o.ao !== false && h > 4 && !X.noao) {
       const hh = Math.min(9, h * 0.5);
       const g = c.createLinearGradient(0, h - hh, 0, h);
       g.addColorStop(0, 'rgba(30,18,6,0)');
@@ -735,7 +756,7 @@ export class Gfx {
       c.fillRect(-2, -2, w + 4, o.eave + 2);
     }
     if (o.grad) o.grad(c, w, h);
-    if (k < 0.995) {
+    if (k < 0.995 && !X.nomul) {
       c.globalCompositeOperation = 'multiply';
       c.fillStyle = mulCol(k);
       c.fillRect(-2, -2, w + 4, h + 4);
@@ -830,6 +851,7 @@ export class Gfx {
     const [X, Y] = this.P(cx, cy, 0);
     const rx = r * RX;
     const ry = r * RY;
+    if ((globalThis.__exp || {}).nocyl) { this.cylPath(X, Y, rx, ry, z0, z1); c.fillStyle = mat.col; c.fill(); return; }
     c.save();
     this.cylPath(X, Y, rx, ry, z0, z1);
     c.clip();
@@ -1019,20 +1041,36 @@ export function coneThatch(c, G, rnd, col, m = {}) {
     c.stroke();
   }
   c.globalAlpha = 1;
-  // couronnes (rangs de chaume)
-  const tiers = Math.max(2, Math.round(H / 13));
+  // plaques de chaume vieilli (grisé) et de mousse vers l'égout
+  const nb = Math.ceil(rx / 9);
+  for (let i = 0; i < nb; i++) {
+    const t = rnd() * PI;
+    const f = 0.35 + rnd() * 0.6;
+    const [px, py] = [X + f * rx * Math.cos(t), Ya + f * (Yb - Ya) + f * ry * Math.sin(t)];
+    c.fillStyle = rnd() < 0.6 ? 'rgba(110,95,70,0.16)' : 'rgba(95,120,55,0.16)';
+    c.beginPath();
+    c.ellipse(px, py, 3 + rnd() * rx * 0.12, 1.5 + rnd() * 2.5, (rnd() - 0.5) * 0.6, 0, 2 * PI);
+    c.fill();
+  }
+  // couronnes (rangs de chaume) : liseré clair ondulé et ombre portée en dessous
+  const tiers = Math.max(1, Math.round(H / 17));
   for (let i = 1; i <= tiers; i++) {
-    const f = 0.22 + (0.78 * i) / (tiers + 0.35) + (rnd() - 0.5) * 0.03;
+    const f = 0.3 + (0.66 * i) / (tiers + 0.2) + (rnd() - 0.5) * 0.04;
     const cy = Ya + f * (Yb - Ya);
-    c.lineWidth = 2.2;
-    c.strokeStyle = 'rgba(70,45,12,0.26)';
+    const pts = [];
+    for (let t = -a * 0.6; t <= PI + a * 0.6; t += 0.09) {
+      const bump = Math.sin(t * 23 + i * 5) * 0.6 + (rnd() - 0.5) * 0.5;
+      pts.push([X + f * rx * Math.cos(t), cy + f * ry * Math.sin(t) + bump]);
+    }
+    c.lineWidth = 1.8;
+    c.strokeStyle = 'rgba(70,45,12,0.2)';
     c.beginPath();
-    c.ellipse(X, cy + 1.2, f * rx, f * ry, 0, -a * 0.5, PI + a * 0.5);
+    pts.forEach(([x, y], k) => (k ? c.lineTo(x, y + 1.2) : c.moveTo(x, y + 1.2)));
     c.stroke();
-    c.lineWidth = 1;
-    c.strokeStyle = 'rgba(255,240,190,0.3)';
+    c.lineWidth = 0.9;
+    c.strokeStyle = 'rgba(255,240,190,0.28)';
     c.beginPath();
-    c.ellipse(X, cy - 0.6, f * rx, f * ry, 0, -a * 0.5, PI + a * 0.5);
+    pts.forEach(([x, y], k) => (k ? c.lineTo(x, y - 0.3) : c.moveTo(x, y - 0.3)));
     c.stroke();
   }
   // lissage du sommet
