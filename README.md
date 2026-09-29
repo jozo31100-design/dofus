@@ -30,10 +30,10 @@ Jeu de stratégie en temps réel façon *Age of Empires*, **Francs contre Gauloi
 
 Le fichier `.exe` est fabriqué automatiquement sur GitHub à chaque mise à jour :
 
-1. Ouvrez l'onglet **Actions** du dépôt, puis la dernière exécution **« Compiler pour Windows »** (coche verte).
-2. En bas de la page, téléchargez l'archive **TerresDeGaule-Windows** et décompressez-la.
+1. Ouvrez l'onglet **Actions** du dépôt ([liste des compilations](../../actions/workflows/build-windows.yml)), puis la dernière exécution **« Compiler pour Windows »** (coche verte).
+2. En bas de la page, téléchargez l'archive **TerresDeGaule-Windows** (il faut être connecté à GitHub) et décompressez-la.
 3. Vous obtenez deux fichiers :
-   - **`TerresDeGaule-…-portable.exe`** : se lance d'un double-clic, sans installation (recommandé pour l'envoyer à quelqu'un) ;
+   - **`TerresDeGaule-…-portable.exe`** : se lance d'un double-clic, sans installation (recommandé pour l'envoyer à quelqu'un ; le tout premier démarrage prend quelques secondes) ;
    - `TerresDeGaule-Setup-….exe` : installeur classique.
 
 > **Windows affichera un avertissement bleu** (« Windows a protégé votre ordinateur ») car le jeu n'est pas signé numériquement.
@@ -44,7 +44,8 @@ Pour qu'une personne qui n'a pas de compte GitHub reçoive le jeu, envoyez-lui s
 
 ### 2. Jouer à deux en réseau local
 
-Les deux ordinateurs doivent être **sur le même réseau** (même box, même Wi-Fi ; pas de VPN).
+Les deux ordinateurs doivent être **sur le même réseau** (même box, même Wi-Fi ; pas de VPN) et utiliser **exactement la même version du jeu**
+(le numéro s'affiche en bas à droite du menu ; en cas de différence, le jeu refuse la connexion et l'indique : envoyez alors le même `.exe` aux deux joueurs).
 
 **Joueur 1 (l'hôte)**
 1. Menu principal → **Héberger une partie en réseau**.
