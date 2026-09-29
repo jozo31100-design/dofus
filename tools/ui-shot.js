@@ -1,5 +1,7 @@
 // Ouvre l'application complète (menus) dans Chromium et lance une partie solo pour vérifier l'interface.
 import { App } from '../src/client/screens.js';
+import { audio } from '../src/client/audio.js';
+window.__audio = audio;
 (async () => {
   const root = document.getElementById('app') || document.createElement('div');
   root.id = 'app';

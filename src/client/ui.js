@@ -37,7 +37,7 @@ export class GameUI {
   /**
    * @param {HTMLElement} root conteneur plein écran
    * @param {object} session HostSession ou GuestSession
-   * @param {{onExit: function(), speed?: number}} opts
+   * @param {{onExit: function(), speed?: number, civs?: string[]}} opts civs : peuples des joueurs (préchargement)
    */
   constructor(root, session, opts = {}) {
     this.root = root;
@@ -69,7 +69,7 @@ export class GameUI {
     this.idleIdx = 0;
     this.fpsAcc = { n: 0, t: 0, fps: 0 };
     this.buildDom();
-    this.renderer = new Renderer(this.canvas, this.state, { speed: session.speed || opts.speed || 1 });
+    this.renderer = new Renderer(this.canvas, this.state, { speed: session.speed || opts.speed || 1, civs: opts.civs });
     this.minimap = new Minimap(this.mmCanvas, this.state, this.renderer, this.renderer.fx);
     this.bind();
     if (navigator.keyboard && navigator.keyboard.getLayoutMap) {

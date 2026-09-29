@@ -5,20 +5,20 @@ import * as art from '../src/client/art/index.js';
 import { BUILDINGS } from '../src/core/defs.js';
 
 const W = 2300;
-const H = 2350;
+const H = 4300;
 const cv = document.createElement('canvas');
 cv.width = W;
 cv.height = H;
 document.body.appendChild(cv);
 const ctx = cv.getContext('2d');
 
-// fond d'herbe : texture du sol déformée en isométrie
-const TW = 80;
-const terrain = new Uint8Array(TW * TW);
-const tex = art.renderTerrainTexture(terrain, TW, TW, 7);
+// fond d'herbe : texture du sol déformée en isométrie, répétée sur toute la planche
+const TW = 64;
+const tex = art.renderTerrainTexture(new Uint8Array(TW * TW), TW, TW, 7);
 ctx.save();
-ctx.setTransform(1, 0.5, -1, 0.5, W / 2, -TW * 16 + 200);
-ctx.drawImage(tex, 0, 0);
+ctx.setTransform(1, 0.5, -1, 0.5, W / 2, -H);
+ctx.fillStyle = ctx.createPattern(tex, 'repeat');
+ctx.fillRect(0, 0, 12000, 12000);
 ctx.restore();
 
 function diamond(x, y, n) {

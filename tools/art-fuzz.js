@@ -64,20 +64,24 @@ import { UNITS, BUILDINGS, TECHS, ANIMALS, NODES, CIV_IDS } from '../src/core/de
   let terr = null;
   attempt('terrain', () => { terr = art.renderTerrainTexture(terrain, size, size, 1789); if (terr.width !== size * art.TERRAIN_PPT) throw new Error('taille du terrain'); });
   const terrMs = performance.now() - tt;
-  // vitesse de dessin : 400 unités par image
+  // vitesse de dessin : 400 unités par image (1re passe : cache froid, 2e passe : cache chaud)
   const types = Object.keys(UNITS);
-  const tb = performance.now();
-  for (let f = 0; f < 20; f++) {
-    ctx.clearRect(0, 0, 400, 300);
-    for (let i = 0; i < 400; i++) {
-      const type = types[i % types.length];
-      const civ = UNITS[type].civ || CIV_IDS[i % 2];
-      art.drawUnit(ctx, { type, civ, team: i % 2, sx: 20 + (i % 20) * 18, sy: 40 + Math.floor(i / 20) * 12, t: f * 0.05 + i * 0.01, anim: ['idle', 'walk', 'work', 'attack'][i % 4], dir: i % 3 ? 1 : -1, work: 'wood', carry: null, scale: 1 });
+  const pass = () => {
+    const tb = performance.now();
+    for (let f = 0; f < 20; f++) {
+      ctx.clearRect(0, 0, 400, 300);
+      for (let i = 0; i < 400; i++) {
+        const type = types[i % types.length];
+        const civ = UNITS[type].civ || CIV_IDS[i % 2];
+        art.drawUnit(ctx, { type, civ, team: i % 2, sx: 20 + (i % 20) * 18, sy: 40 + Math.floor(i / 20) * 12, t: f * 0.05 + i * 0.01, anim: ['idle', 'walk', 'work', 'attack'][i % 4], dir: i % 3 ? 1 : -1, work: 'wood', carry: null, scale: 1 });
+      }
     }
-  }
-  const perFrame = (performance.now() - tb) / 20;
+    return (performance.now() - tb) / 20;
+  };
+  const coldMs = pass();
+  const perFrame = pass();
   console.log(`${count} dessins vérifiés, ${problems.length} problème(s), durée totale ${Math.round(performance.now() - t0)} ms`);
-  console.log(`terrain 96x96 : ${Math.round(terrMs)} ms ; 400 unités par image : ${perFrame.toFixed(1)} ms`);
+  console.log(`terrain 96x96 : ${Math.round(terrMs)} ms ; 400 unités par image : ${coldMs.toFixed(1)} ms à froid, ${perFrame.toFixed(1)} ms à chaud`);
   for (const p of problems.slice(0, 30)) console.error('PROBLÈME', p);
   if (problems.length > 30) console.error(`… et ${problems.length - 30} autres`);
 })();

@@ -64,7 +64,11 @@ export class App {
       const saved = JSON.parse(localStorage.getItem('tdg-prefs') || 'null');
       if (saved) { this.name = saved.name || this.name; this.civ = saved.civ || this.civ; }
     } catch (e) { /* ignore */ }
-    if (this.name === 'Joueur' && this.info.hostname) this.name = this.info.hostname.slice(0, 16);
+    if (this.name === 'Joueur' && this.info.hostname) {
+      const host = this.info.hostname.split('.')[0];
+      // les noms d'ordinateur par défaut de Windows (DESKTOP-AB12CD3…) font de mauvais noms de joueur
+      if (host && !/^(DESKTOP|LAPTOP|PC|WIN)[-_]/i.test(host)) this.name = host.slice(0, 16);
+    }
     this.showMain();
   }
 
@@ -381,7 +385,7 @@ export class App {
         }
       }));
     }
-    await this.runGame(session, progress);
+    await this.runGame(session, progress, cfg);
   }
 
   /** Partie hébergée sur l'autre PC : on reçoit des instantanés. */
@@ -398,16 +402,17 @@ export class App {
         this.showMessage('Connexion perdue', netError(ev.reason === 'timeout' ? 'timeout' : 'closed'));
       }
     }));
-    await this.runGame(session, progress);
+    await this.runGame(session, progress, cfg);
   }
 
-  async runGame(session, progress) {
+  async runGame(session, progress, cfg) {
     const offs = this.netOff.slice();
     const root = this.root;
     const gameRoot = h('div', { id: 'game-root', style: 'position:absolute;inset:0' });
     // le canvas doit être dans le document pour connaître sa taille : on garde l'écran de chargement au-dessus
     root.append(gameRoot);
     const ui = new GameUI(gameRoot, session, {
+      civs: cfg && cfg.players ? cfg.players.map((p) => p.civ) : undefined,
       onExit: () => {
         session.stop();
         if (window.tdg) window.tdg.closeNet();

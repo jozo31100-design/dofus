@@ -39,6 +39,7 @@ export class Renderer {
     this.zoom = 1;
     this.fx = new Fx();
     this.speed = opts.speed || 1;
+    this.civs = opts.civs || null; // peuples de la partie, dans l'ordre des équipes (sert au préchargement)
     this.dpr = 1;
     this.W = 640;
     this.H = 360;
@@ -59,14 +60,12 @@ export class Renderer {
     this.terrainTex = art.renderTerrainTexture(this.state.terrain, this.S, this.S, 1789);
     onProgress(0.4, 'Préparation des bâtiments…');
     await tick();
-    const civs = ['franks', 'gauls'];
     const types = Object.keys(BUILDINGS);
     let n = 0;
-    const total = civs.length * types.length;
-    for (const civ of civs) {
+    const total = this.combos().length * types.length;
+    for (const [civ, team] of this.combos()) {
       for (const t of types) {
-        art.getBuildingSprite(t, civ, 0, 3);
-        art.getBuildingSprite(t, civ, 1, 3);
+        art.getBuildingSprite(t, civ, team, 3);
         if (++n % 4 === 0) {
           onProgress(0.4 + 0.5 * (n / total), 'Préparation des bâtiments…');
           await tick();
@@ -80,41 +79,33 @@ export class Renderer {
     onProgress(1, 'Prêt');
   }
 
-  /** Dessine une fois chaque unité dans chaque pose pour remplir les caches du dessin (évite les à-coups en jeu). */
+  /** Couples (peuple, équipe) à préparer : ceux de la partie quand on les connaît, sinon toutes les combinaisons. */
+  combos() {
+    if (this.civs) return this.civs.map((civ, team) => [civ, team]);
+    return [['franks', 0], ['franks', 1], ['gauls', 0], ['gauls', 1]];
+  }
+
+  /** Prépare à l'avance les images des unités à la résolution d'affichage (évite les à-coups en jeu). */
   async warmUnits(onProgress, tick) {
+    const k = this.zoom * this.dpr;
+    const types = Object.keys(UNITS);
+    let n = 0;
+    for (const type of types) {
+      // le villageois travaille beaucoup : ses poses de travail sont prêtes aussi
+      const anims = type === 'villager' ? ['idle', 'walk', 'attack', 'work'] : ['idle', 'walk', 'attack'];
+      for (const [civ, team] of this.combos()) {
+        if (UNITS[type].civ && UNITS[type].civ !== civ) continue;
+        art.prewarmUnit(type, civ, team, anims, k);
+      }
+      onProgress(++n / (types.length + 1));
+      await tick();
+    }
     const c = document.createElement('canvas');
     c.width = 160;
     c.height = 160;
     const ctx = c.getContext('2d');
-    const types = Object.keys(UNITS);
-    const works = ['wood', 'mine', 'farm', 'forage', 'build', 'repair', 'hunt', 'butcher'];
-    const carries = [null, 'wood', 'food', 'gold', 'stone'];
-    let n = 0;
-    for (const type of types) {
-      for (const civ of ['franks', 'gauls']) {
-        if (UNITS[type].civ && UNITS[type].civ !== civ) continue;
-        for (const team of [0, 1]) {
-          for (const dir of [1, -1]) {
-            for (const anim of ['idle', 'walk', 'attack', 'work', 'die']) {
-              const list = anim === 'work' ? (type === 'villager' ? works : ['wood']) : [undefined];
-              for (const work of list) {
-                for (const carry of type === 'villager' && (anim === 'idle' || anim === 'walk') ? carries : [null]) {
-                  for (let k = 0; k < 12; k++) {
-                    const t = k * 0.12;
-                    ctx.clearRect(0, 0, 160, 160);
-                    art.drawUnit(ctx, { type, civ, team, sx: 80, sy: 120, t, anim, dir, aim: 0, work, carry, deathT: Math.min(1, t), scale: 1 });
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      onProgress(++n / (types.length + 2));
-      await tick();
-    }
     for (const type of Object.keys(ANIMALS)) {
-      for (const anim of ['idle', 'walk', 'flee', 'die']) for (const dir of [1, -1]) for (let k = 0; k < 8; k++) art.drawAnimal(ctx, { type, sx: 80, sy: 120, t: k * 0.15, anim, dir, deathT: k / 8 });
+      for (const anim of ['idle', 'walk', 'flee', 'die']) for (const dir of [1, -1]) for (let i = 0; i < 8; i++) art.drawAnimal(ctx, { type, sx: 80, sy: 120, t: i * 0.15, anim, dir, deathT: i / 8 });
     }
     onProgress(1);
   }
