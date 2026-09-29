@@ -1,0 +1,79 @@
+name: Compiler pour Windows
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publier aussi une Release GitHub avec l'exécutable"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  windows:
+    name: Exécutable Windows
+    needs: tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Lister les fichiers produits
+        shell: bash
+        run: ls -la release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TerresDeGaule-Windows
+          path: release/*.exe
+          if-no-files-found: error
+          retention-days: 90
+
+  release:
+    name: Publier la Release
+    needs: windows
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: TerresDeGaule-Windows
+          path: release
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('build-{0}', github.run_number) }}
+          target_commitish: ${{ github.sha }}
+          name: Terres de Gaule ${{ github.ref_type == 'tag' && github.ref_name || format('(build {0})', github.run_number) }}
+          body: |
+            Téléchargez **TerresDeGaule-…-portable.exe** : il se lance d'un double-clic, sans installation.
+            (Ou **TerresDeGaule-Setup-….exe** pour l'installer.)
+          files: release/*.exe
+          fail_on_unmatched_files: true

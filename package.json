@@ -1,0 +1,56 @@
+{
+  "name": "terres-de-gaule",
+  "productName": "Terres de Gaule",
+  "version": "0.1.0",
+  "description": "Jeu de stratégie en temps réel (Francs contre Gaulois) jouable en réseau local à deux.",
+  "author": "Terres de Gaule",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/build.mjs && electron .",
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "dist": "node scripts/build.mjs --prod && electron-builder --win --publish never",
+    "dist:dir": "node scripts/build.mjs --prod && electron-builder --dir --publish never"
+  },
+  "build": {
+    "appId": "fr.terresdegaule.game",
+    "productName": "Terres de Gaule",
+    "copyright": "Terres de Gaule",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        { "target": "portable", "arch": ["x64"] },
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.png"
+    },
+    "portable": {
+      "artifactName": "TerresDeGaule-${version}-portable.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "TerresDeGaule-Setup-${version}.exe",
+      "shortcutName": "Terres de Gaule"
+    }
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "26.15.3",
+    "esbuild": "0.28.2",
+    "playwright-core": "1.63.0"
+  }
+}

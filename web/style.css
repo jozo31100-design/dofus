@@ -1,0 +1,2 @@
+html, body { margin: 0; height: 100%; background: #15100c; color: #f1e6cf; font-family: "Segoe UI", system-ui, sans-serif; overflow: hidden; }
+#app { position: fixed; inset: 0; }
