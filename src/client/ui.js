@@ -201,6 +201,7 @@ export class GameUI {
     this.mouse.x = x;
     this.mouse.y = y;
     this.mouse.in = x >= 0 && y >= 0 && x <= this.renderer.W && y <= this.renderer.H;
+    this.mouse.seen = true;
     if (this.panDrag) {
       this.renderer.pan(-(x - this.panDrag.x), -(y - this.panDrag.y));
       this.panDrag.x = x;
@@ -923,9 +924,10 @@ export class GameUI {
   infoMany(list) {
     const st = this.state;
     const grid = h('div', { class: 'multi' });
-    // seules les icônes qui tiennent dans le panneau (3 rangées) sont dessinées, la dernière case indique le reste
+    // seules les icônes qui tiennent dans le panneau (selon la hauteur du panneau) sont dessinées, la dernière case indique le reste
     const cols = Math.max(4, Math.floor(((this.infoEl.clientWidth || 470) - 28) / 43));
-    const cap = cols * 3;
+    const rows = Math.max(1, Math.floor(((this.infoEl.clientHeight || 134) - 62) / 45));
+    const cap = cols * rows;
     const shown = list.length > cap ? cap - 1 : list.length;
     for (const e of list.slice(0, shown)) {
       const civ = e.owner >= 0 && st.players[e.owner] ? st.players[e.owner].civ : st.civ;
@@ -1188,9 +1190,9 @@ export class GameUI {
     if (this.keys.has('ArrowRight')) dx += 1;
     if (this.keys.has('ArrowUp')) dy -= 1;
     if (this.keys.has('ArrowDown')) dy += 1;
-    const fullscreen = Math.abs(window.innerWidth - screen.width) < 3 && Math.abs(window.innerHeight - screen.height) < 3;
-    if (fullscreen && this.mouse.in && !this.mouse.overHud && !this.drag) {
-      const e = 6;
+    // défilement au bord de la fenêtre (comme en plein écran) ; le pointeur qui sort de la fenêtre garde sa dernière position
+    if (this.mouse.seen && !this.drag && !this.panDrag && document.hasFocus()) {
+      const e = this.mouse.overHud ? 3 : 10;
       if (this.mouse.x < e) dx -= 1;
       if (this.mouse.x > r.W - e) dx += 1;
       if (this.mouse.y < e) dy -= 1;

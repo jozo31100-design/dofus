@@ -143,3 +143,58 @@ Les objets qui se dressent (arbres…) ne font PAS partie de la texture.
    civilisations, les deux équipes, les états (marche, travail, attaque, mort ; fondations → terminé), en contexte sur de l'herbe.
 3. Mesurer les performances (temps de génération, temps d'une image de 400 unités) et les indiquer dans le rapport final.
 4. Ne modifier **que** les fichiers qui vous sont attribués ; ne pas lancer de commande `git`, ne pas installer de paquet.
+
+## 5. Extension : port, bateaux, marché, académie, merveille, héros
+
+Nouveaux identifiants (déjà présents dans `src/core/defs.js`, à lire). **On ne change aucune signature existante** ; on complète.
+
+### Unités navales et héros (`units.js`, `unit-*.js`)
+Les bateaux se dessinent avec `drawUnit` comme les autres unités : `sx, sy` = point de flottaison au centre de la coque ;
+même `dir`, `anim`, `t`, `deathT`, `team`, `civ`, `scale`. Chaque coque a une **ombre/reflet** sombre sur l'eau, un léger sillage d'écume
+(en marche) et un **tangage** doux à l'arrêt. Tailles à zoom 1 : barque ~58 × 34 px ; navire de guerre ~100 × 76 px (mât compris).
+- `fishingboat` (Barque de pêche, les deux peuples). Francs : barque à clins (planches qui se chevauchent), étrave sculptée, petite
+  voile carrée écrue ; Gaulois : barque de chêne à fond plat, bordé d'osier, voile de cuir. Couleur d'équipe : fanion à la poupe +
+  bande sur la voile/le plat-bord. Un pêcheur à bord. `anim` : `idle` (tangage), `walk` (avance, rame/voile gonflée, sillage),
+  `work` avec `work === 'fish'` (**nouvelle valeur**) : le pêcheur lance/relève son filet (cycle), `die` : chavire et coule (`deathT` 0→1).
+  `carry === 'food'` : tas de poissons argentés visible dans la barque (en `idle`, `walk` et `work`).
+- `warship` (Francs : **Drakkar** ; Gaulois : **Navire vénète**). Francs : long navire à clins, étrave à tête de dragon, rangée de boucliers
+  ronds le long du bord, grande voile carrée rayée aux couleurs de l'équipe, rames. Gaulois : haute coque de chêne massif à hautes
+  murailles avant/arrière, grande voile de cuir teinte aux couleurs de l'équipe, proue à tête de sanglier. Deux ou trois archers à bord.
+  `anim` : `idle` (tangage), `walk` (voile gonflée, sillage plus marqué), `attack` (les archers bandent puis tirent, `aim` = angle à
+  l'écran vers la cible, comme les archers), `die` (chavire lentement, mât qui tombe, coule).
+- `clovis` (Francs) et `vercingetorix` (Gaulois) : **héros à pied**, plus grands que les champions (~42 px), très reconnaissables, avec un
+  **anneau doré** fin et lumineux sous les pieds (signe de héros). Clovis : couronne d'or sur cheveux longs, cotte de mailles, grand manteau
+  bleu-gris à fourrure et fibule dorée, épée et bouclier rond orné. Vercingétorix : longues moustaches, casque ailé d'or, torque et bracelets d'or,
+  manteau à carreaux, bouclier ovale peint, épée longue. Mêmes animations que les fantassins (`idle walk attack die`).
+- `unitMetrics`, `prewarmUnit`, `unitStats` et les caches doivent couvrir ces types ; `prewarmUnit` doit préparer `work`/`carry` de `fishingboat`.
+
+### Poissons (`nature.js`)
+`getNodeSprite('fish', variant, frac)` : banc de poissons **sur l'eau**, une case (losange 64 × 32). Anneaux de rides concentriques clairs,
+3 à 6 poissons argentés/bleutés entrevus sous la surface, éclaboussure et poisson qui saute (image figée par variante).
+`frac` ∈ ]0,1] : moins de poissons quand le banc s'épuise. Doit rester lisible sur l'eau bleue du terrain (voir `terrain.js`). `h` ≈ 20 px.
+
+### Bâtiments (`buildings.js`, `building-*.js`)
+Même contrat que §3 : 4 stades (fondations → terminé), ombre, couleurs d'équipe, un sprite par (type, civ, équipe, stade), cache, `buildingMetrics`.
+- `dock` — **Port** (Francs) / **Embarcadère** (Gaulois), emprise 3×3 (~60–90 px de haut). Doit sembler posé **au bord de l'eau** quel que soit
+  le côté : pas de jetée orientée ; un quai de planches sur pilotis tout autour de deux faces avant, bittes d'amarrage, cordages, barils,
+  caisses de poisson, filets qui sèchent sur des perches, une coque de barque sur un chevalet. Francs : entrepôt à pignon sur pilotis,
+  grue à poulie. Gaulois : cabane ronde de chaume sur plateforme, amphores, piliers ornés de crânes-trophées **non** (rester tout public :
+  des poteaux à fanions). Bannière d'équipe.
+- `market` — **Marché**, 3×3 (~60–80 px). Étals sous auvents rayés aux couleurs d'équipe autour d'un puits ou d'une balance géante,
+  sacs, amphores, tissus, pièces. Francs : étals de bois et toile ; Gaulois : tentes de perches et de peaux, cordes, chaudrons.
+- `academy` — Francs : **Scriptorium** (petite abbaye : salle de pierre avec clocheton, pupitres, grand rouleau et plume sur l'enseigne) ;
+  Gaulois : **Cercle des druides** (cercle de menhirs autour d'un grand chêne et d'une petite hutte, gui, faucille d'or, chaudron). 3×3 (~80–110 px).
+- `wonder` — emprise **6×6**, très grand (~230–300 px). Francs : **Palais d'Aix-la-Chapelle** (chapelle palatine octogonale à coupole
+  dorée, grande salle voisine, tours d'escalier, arcades, bannières impériales). Gaulois : **Sanctuaire de Bibracte** (grande enceinte de
+  *murus gallicus* avec sanctuaire monumental de bois sculpté à toit de chaume doré, carnyx géants, menhirs, statues de sanglier dorées).
+  Il doit avoir de l'allure : c'est la pièce maîtresse de la partie. Stades de chantier crédibles.
+- `getRubbleSprite(size, variant)` doit aussi accepter `size = 6`.
+
+### Icônes (`icons.js`)
+Nouvelles icônes de `drawIcon` : `fish` (poisson argenté), `coin` (pièce d'or), `crown` (couronne), `ship` (voilier), `hero` (heaume à plumet et étoile),
+`buy-food buy-wood buy-stone sell-food sell-wood sell-stone` (le symbole de la ressource + une pièce d'or + une flèche : **verte vers le haut
+pour vendre** (on reçoit de l'or), **rouge vers le bas pour acheter** — non : `buy-*` = flèche entrante verte ; `sell-*` = flèche sortante
+dorée ; l'essentiel : deux familles clairement différentes et lisibles à 44 px).
+`drawTechIcon` : ajouter `hunt1 nets1 nets2 hull1 naval_atk trade1 trade2 med1 med2 scout1 eco1 strat1` (chien de chasse, filet, filet doublé,
+coque renforcée, baliste, balance/marchand, sac de pièces, herbes/gui, bénédiction, longue-vue/carte, calendrier/faucille, casque + épée…),
+niveaux I/II distingués comme les autres.

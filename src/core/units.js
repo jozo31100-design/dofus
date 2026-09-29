@@ -664,8 +664,9 @@ function animalStep(world, a, dx, dy, dist) {
   const ny = a.y + dy * dist;
   const free = (x, y) => x >= 0.3 && y >= 0.3 && x < S - 0.3 && y < S - 0.3 && world.blocked[Math.floor(y) * S + Math.floor(x)] === 0;
   if (free(nx, ny)) { a.x = nx; a.y = ny; return true; }
-  if (free(nx, a.y)) { a.x = nx; return true; }
-  if (free(a.x, ny)) { a.y = ny; return true; }
+  // glissement le long d'un obstacle : seulement si l'axe considéré avance vraiment (sinon l'animal resterait figé)
+  if (Math.abs(dx) > 0.2 && free(nx, a.y)) { a.x = nx; return true; }
+  if (Math.abs(dy) > 0.2 && free(a.x, ny)) { a.y = ny; return true; }
   return false;
 }
 

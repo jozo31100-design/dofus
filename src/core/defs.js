@@ -18,11 +18,20 @@ export const AGE_NAMES = ['', 'Âge du Village', 'Âge du Bourg', 'Âge de la Fo
 export const AGE_SHORT = ['', 'I', 'II', 'III'];
 
 // Vitesse de récolte de base (par seconde et par villageois), avant technologies.
-export const GATHER_BASE = { wood: 0.55, berries: 0.65, farm: 0.45, meat: 1.0, gold: 0.5, stone: 0.5 };
+export const GATHER_BASE = { wood: 0.55, berries: 0.65, farm: 0.45, meat: 1.0, gold: 0.5, stone: 0.5, fish: 0.8 };
 export const CARRY_BASE = 10;
 export const BUILD_EXPONENT = 0.7; // n bâtisseurs => n^0.7 fois plus vite
 export const FARM_RESEED_COST = 60; // bois pour semer de nouveau une ferme épuisée
 export const FARM_MAX_WORKERS = 3;
+
+// Marché : prix de 100 unités de ressource, en or, selon l'offre et la demande (voir econ.js).
+export const TRADE_LOT = 100;
+export const TRADE_FEE = 0.3; // commission de base (réduite par les technologies)
+export const TRADE_RES = ['food', 'wood', 'stone'];
+// Merveille : le propriétaire gagne si elle reste debout pendant ce temps (secondes de jeu).
+export const WONDER_TIME = 600;
+// Aura des héros : bonus d'attaque des alliés proches.
+export const HERO_AURA = { range: 6, atk: 0.15 };
 
 export const START_RESOURCES = {
   standard: { food: 200, wood: 200, gold: 100, stone: 100, label: 'Standard' },
@@ -162,6 +171,29 @@ const UNIT_LIST = [
     desc: 'Guerrier gaulois nu, rapide et fou furieux. Frappe fort, ne porte aucune armure.',
   },
   {
+    id: 'fishingboat', name: 'Barque de pêche', age: 1, from: 'dock', cost: { wood: 60 }, time: 20, naval: true, fisher: true, carry: 20,
+    hp: 50, speed: 1.6, los: 7, radius: 0.42, atk: {}, rof: 2, armor: { melee: 0, pierce: 2 }, tags: ['ship', 'fisher'],
+    desc: 'Pêche les bancs de poissons et rapporte la nourriture au port. Ne navigue que sur l\'eau.',
+  },
+  {
+    id: 'warship', names: { franks: 'Drakkar', gauls: 'Navire vénète' }, age: 2, from: 'dock', cost: { wood: 120, gold: 60 }, time: 32, naval: true,
+    hp: 150, speed: 1.7, los: 8, radius: 0.5, atk: { pierce: 8 }, range: 7, rof: 2.2, armor: { melee: 1, pierce: 3 }, bonus: { ship: 3 },
+    tags: ['ship', 'ranged'], projectile: 'arrow', projSpeed: 14,
+    desc: 'Navire de guerre : ses archers arrosent les rives, les gués et les autres navires. Insensible à l\'infanterie de mêlée.',
+  },
+  {
+    id: 'clovis', name: 'Clovis', civ: 'franks', age: 3, from: 'castle', cost: { food: 250, gold: 350 }, time: 60, limit: 1,
+    hp: 280, speed: 1.9, los: 8, radius: 0.34, atk: { melee: 15 }, rof: 1.5, armor: { melee: 4, pierce: 5 },
+    tags: ['infantry', 'melee', 'hero', 'unique'],
+    desc: 'Le roi des Francs. Un seul par partie : terrible au combat, il galvanise les soldats proches (+15 % d\'attaque).',
+  },
+  {
+    id: 'vercingetorix', name: 'Vercingétorix', civ: 'gauls', age: 3, from: 'castle', cost: { food: 250, gold: 350 }, time: 60, limit: 1,
+    hp: 280, speed: 1.9, los: 8, radius: 0.34, atk: { melee: 15 }, rof: 1.5, armor: { melee: 4, pierce: 5 },
+    tags: ['infantry', 'melee', 'hero', 'unique'],
+    desc: 'Le chef des Arvernes. Un seul par partie : redoutable guerrier, il galvanise les soldats proches (+15 % d\'attaque).',
+  },
+  {
     id: 'healer', name: 'Guérisseur', names: { franks: 'Prêtre', gauls: 'Druide' }, age: 2, from: 'temple',
     cost: { gold: 90 }, time: 30, hp: 25, speed: 1.1, los: 6, radius: 0.25, atk: {}, rof: 2,
     heal: { amount: 4, every: 2, range: 4 }, tags: ['healer'],
@@ -182,6 +214,7 @@ const NODE_LIST = [
   { id: 'gold', name: "Filon d'or", cls: 'node', res: 'gold', kind: 'gold', amount: 800, size: 1 },
   { id: 'stone', name: 'Carrière de pierre', cls: 'node', res: 'stone', kind: 'stone', amount: 400, size: 1 },
   { id: 'carcass', name: 'Carcasse', cls: 'node', res: 'food', kind: 'meat', amount: 100, size: 0 },
+  { id: 'fish', name: 'Banc de poissons', cls: 'node', res: 'food', kind: 'fish', amount: 300, size: 1, water: true },
 ];
 
 // ---------------------------------------------------------------------------
@@ -261,9 +294,30 @@ const BUILDING_LIST = [
   {
     id: 'castle', names: { franks: 'Château', gauls: 'Citadelle' }, page: 'mil', size: 5, hp: 3600,
     armor: { melee: 8, pierce: 12 }, cost: { stone: 400 }, time: 110, age: 3, los: 11,
-    trains: ['francisque', 'gesate'], atk: { pierce: 10 }, range: 9, rof: 1.8, arrows: 3, projectile: 'arrow', projSpeed: 16,
+    trains: ['francisque', 'gesate', 'clovis', 'vercingetorix'], atk: { pierce: 10 }, range: 9, rof: 1.8, arrows: 3, projectile: 'arrow', projSpeed: 16,
     garrison: 20,
-    desc: 'Forteresse imprenable : forme votre guerrier unique, tire une volée de flèches et abrite 20 soldats.',
+    desc: 'Forteresse imprenable : forme votre guerrier unique et votre héros, tire une volée de flèches et abrite 20 soldats.',
+  },
+  {
+    id: 'dock', names: { franks: 'Port', gauls: 'Embarcadère' }, page: 'eco', size: 3, hp: 1100,
+    armor: { melee: 2, pierce: 8 }, cost: { wood: 150 }, time: 40, age: 1, los: 8, drop: ['food'], trains: ['fishingboat', 'warship'],
+    shore: true,
+    desc: 'À construire au bord de l\'eau. On y forme les barques de pêche et les navires de guerre ; la pêche y est déposée.',
+  },
+  {
+    id: 'market', names: { franks: 'Marché', gauls: 'Marché' }, page: 'eco', size: 3, hp: 1000,
+    armor: { melee: 2, pierce: 8 }, cost: { wood: 150, gold: 30 }, time: 45, age: 2, los: 6, market: true,
+    desc: 'Achetez et vendez nourriture, bois et pierre contre de l\'or. Les prix suivent l\'offre et la demande.',
+  },
+  {
+    id: 'academy', names: { franks: 'Scriptorium', gauls: 'Cercle des druides' }, page: 'eco', size: 3, hp: 1000,
+    armor: { melee: 3, pierce: 9 }, cost: { wood: 150, stone: 100 }, time: 50, age: 2, los: 7,
+    desc: 'Lieu de savoir : recherches de médecine, de cartographie, d\'organisation et de stratégie.',
+  },
+  {
+    id: 'wonder', names: { franks: 'Palais d\'Aix-la-Chapelle', gauls: 'Sanctuaire de Bibracte' }, page: 'eco', size: 6, hp: 5000,
+    armor: { melee: 6, pierce: 12 }, cost: { wood: 400, stone: 500, gold: 500 }, time: 240, age: 3, los: 12, wonder: true,
+    desc: 'Chef-d\'œuvre de votre peuple. S\'il reste debout 10 minutes après son achèvement, vous remportez la partie.',
   },
 ];
 
@@ -417,6 +471,86 @@ const TECH_LIST = [
     id: 'bloodlines', name: 'Lignée de destriers', building: 'stable', age: 2, cost: { food: 150, gold: 80 }, time: 40,
     effects: [{ who: CAV, stat: 'hp', op: 'add', v: 20 }], desc: 'Cavaliers : +20 points de vie.',
   },
+  // --- Moulin : chasse ---
+  {
+    id: 'hunt1', name: 'Chiens de chasse', building: 'mill', age: 1, cost: { food: 100, wood: 50 }, time: 25,
+    effects: [{ who: VIL, stat: 'gather.meat', op: 'mul', v: 1.4 }],
+    desc: 'Les chasseurs rapportent la viande 40 % plus vite.',
+  },
+  // --- Port ---
+  {
+    id: 'nets1', name: 'Filets de pêche', building: 'dock', age: 1, cost: { food: 100, wood: 100 }, time: 30,
+    effects: [{ who: { tags: ['fisher'] }, stat: 'gather.fish', op: 'mul', v: 1.3 }],
+    desc: 'Les barques de pêche récoltent 30 % plus vite.',
+  },
+  {
+    id: 'nets2', name: 'Grands filets', building: 'dock', age: 2, cost: { food: 150, wood: 150 }, time: 40, requiresTech: 'nets1',
+    effects: [{ who: { tags: ['fisher'] }, stat: 'gather.fish', op: 'mul', v: 1.3 }, { who: { tags: ['fisher'] }, stat: 'carry', op: 'add', v: 10 }],
+    desc: 'Les barques pêchent encore 30 % plus vite et portent 10 poissons de plus.',
+  },
+  {
+    id: 'hull1', name: 'Coques renforcées', building: 'dock', age: 2, cost: { wood: 150, gold: 100 }, time: 40,
+    effects: [
+      { who: { tags: ['ship'] }, stat: 'hp', op: 'add', v: 40 },
+      { who: { tags: ['ship'] }, stat: 'armor.pierce', op: 'add', v: 1 },
+    ],
+    desc: 'Navires : +40 points de vie et +1 d\'armure contre les tirs.',
+  },
+  {
+    id: 'naval_atk', name: 'Balistes de pont', building: 'dock', age: 3, cost: { wood: 200, gold: 150 }, time: 50, requiresTech: 'hull1',
+    effects: [
+      { who: { ids: ['warship'] }, stat: 'atk.pierce', op: 'add', v: 3 },
+      { who: { ids: ['warship'] }, stat: 'range', op: 'add', v: 1 },
+    ],
+    desc: 'Navires de guerre : +3 d\'attaque et +1 de portée.',
+  },
+  // --- Marché ---
+  {
+    id: 'trade1', name: 'Marchands itinérants', building: 'market', age: 2, cost: { wood: 100, gold: 150 }, time: 40,
+    trade: 0.2,
+    desc: 'La commission du marché passe de 30 % à 20 %.',
+  },
+  {
+    id: 'trade2', name: 'Guilde des marchands', building: 'market', age: 3, cost: { wood: 150, gold: 300 }, time: 55, requiresTech: 'trade1',
+    trade: 0.08,
+    desc: 'La commission du marché tombe à 8 %.',
+  },
+  // --- Académie ---
+  {
+    id: 'med1', name: 'Herboristerie', building: 'academy', age: 2, cost: { food: 100, gold: 100 }, time: 40,
+    effects: [
+      { who: { ids: ['healer'] }, stat: 'heal.amount', op: 'add', v: 2 },
+      { who: { ids: ['healer'] }, stat: 'heal.range', op: 'add', v: 1 },
+    ],
+    desc: 'Les guérisseurs soignent davantage (+2) et de plus loin (+1 case).',
+  },
+  {
+    id: 'med2', name: 'Bénédiction', building: 'academy', age: 3, cost: { food: 200, gold: 200 }, time: 55, requiresTech: 'med1',
+    effects: [{ who: { ids: ['healer'] }, stat: 'heal.every', op: 'mul', v: 0.6 }],
+    desc: 'Les guérisseurs soignent 40 % plus souvent.',
+  },
+  {
+    id: 'scout1', name: 'Cartographie', building: 'academy', age: 2, cost: { food: 150, gold: 100 }, time: 40,
+    effects: [{ who: { all: true }, stat: 'los', op: 'add', v: 1 }],
+    desc: 'Toutes vos unités et bâtiments voient une case plus loin.',
+  },
+  {
+    id: 'eco1', name: 'Almanach des saisons', building: 'academy', age: 2, cost: { food: 200, gold: 100 }, time: 50,
+    effects: [
+      { who: VIL, stat: 'gather.wood', op: 'mul', v: 1.1 },
+      { who: VIL, stat: 'gather.farm', op: 'mul', v: 1.1 },
+      { who: VIL, stat: 'gather.berries', op: 'mul', v: 1.1 },
+      { who: VIL, stat: 'gather.gold', op: 'mul', v: 1.1 },
+      { who: VIL, stat: 'gather.stone', op: 'mul', v: 1.1 },
+      { who: VIL, stat: 'gather.meat', op: 'mul', v: 1.1 },
+    ],
+    desc: 'Les villageois récoltent tout 10 % plus vite.',
+  },
+  {
+    id: 'strat1', name: 'Art de la guerre', building: 'academy', age: 3, cost: { food: 250, gold: 250 }, time: 60,
+    effects: [{ who: { tags: ['infantry', 'cavalry', 'archer'] }, stat: 'hp', op: 'mul', v: 1.1 }],
+    desc: 'Fantassins, cavaliers et archers : +10 % de points de vie.',
+  },
   // --- Château : technologies uniques ---
   {
     id: 'frank_axe', name: 'Haches barbelées', civ: 'franks', building: 'castle', age: 3, cost: { food: 250, gold: 200 }, time: 55,
@@ -559,9 +693,10 @@ export function computeStats(typeId, civ, techs) {
     bonus: { ...(base.bonus || {}) },
     cost: { ...(base.cost || {}) },
     time: base.time || 0,
-    carry: base.worker ? CARRY_BASE : 0,
+    carry: base.carry !== undefined ? base.carry : base.worker ? CARRY_BASE : 0,
     arrows: base.arrows || 0,
-    gather: { wood: 1, berries: 1, farm: 1, meat: 1, gold: 1, stone: 1 },
+    gather: { wood: 1, berries: 1, farm: 1, meat: 1, gold: 1, stone: 1, fish: 1 },
+    heal: base.heal ? { ...base.heal } : null,
   };
   const lists = [];
   if (civ && CIVS[civ]) lists.push(CIVS[civ].effects);
@@ -591,6 +726,11 @@ export function computeStats(typeId, civ, techs) {
   apply('armor.pierce', () => s.armor.pierce, (v) => { s.armor.pierce = v; });
   apply('time', () => s.time, (v) => { s.time = v; });
   apply('carry', () => s.carry, (v) => { s.carry = v; });
+  if (s.heal) {
+    apply('heal.amount', () => s.heal.amount, (v) => { s.heal.amount = v; });
+    apply('heal.range', () => s.heal.range, (v) => { s.heal.range = v; });
+    apply('heal.every', () => s.heal.every, (v) => { s.heal.every = v; });
+  }
   for (const k of Object.keys(s.gather)) apply('gather.' + k, () => s.gather[k], (v) => { s.gather[k] = v; });
   for (const r of RESOURCES) apply('cost.' + r, () => s.cost[r], (v) => { s.cost[r] = Math.round(v); });
   return s;

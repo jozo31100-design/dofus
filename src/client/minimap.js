@@ -2,14 +2,14 @@
 
 import { TEAM_COLORS, BUILDINGS } from '../core/defs.js';
 
-export const MINI_W = 232;
-export const MINI_H = 116;
+export const MINI_W = 276;
+export const MINI_H = 138;
 
 const COL = {
-  grass: [92, 150, 64],
-  ford: [143, 207, 208],
-  water: [47, 121, 184],
-  tree: [30, 88, 42],
+  grass: [116, 178, 74],
+  ford: [178, 230, 224],
+  water: [38, 122, 214],
+  tree: [22, 82, 38],
   gold: [244, 208, 60],
   stone: [170, 170, 166],
   berries: [200, 50, 100],
@@ -111,7 +111,7 @@ export class Minimap {
     for (const e of st.ents.values()) {
       if (e.cls === 'building') {
         const [x, y] = this.toMini(e.x, e.y);
-        const s = Math.max(3, e.w * 1.6);
+        const s = Math.max(5, e.w * 2.2);
         ctx.fillStyle = TEAM_COLORS[e.owner] ? TEAM_COLORS[e.owner].main : '#ddd';
         ctx.fillRect(x - s / 2, y - s / 2, s, s);
         ctx.strokeStyle = 'rgba(0,0,0,0.8)';
@@ -122,10 +122,10 @@ export class Minimap {
     for (const e of st.ents.values()) {
       if (e.cls === 'unit') {
         const [x, y] = this.toMini(e.x, e.y);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x - 2.5, y - 2.5, 5, 5);
         ctx.fillStyle = TEAM_COLORS[e.owner].light;
         ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
-        ctx.fillStyle = TEAM_COLORS[e.owner].main;
-        ctx.fillRect(x - 1, y - 1, 2, 2);
       }
     }
     // brouillard
@@ -153,11 +153,25 @@ export class Minimap {
       const [wx, wy] = r.screenToWorld(px, py);
       return this.toMini(Math.max(0, Math.min(this.S, wx)), Math.max(0, Math.min(this.S, wy)));
     });
-    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-    ctx.lineWidth = 1.2;
     ctx.beginPath();
     corners.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
     ctx.closePath();
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // contour doré du losange
+    ctx.beginPath();
+    ctx.moveTo(MINI_W / 2, 1);
+    ctx.lineTo(MINI_W - 1, MINI_H / 2);
+    ctx.lineTo(MINI_W / 2, MINI_H - 1);
+    ctx.lineTo(1, MINI_H / 2);
+    ctx.closePath();
+    ctx.strokeStyle = '#e8c266';
+    ctx.lineWidth = 2;
     ctx.stroke();
   }
 }
