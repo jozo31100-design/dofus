@@ -454,14 +454,17 @@ export function alive(spr) {
 }
 
 let scratchF = null;
+let scratchU = null;
 
 /**
  * Cuisson rapide dans l'atlas. Le sujet est dessiné une fois (vectoriel), ses pixels sont lus une seule
  * fois ; le contour de silhouette (1 pixel, dilatation en croix) et l'ombre au sol (ellipse douce,
  * shadow = { cx, cy, rx, ry, a } en unités locales) sont composés en JS puis écrits d'un bloc dans
  * l'atlas. Renvoie un sprite { c, sx, sy, w, h, ox, oy, p, gen }.
+ * under(ctx) (facultatif) dessine un calque SOUS le contour de silhouette, sans contour lui-même (reflet et
+ * sillage sur l'eau, anneau doré des héros) ; il se compose par-dessus l'ombre et sous le sujet.
  */
-export function bakeSprite(box, b, draw, shadow, outline) {
+export function bakeSprite(box, b, draw, shadow, outline, under) {
   const pad = 3;
   const ox = Math.ceil(-box[0] * b) + pad;
   const oy = Math.ceil(-box[1] * b) + pad;
@@ -475,8 +478,19 @@ export function bakeSprite(box, b, draw, shadow, outline) {
   draw(a);
   a.setTransform(1, 0, 0, 1, 0, 0);
   const d = a.getImageData(0, 0, W, H).data;
+  let ud = null;
+  if (under) {
+    scratchU = scratch(scratchU, W, H, true);
+    const u = scratchU.ctx;
+    u.setTransform(b, 0, 0, b, ox, oy);
+    u.lineJoin = 'round';
+    u.lineCap = 'round';
+    under(u);
+    u.setTransform(1, 0, 0, 1, 0, 0);
+    ud = u.getImageData(0, 0, W, H).data;
+  }
 
-  // Emprise du sujet (+1 pixel de contour) et de l'ombre
+  // Emprise du sujet (+1 pixel de contour), du calque inférieur et de l'ombre
   let x0 = W;
   let y0 = H;
   let x1 = -1;
@@ -498,6 +512,19 @@ export function bakeSprite(box, b, draw, shadow, outline) {
     y0 = Math.max(0, y0 - ol);
     x1 = Math.min(W - 1, x1 + ol);
     y1 = Math.min(H - 1, y1 + ol);
+  }
+  if (ud) {
+    for (let y = 0; y < H; y++) {
+      let i = y * W * 4 + 3;
+      for (let x = 0; x < W; x++, i += 4) {
+        if (ud[i] > 2) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+    }
   }
   let scx = 0;
   let scy = 0;
@@ -547,6 +574,18 @@ export function bakeSprite(box, b, draw, shadow, outline) {
           cr = 10;
           cg = 16;
           cb = 6;
+        }
+      }
+      // Calque inférieur (reflet, sillage, anneau) par-dessus l'ombre
+      if (ud) {
+        const ua = ud[si + 3];
+        if (ua > 2) {
+          const f = ua / 255;
+          const na = f + ca * (1 - f);
+          cr = (ud[si] * f + cr * ca * (1 - f)) / na;
+          cg = (ud[si + 1] * f + cg * ca * (1 - f)) / na;
+          cb = (ud[si + 2] * f + cb * ca * (1 - f)) / na;
+          ca = na;
         }
       }
       // Contour : dilatation en croix de l'alpha du sujet

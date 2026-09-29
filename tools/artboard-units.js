@@ -6,9 +6,10 @@
 // Une ancre (#revue, #details, #villageois, #anim, #foule, #perf) limite l'affichage à une section.
 import { drawUnit, unitMetrics, prewarmUnit, unitCacheSize, unitStats } from '../src/client/art/units.js';
 import { mulberry32 } from '../src/client/art/palette.js';
+import { renderTerrainTexture } from '../src/client/art/terrain.js';
 
 const W = 1600;
-const TYPES = ['villager', 'militia', 'spearman', 'swordsman', 'champion', 'archer', 'crossbow', 'scout', 'cavalry', 'knight', 'ram', 'catapult', 'francisque', 'gesate', 'healer'];
+const TYPES = ['villager', 'militia', 'spearman', 'swordsman', 'champion', 'archer', 'crossbow', 'scout', 'cavalry', 'knight', 'ram', 'catapult', 'francisque', 'gesate', 'healer', 'clovis', 'vercingetorix'];
 const CIVS = ['gauls', 'franks'];
 const only = (location.hash || '').slice(1);
 
@@ -64,7 +65,39 @@ function label(ctx, txt, x, y) {
 }
 
 function exists(t, civ) {
-  return !((t === 'francisque' && civ === 'gauls') || (t === 'gesate' && civ === 'franks'));
+  return !((t === 'francisque' && civ === 'gauls') || (t === 'gesate' && civ === 'franks') || (t === 'clovis' && civ === 'gauls') || (t === 'vercingetorix' && civ === 'franks'));
+}
+
+// ---------------------------------------------------------------------------
+// Eau : vraie texture du terrain, déformée en isométrie comme dans le jeu (cf. artboard-village.js)
+// ---------------------------------------------------------------------------
+const WMAP = { w: 50, h: 50 };
+function waterMap() {
+  const m = new Uint8Array(WMAP.w * WMAP.h);
+  for (let y = 0; y < WMAP.h; y++) {
+    for (let x = 0; x < WMAP.w; x++) {
+      const d = Math.hypot((x + 0.5 - 25) / 26, (y + 0.5 - 25) / 26);
+      m[y * WMAP.w + x] = d < 0.72 ? 2 : d < 0.86 ? 1 : 0;
+    }
+  }
+  return m;
+}
+let waterTex = null;
+/** Peint un lac isométrique dans le rectangle (x, y, w, h) de l'écran et renvoie la fonction case -> écran. */
+function lake(ctx, x, y, w, h, cx = 25, cy = 25) {
+  if (!waterTex) waterTex = renderTerrainTexture(waterMap(), WMAP.w, WMAP.h, 7);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  ctx.fillStyle = '#62963f';
+  ctx.fillRect(x, y, w, h);
+  const ox = x + w / 2 - (cx - cy) * 32;
+  const oy = y + h / 2 - (cx + cy) * 16;
+  ctx.transform(1, 0.5, -1, 0.5, ox, oy);
+  ctx.drawImage(waterTex, 0, 0);
+  ctx.restore();
+  return (gx, gy) => [ox + (gx - gy) * 32, oy + (gx + gy) * 16];
 }
 
 // ---------------------------------------------------------------------------
@@ -273,7 +306,92 @@ function perf() {
   for (const l of lines) console.log(l);
 }
 
-const SECTIONS = { revue: review, details, villageois: villagers, anim: frames, foule: crowd, perf };
+// ---------------------------------------------------------------------------
+// 7. Bateaux sur la vraie eau (zoom 1, puis ×2)
+// ---------------------------------------------------------------------------
+function ships() {
+  const H = 760;
+  const ctx = canvas(H);
+  lake(ctx, 0, 0, W, H);
+  title(ctx, 'Bateaux — zoom 1 : Gaulois (bleu) / Francs (rouge) ; attente, marche, pêche, charge de poissons, attaque, naufrage', 12, 22);
+  const row = (type, civ, team, y, list) => list.forEach(([label_, o], i) => {
+    const x = 90 + i * 118 + (type === 'warship' ? 20 : 0);
+    drawUnit(ctx, { type, civ, team, sx: x, sy: y, dir: 1, ...o });
+    label(ctx, label_, x - 22, y + 30);
+  });
+  const boatList = [
+    ['attente', { anim: 'idle', t: 0.4 }], ['attente', { anim: 'idle', t: 1.9 }], ['poissons', { anim: 'idle', t: 0.8, carry: 'food' }],
+    ['marche', { anim: 'walk', t: 0.1 }], ['marche+poissons', { anim: 'walk', t: 0.4, carry: 'food' }],
+    ['pêche 1', { anim: 'work', work: 'fish', t: 0.2 }], ['pêche 2', { anim: 'work', work: 'fish', t: 0.6 }], ['pêche 3', { anim: 'work', work: 'fish', t: 1.0 }],
+    ['pêche 4', { anim: 'work', work: 'fish', t: 1.3, carry: 'food' }], ['gauche', { anim: 'walk', t: 0.3, dir: -1, carry: 'food' }],
+    ['naufrage 1', { anim: 'die', t: 0.5, deathT: 0.1 }], ['naufrage 2', { anim: 'die', t: 1.1, deathT: 0.3 }],
+    ['naufrage 3', { anim: 'die', t: 1.5, deathT: 0.6 }],
+  ];
+  row('fishingboat', 'gauls', 0, 90, boatList);
+  row('fishingboat', 'franks', 1, 170, boatList);
+  const warList = [
+    ['attente', { anim: 'idle', t: 0.4 }], ['attente', { anim: 'idle', t: 1.9 }],
+    ['marche', { anim: 'walk', t: 0.1 }], ['marche', { anim: 'walk', t: 0.45 }],
+    ['bande l\'arc', { anim: 'attack', t: 0.15, aim: -0.2 }], ['tire', { anim: 'attack', t: 0.32, aim: 0.3 }],
+    ['gauche', { anim: 'walk', t: 0.3, dir: -1 }],
+    ['naufrage 1', { anim: 'die', t: 0.4, deathT: 0.1 }], ['naufrage 2', { anim: 'die', t: 0.9, deathT: 0.3 }], ['naufrage 3', { anim: 'die', t: 1.4, deathT: 0.5 }],
+    ['naufrage 4', { anim: 'die', t: 1.65, deathT: 0.8 }],
+  ];
+  row('warship', 'gauls', 0, 330, warList);
+  row('warship', 'franks', 1, 520, warList);
+  // Sur les gués et à côté de la rive : le reflet doit rester sur l'eau ; petite flotte à zoom 0,6
+  ctx.save();
+  ctx.translate(0, 590);
+  ctx.scale(0.6, 0.6);
+  const fleet = [['fishingboat', 'gauls', 0], ['fishingboat', 'franks', 1], ['warship', 'gauls', 0], ['warship', 'franks', 1], ['fishingboat', 'franks', 0], ['warship', 'franks', 0], ['fishingboat', 'gauls', 1], ['warship', 'gauls', 1]];
+  fleet.forEach(([t, c, tm], i) => drawUnit(ctx, { type: t, civ: c, team: tm, sx: 100 + i * 190, sy: 90 + (i % 2) * 50, dir: i % 3 ? 1 : -1, anim: i % 2 ? 'walk' : 'idle', t: i * 0.37 }));
+  ctx.restore();
+  label(ctx, 'zoom 0,6 :', 12, 620);
+}
+
+// ---------------------------------------------------------------------------
+// 8. Héros ×4 (attente, marche, attaque, mort) à côté d'un champion pour l'échelle
+// ---------------------------------------------------------------------------
+function heroes() {
+  const H = 640;
+  const ctx = canvas(H);
+  grass(ctx, 0, 0, W, H, 21);
+  title(ctx, 'Héros ×4 — Clovis (Francs) et Vercingétorix (Gaulois), champion à gauche pour l\'échelle', 12, 22);
+  ctx.save();
+  ctx.scale(4, 4);
+  const list = [
+    ['champion', 'franks', 0, { anim: 'idle', t: 0.5 }], ['clovis', 'franks', 0, { anim: 'idle', t: 0.5 }], ['clovis', 'franks', 1, { anim: 'walk', t: 0.2 }],
+    ['clovis', 'franks', 0, { anim: 'attack', t: 0.28 }], ['clovis', 'franks', 1, { anim: 'die', t: 0.3, deathT: 0.1 }], ['clovis', 'franks', 1, { anim: 'idle', t: 1.5, dir: -1 }],
+  ];
+  list.forEach(([t, c, tm, o], i) => drawUnit(ctx, { type: t, civ: c, team: tm, sx: 22 + i * 62, sy: 62, dir: 1, ...o }));
+  const list2 = [
+    ['champion', 'gauls', 0, { anim: 'idle', t: 0.5 }], ['vercingetorix', 'gauls', 0, { anim: 'idle', t: 0.5 }], ['vercingetorix', 'gauls', 1, { anim: 'walk', t: 0.2 }],
+    ['vercingetorix', 'gauls', 0, { anim: 'attack', t: 0.28 }], ['vercingetorix', 'gauls', 1, { anim: 'die', t: 0.3, deathT: 0.1 }], ['vercingetorix', 'gauls', 1, { anim: 'idle', t: 1.5, dir: -1 }],
+  ];
+  list2.forEach(([t, c, tm, o], i) => drawUnit(ctx, { type: t, civ: c, team: tm, sx: 22 + i * 62, sy: 142, dir: 1, ...o }));
+  ctx.restore();
+}
+
+function shipsZoom() {
+  const H = 800;
+  const ctx = canvas(H);
+  lake(ctx, 0, 0, W, H);
+  title(ctx, 'Bateaux ×2,5', 12, 22);
+  ctx.save();
+  ctx.scale(2.5, 2.5);
+  const put = (type, civ, team, x, y, o) => drawUnit(ctx, { type, civ, team, sx: x, sy: y, dir: 1, ...o });
+  put('fishingboat', 'franks', 1, 45, 65, { anim: 'idle', t: 0.6, carry: 'food' });
+  put('fishingboat', 'gauls', 0, 150, 65, { anim: 'work', work: 'fish', t: 0.55 });
+  put('fishingboat', 'franks', 0, 255, 65, { anim: 'walk', t: 0.3 });
+  put('fishingboat', 'gauls', 1, 350, 65, { anim: 'work', work: 'fish', t: 1.5, carry: 'food' });
+  put('warship', 'franks', 1, 70, 160, { anim: 'walk', t: 0.3 });
+  put('warship', 'gauls', 0, 215, 160, { anim: 'attack', t: 0.3, aim: 0.2 });
+  put('warship', 'franks', 0, 340, 160, { anim: 'idle', t: 1.0 });
+  put('warship', 'gauls', 1, 490, 160, { anim: 'die', t: 1.0, deathT: 0.3 });
+  ctx.restore();
+}
+
+const SECTIONS = { revue: review, details, villageois: villagers, anim: frames, foule: crowd, perf, navires: ships, navires2: shipsZoom, heros: heroes };
 try {
   if (only && SECTIONS[only]) SECTIONS[only]();
   else for (const k of Object.keys(SECTIONS)) SECTIONS[k]();

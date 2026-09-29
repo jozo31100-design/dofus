@@ -6,7 +6,7 @@ import { distToRect } from './path.js';
 
 /** Ce que fait visuellement une unité (envoyé aux clients pour les animations). */
 export const ANIM = { idle: 0, walk: 1, work: 2, fight: 3 };
-export const WORK = { none: 0, wood: 1, mine: 2, farm: 3, forage: 4, build: 5, repair: 6, hunt: 7, butcher: 8, heal: 9 };
+export const WORK = { none: 0, wood: 1, mine: 2, farm: 3, forage: 4, build: 5, repair: 6, hunt: 7, butcher: 8, heal: 9, fish: 10 };
 
 /** Distances d'interaction (en cases, mesurées depuis le bord de la cible). */
 export const REACH = { gather: 0.9, build: 0.9, deposit: 0.9, garrison: 0.9, farm: 0.6 };
@@ -95,8 +95,9 @@ export function ejectFromRect(world, x0, y0, x1, y1) {
     else ny = y1 + r + 0.1;
     const tx = Math.floor(nx);
     const ty = Math.floor(ny);
-    if (world.pf.isBlocked(tx, ty)) {
-      const f = world.pf.nearestFree(tx, ty);
+    const grid = world.gridOf(u);
+    if (grid.isBlocked(tx, ty)) {
+      const f = grid.nearestFree(tx, ty);
       if (f) { nx = f[0] + 0.5; ny = f[1] + 0.5; }
     }
     u.x = nx;
@@ -106,7 +107,8 @@ export function ejectFromRect(world, x0, y0, x1, y1) {
 }
 
 /** Point libre autour d'un bâtiment, de préférence du côté du point (px, py). */
-export function freeSpotAround(world, b, px, py) {
+export function freeSpotAround(world, b, px, py, naval = false) {
+  const grid = naval ? world.pfw : world.pf;
   const cx = b.x;
   const cy = b.y;
   const half = b.w / 2;
@@ -124,7 +126,7 @@ export function freeSpotAround(world, b, px, py) {
     const y = cy + dy * k;
     const tx = Math.floor(x);
     const ty = Math.floor(y);
-    if (world.pf.isBlocked(tx, ty)) continue;
+    if (grid.isBlocked(tx, ty)) continue;
     let diff = Math.abs(a - ang0);
     if (diff > Math.PI) diff = Math.PI * 2 - diff;
     let score = -diff;
@@ -135,7 +137,7 @@ export function freeSpotAround(world, b, px, py) {
     if (score > bestScore) { bestScore = score; best = { x, y }; }
   }
   if (!best) {
-    const f = world.pf.nearestFree(Math.floor(cx), Math.floor(cy), 12);
+    const f = grid.nearestFree(Math.floor(cx), Math.floor(cy), 12);
     best = f ? { x: f[0] + 0.5, y: f[1] + 0.5 } : { x: cx, y: cy };
   }
   return best;

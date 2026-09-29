@@ -3,7 +3,7 @@
 
 import { UNITS, BUILDINGS, DEFS, RESOURCES } from './defs.js';
 import { setOrder, resetMove, freeSpotAround, isMilitary } from './common.js';
-import { queueUnit, queueTech, cancelQueue, startBuilding, findFarmSlot } from './econ.js';
+import { queueUnit, queueTech, cancelQueue, startBuilding, findFarmSlot, trade } from './econ.js';
 import { killEntity, canTarget } from './combat.js';
 
 const num = (v, d = 0) => (Number.isFinite(v) ? v : d);
@@ -24,11 +24,12 @@ function ownBuilding(world, pi, id) {
 }
 
 /** Positions autour d'un point pour un groupe : anneaux successifs, cases libres uniquement. */
-export function formationSlots(world, n, x, y) {
+export function formationSlots(world, n, x, y, naval = false) {
+  const grid = naval ? world.pfw : world.pf;
   const slots = [];
   const spacing = 0.9;
   const S = world.S;
-  const ok = (px, py) => px > 0.4 && py > 0.4 && px < S - 0.4 && py < S - 0.4 && !world.pf.isBlocked(Math.floor(px), Math.floor(py));
+  const ok = (px, py) => px > 0.4 && py > 0.4 && px < S - 0.4 && py < S - 0.4 && !grid.isBlocked(Math.floor(px), Math.floor(py));
   if (ok(x, y)) slots.push([x, y]);
   for (let ring = 1; slots.length < n && ring < 12; ring++) {
     const count = Math.max(6, Math.round((2 * Math.PI * ring * spacing) / spacing));
@@ -66,7 +67,11 @@ function cmdMove(world, pi, cmd) {
   if (!units.length) return;
   const x = Math.max(0.5, Math.min(world.S - 0.5, num(cmd.x)));
   const y = Math.max(0.5, Math.min(world.S - 0.5, num(cmd.y)));
-  const slots = assignSlots(units, formationSlots(world, units.length, x, y));
+  const slots = new Map();
+  for (const naval of [false, true]) {
+    const group = units.filter((u) => !!u.naval === naval);
+    if (group.length) for (const [id, sl] of assignSlots(group, formationSlots(world, group.length, x, y, naval))) slots.set(id, sl);
+  }
   let cap = 0;
   if (units.length > 1) {
     cap = Infinity;
@@ -99,8 +104,11 @@ function cmdGather(world, pi, cmd) {
   const isAnimal = t.cls === 'animal';
   if (!isFarm && !isNode && !isAnimal) return;
   let farmUsed = 0;
+  const fishNode = t.cls === 'node' && t.kind === 'fish';
   for (const u of units) {
-    if (!UNITS[u.type].worker) {
+    const ud = UNITS[u.type];
+    // les pêcheurs ne récoltent que le poisson, les villageois tout sauf le poisson
+    if (fishNode ? !ud.fisher : !ud.worker) {
       setOrder(u, { t: 'move', x: t.x, y: t.y }, !!cmd.q);
       continue;
     }
@@ -245,6 +253,11 @@ export function applyCommand(world, pi, cmd) {
     case 'stop': cmdStop(world, pi, cmd); break;
     case 'heal': cmdHeal(world, pi, cmd); break;
     case 'delete': cmdDelete(world, pi, cmd); break;
+    case 'trade': {
+      const err = trade(world, pl, cmd.res, cmd.dir === 'sell' ? 'sell' : 'buy');
+      if (err) world.say(pi, err, 'warn');
+      break;
+    }
     case 'resign':
       pl.resigned = true;
       world.emit({ k: 'msg', to: -1, text: `${pl.name} abandonne la partie.`, kind: 'info' });

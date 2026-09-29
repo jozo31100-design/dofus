@@ -6,6 +6,7 @@
 import { getNodeSprite, drawAnimal, drawProjectile, NODE_VARIANTS } from '../src/client/art/nature.js';
 import { drawUnit } from '../src/client/art/units.js';
 import { mulberry32 } from '../src/client/art/palette.js';
+import { renderTerrainTexture } from '../src/client/art/terrain.js';
 
 const W = 1600;
 const only = (location.hash || '').slice(1);
@@ -209,6 +210,73 @@ function projectiles() {
   ctx.restore();
 }
 
+// ---------------------------------------------------------------------------
+// Bancs de poissons sur la VRAIE texture d'eau du terrain, déformée en isométrie comme dans le jeu
+// (cf. artboard-village.js) : zoom 1, ×2 et zoom 0,6, avec barques de pêche à côté.
+// ---------------------------------------------------------------------------
+function fish() {
+  const MW = 40;
+  const MH = 40;
+  const map = new Uint8Array(MW * MH);
+  for (let y = 0; y < MH; y++) {
+    for (let x = 0; x < MW; x++) {
+      const d = Math.hypot((x + 0.5 - 20) / 17, (y + 0.5 - 20) / 17);
+      map[y * MW + x] = d < 0.62 ? 2 : d < 0.82 ? 1 : 0;
+    }
+  }
+  const tex = renderTerrainTexture(map, MW, MH, 7);
+  const H = 900;
+  const ctx = canvas(H);
+  const ox = W / 2 - 0 * 32;
+  const oy = H / 2 - 20 * 32 + 60;
+  ctx.fillStyle = '#62963f';
+  ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  ctx.transform(1, 0.5, -1, 0.5, ox, oy);
+  ctx.drawImage(tex, 0, 0);
+  ctx.restore();
+  const scr = (gx, gy) => [ox + (gx - gy) * 32, oy + (gx + gy) * 16];
+  title(ctx, 'Bancs de poissons sur la vraie eau : 4 variantes × quantité restante (1, 0,8, 0,6, 0,4, 0,2)', 12, 22);
+  const fracs = [1, 0.8, 0.6, 0.4, 0.2];
+  for (let v = 0; v < 4; v++) {
+    fracs.forEach((f, i) => {
+      const [x, y] = scr(16 + i * 2 + v * 0.0, 16 + v * 2.2 - i * 0);
+      const s = getNodeSprite('fish', v, f);
+      put(ctx, s, x, y);
+      if (v === 0) label(ctx, 'frac ' + f, x - 16, y + 24);
+    });
+  }
+  // Forêt de bancs serrés et barques à côté
+  for (let i = 0; i < 14; i++) {
+    const [x, y] = scr(21.5 + (i % 5), 21.5 + Math.floor(i / 5) * 1.0 + (i % 2) * 0.0);
+    put(ctx, getNodeSprite('fish', i, 1 - (i % 4) * 0.2), x, y);
+  }
+  const [bx, by] = scr(17.5, 24.5);
+  drawUnit(ctx, { type: 'fishingboat', civ: 'franks', team: 1, sx: bx, sy: by, t: 0.55, anim: 'work', work: 'fish', dir: 1 });
+  const [gx, gy] = scr(24.5, 19.5);
+  drawUnit(ctx, { type: 'fishingboat', civ: 'gauls', team: 0, sx: gx, sy: gy, t: 0.3, anim: 'walk', dir: -1, carry: 'food' });
+  // Zoom ×2,5 sur un banc et sur la barque
+  ctx.save();
+  ctx.translate(1180, 110);
+  ctx.scale(2.5, 2.5);
+  ctx.beginPath();
+  ctx.rect(0, 0, 160, 110);
+  ctx.restore();
+  const box = (x, y, w, h, fn) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+    ctx.translate(x, y);
+    fn();
+    ctx.restore();
+  };
+  box(1150, 40, 430, 250, () => {
+    ctx.drawImage(ctx.canvas, ox - 210, oy + 200, 360, 200, 0, 0, 430, 250);
+  });
+  label(ctx, 'agrandissement ×1,2 de la zone', 1152, 305);
+}
+
 function perf() {
   const H = 90;
   const ctx = canvas(H);
@@ -236,7 +304,7 @@ function perf() {
   for (const l of lines) console.log(l);
 }
 
-const SECTIONS = { arbres: trees, foret: forest, ressources: resources, gibier: game, projectiles, perf };
+const SECTIONS = { arbres: trees, foret: forest, ressources: resources, gibier: game, projectiles, perf, poissons: fish };
 try {
   if (only && SECTIONS[only]) SECTIONS[only]();
   else for (const k of Object.keys(SECTIONS)) SECTIONS[k]();

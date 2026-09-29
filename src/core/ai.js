@@ -18,11 +18,11 @@ const COMP = {
   archery: [['archer', 4, 2], ['crossbow', 5, 3]],
   stable: [['cavalry', 3, 2], ['knight', 5, 3]],
   siege: [['ram', 2, 3], ['catapult', 1, 3]],
-  castle: [['francisque', 4, 3], ['gesate', 4, 3]],
+  castle: [['francisque', 4, 3], ['gesate', 4, 3], ['clovis', 7, 3], ['vercingetorix', 7, 3]],
   temple: [['healer', 1, 2]],
 };
 
-const ECO_TECHS = ['axe1', 'plow1', 'baskets', 'pick1', 'carry1', 'axe2', 'plow2', 'pick2', 'carry2'];
+const ECO_TECHS = ['axe1', 'plow1', 'baskets', 'pick1', 'carry1', 'hunt1', 'axe2', 'plow2', 'pick2', 'carry2', 'nets1', 'nets2'];
 const WAR_TECHS = ['atk_inf1', 'arm_inf1', 'atk_arch1', 'arm_arch1', 'atk_cav1', 'arm_cav1', 'bloodlines',
   'atk_inf2', 'arm_inf2', 'atk_arch2', 'atk_cav2', 'arm_cav2', 'frank_axe', 'gaul_fury'];
 
@@ -54,6 +54,8 @@ class Bot {
     this.ageUp(world, pl, S);
     this.economy(world, pl, S);
     this.structures(world, pl, S);
+    this.fishing(world, pl, S);
+    this.trading(world, pl, S);
     this.produce(world, pl, S);
     this.research(world, pl, S);
     this.attack(world, pl, S);
@@ -77,7 +79,7 @@ class Bot {
         const j = jobOf(u);
         S.jobs[j] = (S.jobs[j] || 0) + 1;
         if (j === 'idle' && !u.inside) S.idle.push(u);
-      } else if (isMilitary(def)) {
+      } else if (isMilitary(def) && !def.naval) {
         S.army.push(u);
       }
     }
@@ -181,7 +183,7 @@ class Bot {
     const room = pl.popCap - pl.pop - S.queuedUnits;
     const building = S.building.house || 0;
     if (pl.popCap < MAX_POP && room <= (nVill > 30 ? 8 : 4) && building < (nVill > 30 ? 2 : 1)) {
-      this.buildNear(world, pl, S, 'house', S.hall.x - 4, S.hall.y - 5, 4, 12, true);
+      this.buildNear(world, pl, S, 'house', S.hall.x - 4 * this.side(world, S.hall), S.hall.y - 5 * this.side(world, S.hall), 4, 12, true);
     }
     this.resumeConstruction(world, pl, S);
     this.dropOffs(world, pl, S);
@@ -213,9 +215,22 @@ class Bot {
   }
 
   desiredShares(pl) {
-    if (pl.age === 1) return { food: 0.52, wood: 0.40, gold: 0.05, stone: 0.03 };
-    if (pl.age === 2) return { food: 0.46, wood: 0.30, gold: 0.17, stone: 0.07 };
-    return { food: 0.42, wood: 0.25, gold: 0.25, stone: 0.08 };
+    const base = pl.age === 1 ? { food: 0.52, wood: 0.40, gold: 0.05, stone: 0.03 }
+      : pl.age === 2 ? { food: 0.46, wood: 0.30, gold: 0.17, stone: 0.07 }
+        : { food: 0.42, wood: 0.25, gold: 0.25, stone: 0.08 };
+    // selon les stocks : on lève des villageois d'une ressource qui s'accumule, on en met sur celle qui manque
+    let sum = 0;
+    const out = {};
+    for (const r of RESOURCES) {
+      let k = 1;
+      if (pl.res[r] > 1500) k = 0.3;
+      else if (pl.res[r] > 800) k = 0.6;
+      else if (pl.res[r] < 80) k = 1.5;
+      out[r] = base[r] * k;
+      sum += out[r];
+    }
+    for (const r of RESOURCES) out[r] /= sum;
+    return out;
   }
 
   pickJob(pl, S) {
@@ -383,6 +398,7 @@ class Bot {
         if (d >= bd) continue;
         if (placementError(world, pl, type, tx, ty)) continue;
         if (!this.hasGap(world, tx, ty, n, keepGap ? 1 : 0)) continue;
+        if (def.shore && !this.clearOfMines(world, tx, ty, n, 3)) continue; // le port ne doit pas boucher les baies ni les mines
         bd = d;
         best = [tx, ty];
       }
@@ -406,6 +422,20 @@ class Bot {
     return true;
   }
 
+  /** Aucune baie, mine d'or ou carrière à moins de `gap` cases de l'emprise. */
+  clearOfMines(world, tx, ty, n, gap) {
+    const S = world.S;
+    for (let y = Math.max(0, ty - gap); y < Math.min(S, ty + n + gap); y++) {
+      for (let x = Math.max(0, tx - gap); x < Math.min(S, tx + n + gap); x++) {
+        const id = world.occ[y * S + x];
+        if (!id) continue;
+        const e = world.entities.get(id);
+        if (e && e.cls === 'node' && (e.kind === 'berries' || e.kind === 'gold' || e.kind === 'stone')) return false;
+      }
+    }
+    return true;
+  }
+
   /** Vérifie que l'anneau autour de l'emprise ne colle pas d'autres bâtiments (on garde des passages). */
   hasGap(world, tx, ty, n, gap) {
     if (!gap) return true;
@@ -424,19 +454,68 @@ class Bot {
     return true;
   }
 
+  /** +1 si la salle est dans la moitié haute de la carte (côté droit de l'écran), -1 sinon : les emplacements se déduisent par symétrie. */
+  side(world, hall) {
+    return hall.x + hall.y < world.S ? -1 : 1;
+  }
+
+  /** Échanges au marché : on vend les gros surplus, on achète du bois ou de l'or quand ils manquent. */
+  trading(world, pl, S) {
+    if (!(S.done.market > 0)) return;
+    let n = 0;
+    for (const [res, limit] of [['food', 1100], ['stone', 900], ['wood', 900]]) {
+      if (pl.res[res] > limit && n < 3) { this.cmd(world, { c: 'trade', res, dir: 'sell' }); n++; }
+    }
+    if (pl.res.wood < 150 && pl.res.gold >= 260 && n < 3) { this.cmd(world, { c: 'trade', res: 'wood', dir: 'buy' }); n++; }
+    if (pl.res.gold < 60 && pl.res.food > 500 && n < 3) { this.cmd(world, { c: 'trade', res: 'food', dir: 'sell' }); n++; }
+  }
+
+  nearestFish(world, from, R) {
+    let best = null;
+    let bd = R;
+    for (const n of world.nodes) {
+      if (n.dead || n.kind !== 'fish' || n.amount <= 0) continue;
+      const d = Math.hypot(n.x - from.x, n.y - from.y);
+      if (d < bd) { bd = d; best = n; }
+    }
+    return best;
+  }
+
+  /** Bateaux de pêche : on en forme quelques-uns au port et on les envoie sur les bancs. */
+  fishing(world, pl, S) {
+    for (const dock of S.byType.dock || []) {
+      if (!dock.done) continue;
+      const boats = world.units.filter((u) => u.owner === this.idx && u.type === 'fishingboat' && !u.dead);
+      const queued = dock.queue.filter((it) => it.id === 'fishingboat').length;
+      const want = this.levelName === 'facile' ? 2 : this.levelName === 'moyen' ? 3 : 5;
+      const fish = this.nearestFish(world, dock, 16);
+      if (fish && !dock.rally) this.cmd(world, { c: 'rally', bids: [dock.id], x: fish.x, y: fish.y, tid: fish.id });
+      if (fish && boats.length + queued < want && dock.queue.length < 2 && pl.pop + S.queuedUnits < pl.popCap && this.canSpend(pl, UNITS.fishingboat.cost)) {
+        this.cmd(world, { c: 'train', bid: dock.id, type: 'fishingboat', n: 1 });
+        S.queuedUnits++;
+      }
+      for (const b of boats) {
+        if (b.order || b.inside) continue;
+        const n = findNodeNear(world, ['fish'], dock.x, dock.y, 16, null, b);
+        if (n) this.cmd(world, { c: 'gather', ids: [b.id], tid: n.id });
+      }
+    }
+  }
+
   structures(world, pl, S) {
     const have = (t) => (S.done[t] || 0) + (S.building[t] || 0);
     const nv = S.vills.length;
     const hall = S.hall;
+    const sg = this.side(world, hall);
     const front = this.frontPoint(world, hall, 9);
     const mil = (type, cond) => {
-      if (cond && !have(type) && pl.age >= BUILDINGS[type].age) this.buildNear(world, pl, S, type, front.x - 3, front.y + 3, 3, 14, true);
+      if (cond && !have(type) && pl.age >= BUILDINGS[type].age) this.buildNear(world, pl, S, type, front.x - 3 * sg, front.y + 3 * sg, 3, 14, true);
     };
-    if (nv >= 6 && !have('lumber')) this.buildNear(world, pl, S, 'lumber', hall.x + 6, hall.y - 6, 4, 16, false);
-    if (nv >= 9 && !have('mill')) this.buildNear(world, pl, S, 'mill', hall.x - 7, hall.y + 5, 4, 16, false);
+    if (nv >= 6 && !have('lumber')) this.buildNear(world, pl, S, 'lumber', hall.x + 6 * sg, hall.y - 6 * sg, 4, 16, false);
+    if (nv >= 9 && !have('mill')) this.buildNear(world, pl, S, 'mill', hall.x - 7 * sg, hall.y + 5 * sg, 4, 16, false);
     if (nv >= 13 && !have('barracks')) mil('barracks', true);
     if (pl.age >= 2 || nv >= 20) {
-      if (!have('mining') && (S.jobs.gold + S.jobs.stone >= 1 || nv >= 20)) this.buildNear(world, pl, S, 'mining', hall.x + 8, hall.y + 8, 4, 22, false);
+      if (!have('mining') && (S.jobs.gold + S.jobs.stone >= 1 || nv >= 20)) this.buildNear(world, pl, S, 'mining', hall.x + 8 * sg, hall.y + 8 * sg, 4, 22, false);
     }
     if (pl.age >= 2) {
       mil('archery', nv >= 24);
@@ -448,9 +527,20 @@ class Bot {
       }
       if (nv >= 36 && !have('temple') && this.levelName === 'difficile') mil('temple', true);
     }
+    // marché : sert à convertir les surplus (souvent la nourriture) en or et en bois
+    if (pl.age >= 2 && nv >= 28 && !have('market') && pl.res.wood >= 200) this.buildNear(world, pl, S, 'market', hall.x - 5 * sg, hall.y + 5 * sg, 4, 18, true);
+    // pêche : un port au bord d'un banc de poissons proche
+    if (nv >= 12 && !have('dock') && pl.res.wood >= 220) {
+      const fish = this.nearestFish(world, S.hall, 34);
+      if (fish) this.buildNear(world, pl, S, 'dock', fish.x, fish.y, 2, 9, false);
+    }
+    // les niveaux difficiles finissent par bâtir une merveille : il faut alors la détruire !
+    if (pl.age >= 3 && this.levelName === 'difficile' && nv >= 40 && !have('wonder') && world.tick > 20 * 60 * 16 && this.canSpend(pl, { wood: 550, stone: 600, gold: 600 })) {
+      this.buildNear(world, pl, S, 'wonder', hall.x - 4 * sg, hall.y + 4 * sg, 6, 20, false);
+    }
     if (pl.age >= 3) {
       mil('siege', nv >= 30);
-      if (nv >= 34 && !have('castle')) this.buildNear(world, pl, S, 'castle', front.x - 2, front.y + 2, 4, 16, true);
+      if (nv >= 34 && !have('castle')) this.buildNear(world, pl, S, 'castle', front.x - 2 * sg, front.y + 2 * sg, 4, 16, true);
       if (nv >= 44 && have('archery') < 2) mil2(this, world, pl, S, 'archery', front);
       if (nv >= 44 && have('stable') < 2) mil2(this, world, pl, S, 'stable', front);
     }
@@ -488,6 +578,8 @@ class Bot {
           if (type === 'ram' && (counts.ram || 0) >= Math.max(2, Math.floor(S.army.length / 8))) continue;
           if (type === 'catapult' && (counts.catapult || 0) >= Math.max(1, Math.floor(S.army.length / 12))) continue;
           if (type === 'healer' && (counts.healer || 0) >= Math.max(1, Math.floor(S.army.length / 10))) continue;
+          if (UNITS[type].limit && (counts[type] || 0) >= UNITS[type].limit) continue;
+          if (UNITS[type].limit && S.army.length < 12) continue;
           const st = world.stat(this.idx, type);
           if (!this.canSpend(pl, st.cost)) continue;
           const score = (weight * this.counter(world, S, type)) / ((counts[type] || 0) + 1);
@@ -560,8 +652,9 @@ class Bot {
     if (!enemyBuildings.length) return;
     const enemyHall = enemyBuildings.find((b) => b.type === 'hall') || enemyBuildings[0];
     const wave = this.wave;
+    const wonder = enemyBuildings.find((b) => BUILDINGS[b.type].wonder && b.done);
     if (!wave.active) {
-      const ready = army.length >= this.lv.waveSize && (world.tick - this.lastWave) > this.lv.waveGap * 20;
+      const ready = wonder ? army.length >= this.lv.waveSize / 2 : army.length >= this.lv.waveSize && (world.tick - this.lastWave) > this.lv.waveGap * 20;
       if (!ready) return;
       wave.active = true;
       wave.count = army.length;
@@ -588,6 +681,7 @@ class Bot {
       const d = Math.hypot(b.x - cx, b.y - cy) - (b.type === 'hall' ? 8 : 0);
       if (d < bd) { bd = d; tgt = b; }
     }
+    if (wonder) tgt = wonder;
     const ids = [];
     for (const u of army) {
       const idle = !u.order || (u.order.t === 'move' && !u.order.aggressive && Math.hypot(u.x - u.order.x, u.y - u.order.y) < 2);
@@ -598,7 +692,8 @@ class Bot {
 }
 
 function mil2(bot, world, pl, S, type, front) {
-  bot.buildNear(world, pl, S, type, front.x + 3, front.y - 3, 3, 16, true);
+  const sg = bot.side(world, S.hall);
+  bot.buildNear(world, pl, S, type, front.x + 3 * sg, front.y - 3 * sg, 3, 16, true);
 }
 
 function jobOf(u) {

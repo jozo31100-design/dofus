@@ -4,8 +4,11 @@ Jeu de stratégie en temps réel façon *Age of Empires*, **Francs contre Gauloi
 (deux PC sur la même box ou le même Wi-Fi) ou seul contre l'ordinateur. Une seule carte : *La Rivière des Carnutes*.
 
 - 2 peuples aux bonus et unités uniques différents (Francs : cavalerie lourde et francisque ; Gaulois : bûcherons, hordes de fantassins et gésates)
-- 3 âges, 15 unités, 14 bâtiments, 25 technologies : villageois, récolte (bois, nourriture, or, pierre), fermes, chasse,
+- 3 âges, 19 unités, 18 bâtiments, 37 technologies : villageois, récolte (bois, nourriture, or, pierre), fermes, chasse, pêche,
   construction, armées, béliers et catapultes, tours et château, brouillard de guerre
+- Le **port** et les **bateaux** (barques de pêche, drakkars et navires vénètes qui se battent sur la rivière), le **marché**
+  (achat et vente de ressources aux cours variables), le **Scriptorium / Cercle des druides** (recherches de médecine, de
+  cartographie…), les **héros** Clovis et Vercingétorix (aura d'attaque) et la **merveille** (tenez-la 10 minutes pour gagner)
 - Application de bureau Windows (un seul `.exe`), tout est dessiné par le code (aucune image externe)
 
 ## Aperçu

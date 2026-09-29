@@ -261,6 +261,15 @@ function drawArm(ctx, sp, sh, el, hand, far) {
     const c = sp.trim2 && sl === 'long' ? tone(sp.trim2, dk) : tone(cf, -0.32);
     line(ctx, wx - Math.cos(ang) * 0.85 * z, wy - Math.sin(ang) * 0.85 * z, wx + Math.cos(ang) * 0.85 * z, wy + Math.sin(ang) * 0.85 * z, c, 0.6 * z);
   }
+  if (sp.bracelet) {
+    // Bracelet d'or au poignet
+    const wx = el[0] + (hand[0] - el[0]) * 0.86;
+    const wy = el[1] + (hand[1] - el[1]) * 0.86;
+    const ang = Math.atan2(hand[1] - el[1], hand[0] - el[0]) + Math.PI / 2;
+    const bc = tone(sp.bracelet, dk);
+    line(ctx, wx - Math.cos(ang) * 1.0 * z, wy - Math.sin(ang) * 1.0 * z, wx + Math.cos(ang) * 1.0 * z, wy + Math.sin(ang) * 1.0 * z, edge(bc, 0.8), 1.2 * z);
+    line(ctx, wx - Math.cos(ang) * 0.9 * z, wy - Math.sin(ang) * 0.9 * z, wx + Math.cos(ang) * 0.9 * z, wy + Math.sin(ang) * 0.9 * z, bc, 0.75 * z);
+  }
   const hc = tone(sp.gloves || sp.skin, dk);
   ctx.beginPath();
   ell(ctx, hand[0], hand[1], 1.0 * z, 1.0 * z);
@@ -527,6 +536,25 @@ function drawTorso(ctx, sp, R, P) {
     ctx.quadraticCurveTo(1.5, -7.4, -0.2, -7.9);
     ctx.quadraticCurveTo(-2.4, -7.6, -3.7, -6.6);
     paint(ctx, sideGrad(ctx, -3.8, 3.4, sp.fur, 0.25, -0.2, -8), edge(sp.fur), lw);
+    // Poils clairs
+    ctx.strokeStyle = rgba(tone(sp.fur, 0.45), 0.7);
+    ctx.lineWidth = 0.35;
+    ctx.beginPath();
+    for (const [x, y] of [[-2.8, -8.4], [-1.2, -9.1], [0.6, -9.0], [2.0, -8.6]]) {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 0.5, y + 1.0);
+    }
+    ctx.stroke();
+  }
+  if (sp.fibula) {
+    // Fibule d'or qui ferme le manteau sur l'épaule
+    ctx.beginPath();
+    ell(ctx, -1.6, -7.6, 1.15, 1.15);
+    paint(ctx, ballGrad(ctx, -1.6, -7.6, 1.3, sp.fibula, 0.5, -0.3), rgba('#5a3a08', 0.9), 0.4);
+    ctx.fillStyle = '#c8302a';
+    ctx.beginPath();
+    ell(ctx, -1.6, -7.6, 0.4, 0.4);
+    ctx.fill();
   }
   ctx.restore();
 }
@@ -540,19 +568,40 @@ function drawCape(ctx, sp, R, P) {
   ctx.scale(z, z);
   const fl = P.cape;
   const len = sp.capeLen || 9;
+  const w = sp.capeW || 1;
+  const bot = len - 9 + 7.2 - fl * 1.2;
   ctx.beginPath();
   ctx.moveTo(-3.0, -8.6);
-  ctx.quadraticCurveTo(-5.2 - fl * 1.5, -3.0, -5.8 - fl * 3.2, len - 9 + 7.2 - fl * 1.2);
-  ctx.quadraticCurveTo(-3.2 - fl * 1.5, len - 9 + 8.6 - fl * 0.6, -0.6, len - 9 + 7.8);
+  ctx.quadraticCurveTo((-5.2 - fl * 1.5) * w, -3.0, (-5.8 - fl * 3.2) * w, bot);
+  ctx.quadraticCurveTo((-3.2 - fl * 1.5) * w, len - 9 + 8.6 - fl * 0.6, -0.6, len - 9 + 7.8);
   ctx.lineTo(1.6, -8.4);
   ctx.closePath();
-  paint(ctx, sideGrad(ctx, -6, 2, c, 0.12, -0.35, 0), edge(c, 0.7), 0.7 / z);
+  if (sp.capeCheck) {
+    // Manteau à carreaux (laine gauloise) : motif puis ombrage translucide
+    ctx.fillStyle = checkPattern(ctx, sp.capeCheck[0], sp.capeCheck[1], 3.4);
+    ctx.fill();
+    ctx.fillStyle = shadeOverlay(ctx, -6.5 * w, 2, 0, 0.16, 0.42);
+    ctx.fill();
+    ctx.strokeStyle = edge(c, 0.7);
+    ctx.lineWidth = 0.7 / z;
+    ctx.stroke();
+  } else paint(ctx, sideGrad(ctx, -6 * w, 2, c, 0.12, -0.35, 0), edge(c, 0.7), 0.7 / z);
   ctx.strokeStyle = rgba(tone(c, -0.45), 0.55);
   ctx.lineWidth = 0.45;
   ctx.beginPath();
   ctx.moveTo(-3.4, -6.5);
-  ctx.quadraticCurveTo(-4.4 - fl, -1.5, -4.6 - fl * 2.2, len - 9 + 7.4);
+  ctx.quadraticCurveTo((-4.4 - fl) * w, -1.5, (-4.6 - fl * 2.2) * w, len - 9 + 7.4);
   ctx.stroke();
+  if (sp.capeTrim) {
+    // Galon (fourrure ou broderie) le long de l'ourlet
+    ctx.beginPath();
+    ctx.moveTo((-5.8 - fl * 3.2) * w, bot);
+    ctx.quadraticCurveTo((-3.2 - fl * 1.5) * w, len - 9 + 8.6 - fl * 0.6, -0.6, len - 9 + 7.8);
+    ctx.lineTo(-0.7, len - 9 + 5.9);
+    ctx.quadraticCurveTo((-3.6 - fl * 1.5) * w, len - 9 + 6.5 - fl * 0.6, (-6.1 - fl * 3.2) * w, bot - 1.9);
+    ctx.closePath();
+    paint(ctx, sp.capeTrim, edge(sp.capeTrim, 0.6), 0.5);
+  }
   ctx.restore();
 }
 
@@ -662,12 +711,13 @@ function drawHead(ctx, sp, R) {
   if (sp.moustache) {
     // Longue moustache tombante gauloise
     const c = sp.moustache;
+    const ml = sp.moustacheLong ? 2.6 : 0;
     ctx.beginPath();
     ctx.moveTo(2.0, 1.25);
     ctx.quadraticCurveTo(3.1, 0.85, 3.95, 1.3);
-    ctx.quadraticCurveTo(4.4, 2.6, 3.7, 3.7);
-    ctx.quadraticCurveTo(3.3, 2.3, 2.6, 2.2);
-    ctx.quadraticCurveTo(2.0, 2.5, 1.5, 3.4);
+    ctx.quadraticCurveTo(4.5, 2.6 + ml * 0.5, 3.6, 3.7 + ml);
+    ctx.quadraticCurveTo(3.3, 2.3 + ml * 0.3, 2.6, 2.2);
+    ctx.quadraticCurveTo(2.0, 2.5 + ml * 0.3, 1.2, 3.4 + ml);
     ctx.quadraticCurveTo(1.3, 2.0, 2.0, 1.25);
     paint(ctx, tone(c, 0.05), edge(c, 0.8), lw);
   }
@@ -793,6 +843,40 @@ function drawHelmet(ctx, sp, r, lw) {
       ctx.quadraticCurveTo(-0.8, -r - 1.5, 0.4, -r - 2.2);
       paint(ctx, sideGrad(ctx, -6, 0.5, cc, 0.3, -0.25, -4), edge(cc, 0.8), lw);
     }
+    return;
+  }
+  if (k === 'crown') {
+    // Couronne d'or à fleurons sur cheveux longs (Clovis)
+    const cc = h.c || G.GOLD;
+    ctx.beginPath();
+    ctx.moveTo(-r - 0.25, -1.0);
+    ctx.lineTo(-r - 0.4, -r - 0.6);
+    ctx.lineTo(-r * 0.55, -r * 0.25 - 1.7);
+    ctx.lineTo(-r * 0.55 + 0.9, -r - 1.9);
+    ctx.lineTo(-0.4, -r * 0.9 - 1.0);
+    ctx.lineTo(0.7, -r - 2.7);
+    ctx.lineTo(1.7, -r * 0.85 - 1.0);
+    ctx.lineTo(2.6, -r - 1.7);
+    ctx.lineTo(r - 0.1, -r * 0.55 - 1.0);
+    ctx.lineTo(r + 0.15, -0.9);
+    ctx.quadraticCurveTo(0.3, -0.05, -r - 0.25, -1.0);
+    ctx.closePath();
+    paint(ctx, ballGrad(ctx, -0.8, -r - 0.5, r + 1.4, cc, 0.5, -0.3), edge(cc, 0.85), lw);
+    // Bandeau et pierres
+    ctx.strokeStyle = tone(cc, -0.3);
+    ctx.lineWidth = 0.45;
+    ctx.beginPath();
+    ctx.moveTo(-r - 0.2, -1.9);
+    ctx.quadraticCurveTo(0.3, -1.05, r + 0.1, -1.85);
+    ctx.stroke();
+    for (const [x, y, col] of [[-2.0, -2.15, '#d02a3a'], [0.4, -1.75, '#2a62c8'], [2.5, -2.05, '#d02a3a']]) {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ell(ctx, x, y, 0.5, 0.5);
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillRect(0.55, -r - 2.4, 0.5, 0.5);
     return;
   }
   if (k === 'leather' || k === 'kettle') {

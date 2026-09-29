@@ -5,7 +5,7 @@
 import * as art from '../src/client/art/index.js';
 import { BUILDINGS } from '../src/core/defs.js';
 
-const Z = Number(new URLSearchParams(location.search).get('z')) || 0.8; // zoom de la vue
+const Z = 0.8; // zoom de la vue
 const MW = 50;
 const MH = 44;
 const riverC = (s) => 2 + 3 * Math.sin(s * 0.12); // axe de la rivière (valeur de x − y) selon x + y
@@ -72,6 +72,10 @@ bld('tower', 'gauls', 0, 3, 18, 26);
 bld('castle', 'gauls', 0, 3, 17, 36);
 bld('forge', 'gauls', 0, 3, 25, 35);
 bld('stable', 'gauls', 0, 2, 9, 33);
+bld('dock', 'gauls', 0, 3, 14, 21);
+bld('market', 'gauls', 0, 3, 5, 14);
+bld('academy', 'gauls', 0, 3, 16, 30);
+bld('wonder', 'gauls', 0, 3, 9, 37);
 // Francs (rouge), rive droite
 bld('hall', 'franks', 1, 3, 30, 14);
 bld('temple', 'franks', 1, 3, 34, 22);
@@ -90,6 +94,10 @@ bld('stable', 'franks', 1, 2, 40, 29);
 bld('castle', 'franks', 1, 3, 44, 32);
 bld('lumber', 'franks', 1, 3, 20, 2);
 bld('siege', 'franks', 1, 3, 45, 13);
+bld('dock', 'franks', 1, 3, 25, 19);
+bld('market', 'franks', 1, 3, 23, 31);
+bld('academy', 'franks', 1, 3, 39, 10);
+bld('wonder', 'franks', 1, 3, 29, 35);
 // décombres
 objs.push({ kind: 'r', size: 2, variant: 1, cx: 44, cy: 26, key: 70 });
 

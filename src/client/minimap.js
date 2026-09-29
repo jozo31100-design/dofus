@@ -13,6 +13,7 @@ const COL = {
   gold: [244, 208, 60],
   stone: [170, 170, 166],
   berries: [200, 50, 100],
+  fish: [190, 240, 255],
 };
 
 export class Minimap {
@@ -67,7 +68,7 @@ export class Minimap {
     }
     for (const e of st.ents.values()) {
       if (e.cls !== 'node' || e.tx === undefined) continue;
-      const c = e.type === 'tree' ? COL.tree : e.type === 'gold' ? COL.gold : e.type === 'stone' ? COL.stone : COL.berries;
+      const c = e.type === 'tree' ? COL.tree : e.type === 'gold' ? COL.gold : e.type === 'stone' ? COL.stone : e.type === 'fish' ? COL.fish : COL.berries;
       const i = (e.ty * S + e.tx) * 4;
       img.data[i] = c[0];
       img.data[i + 1] = c[1];

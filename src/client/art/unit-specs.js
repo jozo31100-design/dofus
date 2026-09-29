@@ -50,6 +50,10 @@ export const METRICS = {
   francisque: { h: 35, w: 9 },
   gesate: { h: 34, w: 9 },
   healer: { h: 32, w: 8 },
+  fishingboat: { h: 36, w: 29 },
+  warship: { h: 76, w: 50 },
+  clovis: { h: 44, w: 11 },
+  vercingetorix: { h: 46, w: 11 },
 };
 
 /** Étendue maximale du dessin (gauche, haut, droite, bas) autour des pieds, marges d'animation comprises. */
@@ -59,6 +63,9 @@ export const BOX = {
   knight: [-40, -76, 62, 10],
   ram: [-44, -58, 56, 18],
   catapult: [-48, -80, 52, 20],
+  hero: [-34, -60, 38, 10],
+  fishingboat: [-72, -64, 60, 22],
+  warship: [-108, -100, 74, 30],
 };
 
 function base(civ, tm, z) {
@@ -272,6 +279,64 @@ export function unitSpec(type, civ, teamIdx) {
       hold = 'staff';
       break;
     }
+    case 'clovis': {
+      // Roi des Francs : couronne d'or sur cheveux longs, cotte, grand manteau bleu-gris à fourrure, fibule d'or
+      sp = base('franks', tm, 1.36);
+      sp.hair = '#8a5a32';
+      sp.beard = '#8a5a32';
+      sp.hairStyle = 'long';
+      sp.mail = { c: '#a6aeb6', hem: 6.4 };
+      sp.sleeves = 'mail';
+      sp.gloves = '#6a4428';
+      sp.tabard = tm.main;
+      sp.trim = GOLD;
+      sp.emblem = GOLD;
+      sp.helmet = { kind: 'crown', c: GOLD };
+      sp.fur = FRANK.furLight;
+      sp.fibula = GOLD;
+      sp.cape = '#5d6f86';
+      sp.capeLen = 13.5;
+      sp.capeW = 1.2;
+      sp.capeTrim = FRANK.furLight;
+      sp.bracelet = GOLD;
+      sp.shield = { kind: 'round', face: tm.main, s: 1.18, deco: 'royal' };
+      sp.weapon = 'sword';
+      sp.swordLen = 10;
+      sp.hilt = GOLD;
+      sp.hem = 7.4;
+      return { kind: 'human', sp, hold: 'sword', box: BOX.hero, hero: true };
+    }
+    case 'vercingetorix': {
+      // Chef des Arvernes : casque ailé d'or, longues moustaches, torque et bracelets, manteau à carreaux
+      sp = base('gauls', tm, 1.36);
+      sp.hair = '#c8752f';
+      sp.moustache = '#d99a3c';
+      sp.moustacheLong = true;
+      sp.mail = { c: '#a7acae', hem: 3.8 };
+      sp.sleeves = 'mail';
+      sp.gloves = '#6a4428';
+      sp.tabard = tm.main;
+      sp.trim = GOLD;
+      sp.emblem = GOLD;
+      sp.helmet = { kind: 'winged', c: GOLD, wing: '#f6e6a0' };
+      sp.torque = true;
+      sp.bracelet = GOLD;
+      sp.cape = tm.main;
+      sp.capeCheck = [tm.main, tone(tm.main, -0.42)];
+      sp.capeLen = 12.5;
+      sp.capeW = 1.15;
+      sp.shield = { kind: 'oval', face: tm.main, s: 1.22, deco: 'boar' };
+      sp.weapon = 'longsword';
+      sp.hilt = GOLD;
+      sp.hem = 4.8;
+      return { kind: 'human', sp, hold: 'sword', box: BOX.hero, hero: true };
+    }
+    case 'fishingboat':
+      return { kind: 'boat', ship: 'fish', civ, team: tm, box: BOX.fishingboat, sp: fisherSpec(civ, tm), hold: 'tool', type };
+    case 'warship': {
+      const arch = unitSpec('archer', civ, teamIdx).sp;
+      return { kind: 'boat', ship: 'war', civ, team: tm, box: BOX.warship, sp: fisherSpec(civ, tm), archer: { ...arch, sz: 0.84 }, hold: 'bow', type };
+    }
     case 'scout':
     case 'cavalry':
     case 'knight':
@@ -285,6 +350,20 @@ export function unitSpec(type, civ, teamIdx) {
       sp.weapon = 'sword';
   }
   return { kind: 'human', sp, hold, box: BOX.human };
+}
+
+/** Pêcheur à bord de la barque : villageois un peu plus petit, tête nue ou bonnet. */
+function fisherSpec(civ, tm) {
+  const sp = base(civ, tm, 0.9);
+  sp.weapon = null;
+  if (civ === 'gauls') {
+    sp.hem = 3.2;
+  } else {
+    sp.hair = FRANK.auburn;
+    sp.beard = FRANK.auburn;
+    sp.hem = 5.4;
+  }
+  return sp;
 }
 
 function mountedSpec(type, civ, tm) {

@@ -15,10 +15,14 @@ import { foundation, groundPatch } from './building-parts.js';
 import { GAULS } from './building-gauls.js';
 import { FRANKS } from './building-franks.js';
 import { farm, rubble, siteFlag } from './building-common.js';
+import { DOCK } from './building-dock.js';
+import { MARKET } from './building-market.js';
+import { ACADEMY } from './building-academy.js';
+import { WONDER } from './building-wonder.js';
 
 const DESIGNS = {
-  gauls: { ...GAULS, farm },
-  franks: { ...FRANKS, farm },
+  gauls: { ...GAULS, farm, dock: DOCK.gauls, market: MARKET.gauls, academy: ACADEMY.gauls, wonder: WONDER.gauls },
+  franks: { ...FRANKS, farm, dock: DOCK.franks, market: MARKET.franks, academy: ACADEMY.franks, wonder: WONDER.franks },
 };
 
 /**
@@ -28,6 +32,7 @@ const DESIGNS = {
 const HEIGHT = {
   hall: 150, house: 68, farm: 54, mill: 94, lumber: 67, mining: 67, barracks: 114, archery: 112,
   stable: 108, forge: 107, tower: 168, temple: 137, siege: 141, castle: 220,
+  dock: 101, market: 84, academy: 143, wonder: 224,
 };
 
 const cache = new Map();
@@ -150,6 +155,7 @@ export function getBuildingSprite(typeId, civ, teamIdx, stage = 3) {
     g.mode = 'draw';
     if (st === 0) {
       foundation(g, plans, design.found || {});
+      if (design.foundExtra) design.foundExtra(g);
       siteFlag(g);
     } else {
       if (design.ground) design.ground(g, plans);

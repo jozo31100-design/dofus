@@ -189,6 +189,7 @@ export const WORK = {
   repair: { T: 0.8, tool: 'hammer' },
   hunt: { T: 1.0, tool: 'spear' },
   butcher: { T: 1.2, tool: 'knife' },
+  fish: { T: 1.9, tool: null },
 };
 
 const CHOP = [

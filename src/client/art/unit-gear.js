@@ -440,6 +440,34 @@ export function shield(ctx, cx, cy, z, kind, face, s = 1, tilt = 0, deco = 'boss
         ctx.closePath();
       }
       ctx.fill();
+    } else if (deco === 'royal') {
+      // Bouclier royal : quartiers, large bordure d'or et fleur de lys centrale
+      ctx.fillStyle = rgba('#ffffff', 0.2);
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        const a0 = (i / 4) * TAU + 0.3;
+        ctx.moveTo(0, 0);
+        ctx.ellipse(0, 0, rx * 0.9, ry * 0.9, 0, a0, a0 + TAU / 8);
+        ctx.closePath();
+      }
+      ctx.fill();
+      ctx.beginPath();
+      ell(ctx, 0, 0, rx - 0.5 * k, ry - 0.5 * k);
+      ctx.strokeStyle = GOLD;
+      ctx.lineWidth = 0.95 * k;
+      ctx.stroke();
+      ctx.beginPath();
+      ell(ctx, 0, 0, rx * 0.55, ry * 0.55);
+      ctx.strokeStyle = rgba(GOLD, 0.7);
+      ctx.lineWidth = 0.4 * k;
+      ctx.stroke();
+      ctx.fillStyle = GOLD;
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * TAU;
+        ctx.beginPath();
+        ell(ctx, Math.cos(a) * rx * 0.78, Math.sin(a) * ry * 0.78, 0.28 * k, 0.28 * k);
+        ctx.fill();
+      }
     } else if (deco === 'cross') {
       ctx.fillStyle = rgba('#ffffff', 0.5);
       ctx.fillRect(-0.6 * k, -ry * 0.85, 1.2 * k, ry * 1.7);

@@ -232,6 +232,50 @@ export function generateMap(seed = DEFAULT_SEED) {
     for (let i = 0; i < 4; i++) addAnimal('deer', hx + (rng() - 0.5) * 3, hy + (rng() - 0.5) * 3);
   }
 
+
+  // --- Poissons : quelques bancs dans l'étang de chaque camp et le long de la rivière (jumeaux en miroir) --------
+  const isDeep = (tx, ty) => tx >= 0 && ty >= 0 && tx < S && ty < S && terrain[ty * S + tx] === WATER;
+  const deepInterior = (tx, ty) => {
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!isDeep(tx + dx, ty + dy)) return false;
+    return true;
+  };
+  const fishTiles = [];
+  function addFish(tx, ty) {
+    if (!deepInterior(tx, ty)) return false;
+    const [mxT, myT] = mirrorTile(tx, ty);
+    if (mxT === tx && myT === ty) return false;
+    for (const f of fishTiles) {
+      if (Math.max(Math.abs(f[0] - tx), Math.abs(f[1] - ty)) < 2) return false;
+      if (Math.max(Math.abs(f[0] - mxT), Math.abs(f[1] - myT)) < 2) return false;
+    }
+    fishTiles.push([tx, ty], [mxT, myT]);
+    nodes.push({ type: 'fish', x: tx, y: ty, amount: NODES.fish.amount });
+    nodes.push({ type: 'fish', x: mxT, y: myT, amount: NODES.fish.amount });
+    return true;
+  }
+  function fishCluster(cx, cy, n, R = 4) {
+    const cand = [];
+    for (let dy = -R; dy <= R; dy++) {
+      for (let dx = -R; dx <= R; dx++) {
+        const tx = Math.round(cx) + dx;
+        const ty = Math.round(cy) + dy;
+        if (!deepInterior(tx, ty)) continue;
+        cand.push({ tx, ty, d: Math.hypot(tx - cx, ty - cy) + rng() * 1.2 });
+      }
+    }
+    cand.sort((a, b) => a.d - b.d);
+    let placed = 0;
+    for (const c of cand) {
+      if (placed >= n) break;
+      if (addFish(c.tx, c.ty)) placed++;
+    }
+  }
+  for (const p of PONDS) fishCluster(p.x, p.y, 4, 3);
+  for (const sPos of [24, 42, 74]) {
+    const d = riverCenter(sPos);
+    fishCluster((sPos + d) / 2, (sPos - d) / 2, 3, 4);
+  }
+
   // --- Accès : on abat les arbres qui enferment une ressource --------------------------------
   carveAccess(terrain, nodes);
 
@@ -282,7 +326,7 @@ function carveAccess(terrain, nodes) {
   for (let round = 0; round < 6; round++) {
     const seen = floodFrom(terrain, nodes, startX, startY);
     const stuck = nodes.filter((n) => {
-      if (n.type === 'tree') return false;
+      if (n.type === 'tree' || n.type === 'fish') return false;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         const x = n.x + dx;
         const y = n.y + dy;
@@ -320,7 +364,7 @@ export function checkMap(map) {
   if (set.size !== nodes.length) problems.push('nœuds superposés');
   for (const n of nodes) {
     if (!set.has(`${n.type}:${size - 1 - n.x},${size - 1 - n.y}`)) problems.push(`nœud sans jumeau ${key(n)}`);
-    if (terrain[n.y * size + n.x] !== GRASS) problems.push(`nœud hors de l'herbe ${key(n)}`);
+    if (n.type === 'fish' ? terrain[n.y * size + n.x] !== WATER : terrain[n.y * size + n.x] !== GRASS) problems.push(`nœud mal placé ${key(n)}`);
   }
   // accessibilité : les deux salles sont reliées à pied
   const start = starts[0];
@@ -330,7 +374,7 @@ export function checkMap(map) {
   // chaque nœud de ressource utile est atteignable (au moins une case voisine accessible)
   let unreachable = 0;
   for (const n of nodes) {
-    if (n.type === 'tree') continue;
+    if (n.type === 'tree' || n.type === 'fish') continue;
     let ok = false;
     for (let dy = -1; dy <= 1 && !ok; dy++) for (let dx = -1; dx <= 1; dx++) {
       const x = n.x + dx;

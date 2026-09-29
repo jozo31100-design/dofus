@@ -158,3 +158,186 @@ export function drawBerries(ctx, variant, frac) {
   }
   return 28;
 }
+
+// ---------------------------------------------------------------------------
+// Banc de poissons (sur l'eau) : rides concentriques, poissons argentés entrevus sous la surface,
+// éclaboussure et poisson qui saute. Dessin à plat dans le losange 64 × 32 de la case (origine au centre).
+// ---------------------------------------------------------------------------
+
+/** Poisson vu du dessus, dans le plan de l'eau (squelette aplati 2:1 par l'appelant), long de len px. */
+function flatFish(ctx, x, y, len, ang, tint, depth) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(1, 0.55);
+  ctx.rotate(ang);
+  const w = len * 0.25;
+  // Halo de remous autour du poisson
+  ctx.beginPath();
+  ell(ctx, 0, 0, len * 0.68, w * 2.2);
+  ctx.fillStyle = 'rgba(200,236,250,0.2)';
+  ctx.fill();
+  // Corps : dos sombre bleuté, flancs argentés, ventre clair (vu à travers l'eau : légèrement transparent)
+  ctx.globalAlpha = 1 - depth * 0.15;
+  ctx.beginPath();
+  ctx.moveTo(len * 0.5, 0);
+  ctx.quadraticCurveTo(len * 0.22, -w * 1.25, -len * 0.24, -w * 0.55);
+  ctx.lineTo(-len * 0.42, 0);
+  ctx.lineTo(-len * 0.24, w * 0.55);
+  ctx.quadraticCurveTo(len * 0.22, w * 1.25, len * 0.5, 0);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, -w, 0, w);
+  g.addColorStop(0, tone(tint, -0.42));
+  g.addColorStop(0.4, tint);
+  g.addColorStop(1, '#ffffff');
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(8,34,62,0.85)';
+  ctx.lineWidth = 0.7;
+  ctx.stroke();
+  // Queue
+  ctx.beginPath();
+  ctx.moveTo(-len * 0.4, 0);
+  ctx.lineTo(-len * 0.66, -w * 1.5);
+  ctx.quadraticCurveTo(-len * 0.56, 0, -len * 0.66, w * 1.5);
+  ctx.closePath();
+  ctx.fillStyle = tone(tint, -0.12);
+  ctx.fill();
+  ctx.stroke();
+  // Œil et reflet du flanc
+  ctx.fillStyle = '#101c28';
+  ctx.beginPath();
+  ell(ctx, len * 0.3, -w * 0.28, 0.6, 0.6);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(-len * 0.1, -w * 0.2);
+  ctx.lineTo(len * 0.22, -w * 0.32);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Poisson qui saute : corps arqué debout au-dessus de l'eau, gouttes autour, (x, y) = point d'impact sur l'eau. */
+function jumpFish(ctx, x, y, s, side = 1, ang = 0.85) {
+  // Éclaboussure : couronne de gouttes et double rides
+  ctx.strokeStyle = 'rgba(240,252,255,0.9)';
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.ellipse(x, y, 7 * s, 3.2 * s, 0, 0, TAU);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(240,252,255,0.45)';
+  ctx.beginPath();
+  ctx.ellipse(x, y, 11 * s, 5 * s, 0, 0, TAU);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(244,252,255,0.95)';
+  for (const [dx, dy, r] of [[-6, -3.4, 1.1], [-3.4, -6.2, 0.9], [5.6, -4.6, 1.0], [8.6, -1.6, 0.8], [2.6, -7.4, 0.8], [-8.2, -0.4, 0.8], [7.0, -7.0, 0.7]]) {
+    ctx.beginPath();
+    ell(ctx, x + dx * s, y + dy * s, r * s, r * s * 1.25);
+    ctx.fill();
+  }
+  // Poisson : arc de la queue (bas gauche) à la tête (haut droite)
+  ctx.save();
+  ctx.translate(x + 1.5 * s * side, y - 9.5 * s);
+  ctx.scale(side, 1);
+  ctx.rotate(-ang);
+  ctx.scale(s, s);
+  const len = 15;
+  const w = 3.6;
+  ctx.beginPath();
+  ctx.moveTo(len * 0.5, 0);
+  ctx.quadraticCurveTo(len * 0.2, -w * 1.15, -len * 0.25, -w * 0.5);
+  ctx.lineTo(-len * 0.42, 0.2);
+  ctx.lineTo(-len * 0.25, w * 0.55);
+  ctx.quadraticCurveTo(len * 0.2, w * 1.25, len * 0.5, 0);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, -w, 0, w);
+  g.addColorStop(0, '#48708c');
+  g.addColorStop(0.4, '#a9c4d4');
+  g.addColorStop(0.75, '#e6f0f5');
+  g.addColorStop(1, '#ffffff');
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(14,40,64,0.85)';
+  ctx.lineWidth = 0.7;
+  ctx.stroke();
+  // Queue en éventail
+  ctx.beginPath();
+  ctx.moveTo(-len * 0.4, 0);
+  ctx.lineTo(-len * 0.68, -w * 1.7);
+  ctx.quadraticCurveTo(-len * 0.56, 0, -len * 0.68, w * 1.7);
+  ctx.closePath();
+  ctx.fillStyle = '#5b83a0';
+  ctx.fill();
+  ctx.stroke();
+  // Nageoire dorsale, œil, reflet
+  ctx.beginPath();
+  poly(ctx, [-len * 0.02, -w * 1.0, len * 0.1, -w * 2.2, len * 0.2, -w * 1.05]);
+  ctx.fillStyle = '#4a7290';
+  ctx.fill();
+  ctx.fillStyle = '#0e1a26';
+  ctx.beginPath();
+  ell(ctx, len * 0.33, -w * 0.25, 0.75, 0.75);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(-len * 0.16, -w * 0.05);
+  ctx.quadraticCurveTo(len * 0.1, -w * 0.5, len * 0.3, -w * 0.45);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * Banc de poissons : frac = quantité restante (0..1) → de 1 à 6 poissons, moins de rides et plus de saut
+ * quand le banc s'épuise. Renvoie la hauteur visible (≈ 20 px).
+ */
+export function drawFish(ctx, variant, frac) {
+  const rnd = mulberry32(5501 + variant * 131);
+  const n = Math.max(1, Math.min(6, Math.round(6 * clamp(frac))));
+  // Ombre du banc sous la surface (eau plus sombre)
+  const sg = ctx.createRadialGradient(0, 1, 0, 0, 1, 24);
+  sg.addColorStop(0, 'rgba(8,36,70,0.5)');
+  sg.addColorStop(0.6, 'rgba(8,36,70,0.28)');
+  sg.addColorStop(1, 'rgba(8,36,70,0)');
+  ctx.save();
+  ctx.translate(0, 1);
+  ctx.scale(1, 0.5);
+  ctx.fillStyle = sg;
+  ctx.beginPath();
+  ctx.arc(0, 0, 24, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+  // Anneaux concentriques de rides (aplatis 2:1 : posés sur l'eau)
+  const rings = frac > 0.55 ? 3 : 2;
+  for (let i = 0; i < rings; i++) {
+    const r = 14 + i * 6.6 + (variant % 3) * 0.8;
+    const a = 0.8 - i * 0.2;
+    ctx.strokeStyle = `rgba(232,248,255,${a})`;
+    ctx.lineWidth = 1.5 - i * 0.25;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 1.02, r * 0.5, 0, 0.1 + i * 0.5, TAU - 0.15 - i * 0.4);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(10,52,96,${0.4 - i * 0.08})`;
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.ellipse(0.4, 1.4, r * 1.02, r * 0.5, 0, 0.6 + i * 0.4, TAU * 0.62 + i * 0.4);
+    ctx.stroke();
+  }
+  // Poissons sous la surface, disposés en spirale dans le banc
+  const tints = ['#a3c2d6', '#b0cbdc', '#9dbdd2'];
+  const pos = [];
+  const a0 = rnd() * TAU;
+  for (let i = 0; i < n; i++) {
+    const a = a0 + i * 2.4 + rnd() * 0.5;
+    const d = i === 0 ? 0.2 : 0.55 + rnd() * 0.4;
+    pos.push([Math.cos(a) * 12.5 * d, Math.sin(a) * 6.4 * d, a + Math.PI / 2 + (rnd() - 0.5) * 0.9]);
+  }
+  pos.sort((p, q) => p[1] - q[1]);
+  pos.forEach(([x, y, ang], i) => flatFish(ctx, x, y, 12.5 + rnd() * 3, ang, tints[i % 3], (i % 2) * 0.5));
+  // Poisson qui saute (image figée) si le banc est encore riche
+  if (frac > 0.34) {
+    const side = variant % 2 ? -1 : 1;
+    jumpFish(ctx, (13 + (variant % 3) * 1.5) * side, 4 + (variant % 3), 1.3 + (variant % 2) * 0.1, side, 0.85 + (variant % 3) * 0.14);
+  }
+  return 20;
+}

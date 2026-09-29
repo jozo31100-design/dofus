@@ -7,6 +7,7 @@ import { getBuildingSprite } from './buildings.js';
 import { getNodeSprite, drawAnimal } from './nature.js';
 import { TAU, PI, tone, rgba, capsule, ell, poly, line } from './unit-kit.js';
 import * as I from './icon-glyphs.js';
+import * as J from './icon-glyphs2.js';
 
 const INK = '#23170e';
 const iconCache = new Map();
@@ -287,6 +288,40 @@ const ICONS = {
   castle(g) {
     I.gCastle(g, 32, 32, 1.15);
   },
+  // Port, marché, héros
+  fish(g) {
+    J.gFish(g, 34, 34, 0.98, -0.35);
+  },
+  coin(g) {
+    J.gCoin(g, 30, 30, 1.18);
+  },
+  crown(g) {
+    J.gCrown(g, 32, 36, 1.05);
+  },
+  ship(g) {
+    J.gShip(g, 32, 34, 0.98);
+  },
+  hero(g) {
+    J.gHelm(g, 30, 38, 0.98, true);
+  },
+  'buy-food'(g) {
+    J.gTrade(g, 'food', 'buy');
+  },
+  'buy-wood'(g) {
+    J.gTrade(g, 'wood', 'buy');
+  },
+  'buy-stone'(g) {
+    J.gTrade(g, 'stone', 'buy');
+  },
+  'sell-food'(g) {
+    J.gTrade(g, 'food', 'sell');
+  },
+  'sell-wood'(g) {
+    J.gTrade(g, 'wood', 'sell');
+  },
+  'sell-stone'(g) {
+    J.gTrade(g, 'stone', 'sell');
+  },
 };
 
 /** Noms d'icônes disponibles. */
@@ -296,7 +331,9 @@ export const ICON_NAMES = Object.keys(ICONS);
  * Icône générique dans le carré (0,0)-(size,size) du contexte (ressources : food, wood, gold, stone, pop ;
  * actions : attack stop delete repair garrison ungarrison cancel rally build-eco build-mil age hammer sword
  * shield bow flag menu pause idle-villager clock ; en plus : heal check lock axe pickaxe meat berries wheat
- * house castle).
+ * house castle fish coin crown ship hero ; marché : buy-food buy-wood buy-stone sell-food sell-wood sell-stone
+ * = la pièce d'or et le symbole de la ressource reliés par une flèche : « buy » = or → ressource (flèche verte),
+ * « sell » = ressource → or (flèche orange)).
  */
 export function drawIcon(ctx, name, size) {
   const f = ICONS[name];
@@ -342,7 +379,13 @@ export function drawPortrait(ctx, id, civ, teamIdx, size) {
     ctx.beginPath();
     ctx.rect(0, 0, size, size);
     ctx.clip();
-    if (wide) {
+    if (id === 'fishingboat' || id === 'warship') {
+      // Bateaux : coque entière, voile comprise, cadrée sur la ligne de flottaison
+      const war = id === 'warship';
+      const k = (size * 0.98) / (war ? 100 : 62);
+      ctx.translate(size * 0.5, size * (war ? 0.8 : 0.74));
+      ctx.scale(k, k);
+    } else if (wide) {
       // Montures et engins : silhouette entière
       const k = Math.min((size * 0.9) / m.h, (size * 0.94) / (m.w * 2.3));
       ctx.translate(size * (m.h > 45 && m.w < 25 ? 0.42 : 0.47), size * 0.95);
@@ -388,6 +431,19 @@ const TECH_ART = {
   bloodlines: { cat: 'mil', draw: (g) => I.gHorseHead(g, 32, 34, 1.05, '#f0ece2', null) },
   frank_axe: { cat: 'unique', draw: (g) => { glow(g, '#6aa0ff'); I.gAxe(g, 30, 34, -PI / 3, 1.0, '#e8eef4', '#6a4226'); } },
   gaul_fury: { cat: 'unique', draw: (g) => furyGlyph(g) },
+  // Moulin, port, marché, académie
+  hunt1: { cat: 'eco', draw: (g) => J.gDog(g, 32, 34, 1.0) },
+  nets1: { cat: 'eco', lvl: 1, draw: (g) => J.gNet(g, 32, 32, 1.0, false) },
+  nets2: { cat: 'eco', lvl: 2, draw: (g) => J.gNet(g, 32, 32, 1.0, true) },
+  hull1: { cat: 'mil', lvl: 1, draw: (g) => J.gHull(g, 32, 34, 0.98) },
+  naval_atk: { cat: 'mil', lvl: 2, draw: (g) => J.gBallista(g, 32, 34, 0.98) },
+  trade1: { cat: 'eco', lvl: 1, draw: (g) => J.gScales(g, 32, 34, 0.98) },
+  trade2: { cat: 'eco', lvl: 2, draw: (g) => J.gCoinBag(g, 32, 34, 0.98) },
+  med1: { cat: 'mil', lvl: 1, draw: (g) => J.gHerbs(g, 32, 34, 0.98) },
+  med2: { cat: 'mil', lvl: 2, draw: (g) => { glow(g, '#ffe070'); J.gBless(g, 32, 32, 0.96); } },
+  scout1: { cat: 'eco', draw: (g) => J.gSpyglass(g, 32, 34, 0.98) },
+  eco1: { cat: 'eco', draw: (g) => J.gCalendar(g, 32, 34, 0.98) },
+  strat1: { cat: 'mil', draw: (g) => J.gStrat(g, 32, 34, 0.98) },
 };
 
 const FRAME = {

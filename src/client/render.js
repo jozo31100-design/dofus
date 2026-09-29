@@ -10,7 +10,7 @@ import { Fx } from './fx.js';
 
 const TW2 = art.TILE_W / 2; // 32 px par unité de (x - y)
 const TH2 = art.TILE_H / 2; // 16 px par unité de (x + y)
-const WORK_NAMES = [null, 'wood', 'mine', 'farm', 'forage', 'build', 'repair', 'hunt', 'butcher', 'heal'];
+const WORK_NAMES = [null, 'wood', 'mine', 'farm', 'forage', 'build', 'repair', 'hunt', 'butcher', 'heal', 'fish'];
 const CARRY_NAMES = [null, 'food', 'wood', 'gold', 'stone'];
 const RING = { own: '#5dff72', foe: '#ff5a4a', gaia: '#f4e6a0' };
 
@@ -91,6 +91,7 @@ export class Renderer {
     const types = Object.keys(UNITS);
     let n = 0;
     for (const type of types) {
+      if (UNITS[type].naval || UNITS[type].limit) continue; // bateaux et héros : cuits à la demande
       // le villageois travaille beaucoup : ses poses de travail sont prêtes aussi
       const anims = type === 'villager' ? ['idle', 'walk', 'attack', 'work'] : ['idle', 'walk', 'attack'];
       for (const [civ, team] of this.combos()) {

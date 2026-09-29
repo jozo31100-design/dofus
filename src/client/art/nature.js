@@ -1,14 +1,14 @@
 // Ressources, gibier et projectiles (API publique : getNodeSprite, drawAnimal, drawProjectile).
 import { TAU, clamp, fract, rgba, ell, poly, paint, line, ballGrad, setLightSide, bake, bakeSprite, SpriteCache, ScalePicker, blit } from './unit-kit.js';
 import { drawTree, treeShadow, TREE_KINDS } from './nature-trees.js';
-import { drawBerries, drawGold, drawStone } from './nature-nodes.js';
+import { drawBerries, drawGold, drawStone, drawFish } from './nature-nodes.js';
 import { drawBeast, drawCarcass, grazePose, walkPoseA, fleePose, fallPoseA } from './nature-animals.js';
 import { francisca } from './unit-gear.js';
 
 const spriteCache = new Map();
 
 /** Nombre de variantes distinctes par type de ressource. */
-export const NODE_VARIANTS = { tree: TREE_KINDS.length * 2, berries: 3, gold: 3, stone: 3, carcass: 2 };
+export const NODE_VARIANTS = { tree: TREE_KINDS.length * 2, berries: 3, gold: 3, stone: 3, carcass: 2, fish: 4 };
 
 function groundShadow(rx, ry, cx = 2, a = 0.28) {
   return (ctx) => {
@@ -47,7 +47,7 @@ function dirtShadow(c) {
 /**
  * Sprite statique d'une ressource. Renvoie { canvas, ax, ay, h } (ax, ay : point au sol au centre de
  * la case dans le canvas, h : hauteur visible en px). variant est pris modulo le nombre de variantes ;
- * frac ∈ ]0,1] = quantité restante (ignorée pour les arbres).
+ * frac ∈ ]0,1] = quantité restante (ignorée pour les arbres). type 'fish' : banc de poissons sur l'eau (~20 px).
  */
 export function getNodeSprite(type, variant = 0, frac = 1) {
   const nv = NODE_VARIANTS[type] || 1;
@@ -71,6 +71,9 @@ export function getNodeSprite(type, variant = 0, frac = 1) {
     r = bake([-38, -40, 40, 22], 1, (ctx) => { h = drawGold(ctx, v, q); }, dirtShadow('#6e5a40'), ['#1c140a', 0.5]);
   } else if (type === 'stone') {
     r = bake([-38, -40, 40, 22], 1, (ctx) => { h = drawStone(ctx, v, q); }, dirtShadow('#766c5c'), ['#1c1a14', 0.5]);
+  } else if (type === 'fish') {
+    // Banc de poissons : posé sur l'eau, sans ombre ni contour (rides claires et poissons argentés)
+    r = bake([-34, -34, 34, 20], 1, (ctx) => { h = drawFish(ctx, v, q); }, null, null);
   } else if (type === 'carcass') {
     r = bake([-22, -22, 24, 10], 1, (ctx) => { drawCarcass(ctx, v === 1 ? 'sheep' : 'deer', q); }, groundShadow(14, 5, 1), ['#1c120a', 0.45]);
     h = 12;

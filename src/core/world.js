@@ -6,8 +6,9 @@
 
 import {
   DT, MAP_SIZE, DEFS, UNITS, BUILDINGS, ANIMALS, NODES, START_RESOURCES, MAX_POP, RESOURCES, computeStats,
+  TRADE_RES, WONDER_TIME,
 } from './defs.js';
-import { generateMap, WATER, DEFAULT_SEED } from './mapgen.js';
+import { generateMap, WATER, FORD, DEFAULT_SEED } from './mapgen.js';
 import { PathGrid } from './path.js';
 import { mulberry32 } from './util.js';
 import { updateUnit, separateUnits, updateAnimal } from './units.js';
@@ -16,6 +17,7 @@ import { recalcPop } from './common.js';
 import { updateProjectiles } from './combat.js';
 import { computeVision } from './vision.js';
 import { applyCommand } from './commands.js';
+import { HERO_AURA } from './defs.js';
 import { createBot } from './ai.js';
 
 const CELL = 2;
@@ -37,8 +39,13 @@ export class World {
     this.terrainBlock = new Uint8Array(S * S);
     for (let i = 0; i < S * S; i++) this.terrainBlock[i] = this.terrain[i] === WATER ? 1 : 0;
     this.blocked = Uint8Array.from(this.terrainBlock);
+    // grille des bateaux : seules l'eau profonde et les gués sont navigables (bâtiments et bancs de poissons les bloquent)
+    this.terrainBlockW = new Uint8Array(S * S);
+    for (let i = 0; i < S * S; i++) this.terrainBlockW[i] = this.terrain[i] === WATER || this.terrain[i] === FORD ? 0 : 1;
+    this.blockedW = Uint8Array.from(this.terrainBlockW);
     this.occ = new Int32Array(S * S);
     this.pf = new PathGrid(S, this.blocked);
+    this.pfw = new PathGrid(S, this.blockedW);
     this.blockVersion = 0;
 
     this.entities = new Map();
@@ -56,6 +63,7 @@ export class World {
     this.over = false;
     this.winner = -1;
     this.revealMap = !!cfg.revealMap;
+    this.wonder = null; // { owner, id, endsAt } : compte à rebours de la merveille
 
     // grille spatiale pour les recherches de voisins
     this.cw = Math.ceil(S / CELL);
@@ -101,6 +109,8 @@ export class World {
       lostBuildings: 0,
       trained: 0,
       researched: 0,
+      prices: { food: 1, wood: 1, stone: 1 }, // prix relatifs du marché (1 = 100 unités contre 100 d'or)
+      traded: 0,
     };
   }
 
@@ -121,6 +131,11 @@ export class World {
 
   get(id) {
     return this.entities.get(id);
+  }
+
+  /** Grille de chemins d'une unité : l'eau pour les bateaux, la terre pour les autres. */
+  gridOf(u) {
+    return u.naval ? this.pfw : this.pf;
   }
 
   stat(owner, type) {
@@ -153,6 +168,7 @@ export class World {
       hp: st.hp,
       maxHp: st.hp,
       radius: def.radius,
+      naval: !!def.naval,
       order: null,
       queue: [],
       path: null,
@@ -317,7 +333,7 @@ export class World {
     for (let y = e.ty; y < e.ty + e.h; y++) {
       for (let x = e.tx; x < e.tx + e.w; x++) {
         this.occ[y * S + x] = e.id;
-        if (block) this.blocked[y * S + x] = 1;
+        if (block) { this.blocked[y * S + x] = 1; this.blockedW[y * S + x] = 1; }
       }
     }
   }
@@ -329,6 +345,7 @@ export class World {
       for (let x = e.tx; x < e.tx + e.w; x++) {
         if (this.occ[y * S + x] === e.id) this.occ[y * S + x] = 0;
         this.blocked[y * S + x] = this.terrainBlock[y * S + x];
+        this.blockedW[y * S + x] = this.terrainBlockW[y * S + x];
       }
     }
   }
@@ -458,7 +475,41 @@ export class World {
     separateUnits(this);
     this.sweepDead();
     if (this.tick % 4 === 0) for (const pl of this.players) if (!pl.ai) computeVision(this, pl);
-    if (this.tick % 20 === 0) this.checkVictory();
+    if (this.tick % 10 === 0) this.updateAuras();
+    if (this.tick % 20 === 0) {
+      for (const pl of this.players) for (const r of TRADE_RES) pl.prices[r] += (1 - pl.prices[r]) * 0.01; // les prix reviennent vers 1
+      this.checkWonders();
+      this.checkVictory();
+    }
+  }
+
+  /** Les héros galvanisent les alliés proches (+15 % d'attaque, réévalué deux fois par seconde). */
+  updateAuras() {
+    for (const h of this.units) {
+      if (h.dead || h.inside || !DEFS[h.type].tags.includes('hero')) continue;
+      this.forUnitsNear(h.x, h.y, HERO_AURA.range, (v) => {
+        if (v.owner === h.owner && !v.dead) v.auraUntil = this.tick + 14;
+      });
+    }
+  }
+
+  /** Merveilles achevées : annonces du compte à rebours et victoire. */
+  checkWonders() {
+    for (const b of this.buildings) {
+      if (b.dead || !b.done || b.wonderEnds === undefined) continue;
+      const left = Math.round((b.wonderEnds - this.tick) / 20);
+      const pl = this.players[b.owner];
+      if ([300, 60, 30, 10].includes(left)) {
+        this.emit({ k: 'msg', to: -1, kind: 'warn', text: `${pl.name} gagnera dans ${left >= 60 ? `${left / 60} min` : `${left} s`} s'il garde sa merveille !` });
+      }
+      if (this.tick >= b.wonderEnds && !this.over) {
+        this.over = true;
+        this.winner = b.owner;
+        this.wonderWin = true;
+        this.emit({ k: 'over', winner: b.owner });
+        return;
+      }
+    }
   }
 
   checkVictory() {

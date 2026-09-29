@@ -2,9 +2,9 @@
 
 import {
   DT, DEFS, UNITS, BUILDINGS, TECHS, BUILD_EXPONENT, FARM_RESEED_COST, FARM_MAX_WORKERS, RESOURCES,
-  AGE_NAMES, trainableAt, techForCiv, RES_LABEL, nameOf,
+  AGE_NAMES, trainableAt, techForCiv, RES_LABEL, nameOf, TICK_RATE, TRADE_LOT, TRADE_RES, WONDER_TIME, tradeFee, tradeQuote,
 } from './defs.js';
-import { GRASS } from './mapgen.js';
+import { GRASS, WATER } from './mapgen.js';
 import { recalcPop, setOrder, finishOrder, freeSpotAround, ejectFromRect, distEdge, goalFor, REACH } from './common.js';
 import { buildingFire } from './combat.js';
 
@@ -43,6 +43,10 @@ function completeBuilding(world, b, pl) {
   b.hp = b.maxHp;
   recalcPop(world, pl);
   world.emit({ k: 'built', id: b.id, type: b.type, owner: b.owner, x: b.x, y: b.y });
+  if (BUILDINGS[b.type].wonder) {
+    b.wonderEnds = world.tick + WONDER_TIME * TICK_RATE;
+    world.emit({ k: 'msg', to: -1, kind: 'warn', text: `${nameOf(b.type, pl.civ)} de ${pl.name} est achevé : ${pl.name} gagnera dans ${Math.round(WONDER_TIME / 60)} minutes s'il n'est pas détruit !` });
+  }
   for (const u of world.units) {
     if (u.dead || u.owner !== b.owner || !u.order) continue;
     if ((u.order.t === 'build' || u.order.t === 'repair') && u.order.target === b.id) afterBuild(world, u, b);
@@ -113,7 +117,7 @@ function updateProduction(world, b, pl) {
 
 function spawnTrained(world, b, pl, type) {
   const r = b.rally;
-  const spot = freeSpotAround(world, b, r ? r.x : undefined, r ? r.y : undefined);
+  const spot = freeSpotAround(world, b, r ? r.x : undefined, r ? r.y : undefined, !!UNITS[type].naval);
   const u = world.addUnit(type, b.owner, spot.x, spot.y, true);
   pl.trained++;
   world.emit({ k: 'trained', id: u.id, type, owner: b.owner, x: spot.x, y: spot.y });
@@ -124,7 +128,12 @@ function spawnTrained(world, b, pl, type) {
 export function applyRally(world, u, r) {
   const t = r.tid ? world.get(r.tid) : null;
   const def = UNITS[u.type];
-  if (t && !t.dead) {
+  if (t && !t.dead && def.fisher) {
+    if (t.cls === 'node' && t.kind === 'fish') {
+      setOrder(u, { t: 'gather', target: t.id, phase: 'go', kind: 'fish', lx: t.x, ly: t.y });
+      return;
+    }
+  } else if (t && !t.dead) {
     if (def.worker && (t.cls === 'node' || (t.cls === 'animal') || (t.cls === 'building' && t.type === 'farm' && t.owner === u.owner))) {
       if (t.cls === 'building' && !t.done) setOrder(u, { t: 'build', target: t.id });
       else setOrder(u, { t: 'gather', target: t.id, phase: 'go', kind: t.cls === 'building' ? 'farm' : t.cls === 'animal' ? 'meat' : t.kind, lx: t.x, ly: t.y });
@@ -183,6 +192,12 @@ export function queueUnit(world, pl, b, type) {
   const def = UNITS[type];
   if (pl.age < def.age) return `Requiert l'${AGE_NAMES[def.age]}.`;
   if (b.queue.length >= 8) return 'La file d\'attente est pleine.';
+  if (def.limit) {
+    let n = 0;
+    for (const u of world.units) if (u.owner === pl.idx && u.type === type && !u.dead) n++;
+    for (const bb of world.buildings) if (bb.owner === pl.idx && !bb.dead) for (const it of bb.queue) if (it.kind === 'unit' && it.id === type) n++;
+    if (n >= def.limit) return `Vous ne pouvez avoir qu'un seul ${nameOf(type, pl.civ)}.`;
+  }
   const st = world.stat(pl.idx, type);
   const lack = costLack(pl, st.cost);
   if (lack) return `Pas assez de ${lack.toLowerCase()}.`;
@@ -260,6 +275,21 @@ export function placementError(world, pl, type, tx, ty) {
       if (!pl.ai && !world.revealMap && !pl.explored[i]) return 'Zone inexplorée.';
     }
   }
+  if (def.shore) {
+    // il faut au moins deux cases d'eau profonde libres contre l'emprise (pour que les bateaux puissent sortir)
+    let water = 0;
+    for (let k = -1; k <= n; k++) {
+      for (const [x, y] of [[tx + k, ty - 1], [tx + k, ty + n], [tx - 1, ty + k], [tx + n, ty + k]]) {
+        if (k < 0 || k >= n) continue; // les coins ne comptent pas
+        if (x < 0 || y < 0 || x >= S || y >= S) continue;
+        if (world.terrain[y * S + x] === WATER && !world.occ[y * S + x]) water++;
+      }
+    }
+    if (water < 2) return 'Un port se construit au bord de l\'eau profonde.';
+  }
+  if (def.wonder) {
+    for (const b of world.buildings) if (b.owner === pl.idx && !b.dead && b.type === type) return 'Vous ne pouvez bâtir qu\'une seule merveille.';
+  }
   return null;
 }
 
@@ -292,7 +322,9 @@ export function findDropOff(world, u, res) {
   let bd = Infinity;
   for (const b of world.buildings) {
     if (b.owner !== u.owner || !b.done || b.dead) continue;
-    if (!BUILDINGS[b.type].drop.includes(res)) continue;
+    const bdef = BUILDINGS[b.type];
+    if (!bdef.drop.includes(res)) continue;
+    if (u.naval && !bdef.shore) continue;
     const d = distEdge(u.x, u.y, b);
     if (d < bd) { bd = d; best = b; }
   }
@@ -303,13 +335,14 @@ export function findDropOff(world, u, res) {
 export function nodeAccessible(world, n) {
   if (n.w === 0) return true;
   const S = world.S;
+  const blocked = n.kind === 'fish' ? world.blockedW : world.blocked;
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
       if (dx === 0 && dy === 0) continue;
       const x = n.tx + dx;
       const y = n.ty + dy;
       if (x < 0 || y < 0 || x >= S || y >= S) continue;
-      if (world.blocked[y * S + x] === 0) return true;
+      if (blocked[y * S + x] === 0) return true;
     }
   }
   return false;
@@ -317,7 +350,7 @@ export function nodeAccessible(world, n) {
 
 /** Longueur du chemin à pied jusqu'à une ressource (Infinity si inaccessible). */
 function walkCost(world, u, n) {
-  const r = world.pf.find(u.x, u.y, goalFor(n, REACH.gather - 0.05), u.radius, 3000);
+  const r = world.gridOf(u).find(u.x, u.y, goalFor(n, REACH.gather - 0.05), u.radius, 3000);
   if (!r || r.partial) return Infinity;
   let len = 0;
   let px = u.x;
@@ -386,4 +419,35 @@ export function findFarmSlot(world, u, x, y) {
 
 export function buildingLabel(b, civ) {
   return nameOf(b.type, civ);
+}
+
+// ---------------------------------------------------------------------------
+// Marché : achat et vente de ressources contre de l'or
+// ---------------------------------------------------------------------------
+
+export const PRICE_MIN = 0.35;
+export const PRICE_MAX = 3;
+
+/** Vend (dir 'sell') ou achète (dir 'buy') un lot de 100 unités. Renvoie null ou un message d'erreur. */
+export function trade(world, pl, res, dir) {
+  if (!TRADE_RES.includes(res)) return 'Ressource inconnue.';
+  let market = false;
+  for (const b of world.buildings) if (b.owner === pl.idx && b.done && !b.dead && BUILDINGS[b.type].market) { market = true; break; }
+  if (!market) return 'Il faut un marché.';
+  const fee = tradeFee(pl.techs);
+  const price = pl.prices[res];
+  if (dir === 'sell') {
+    if (pl.res[res] < TRADE_LOT) return `Pas assez de ${RES_LABEL[res].toLowerCase()} (${TRADE_LOT} requis).`;
+    pl.res[res] -= TRADE_LOT;
+    pl.res.gold += tradeQuote(price, fee, true);
+    pl.prices[res] = Math.max(PRICE_MIN, price * 0.94);
+  } else {
+    const cost = tradeQuote(price, fee, false);
+    if (pl.res.gold < cost) return 'Pas assez d\'or.';
+    pl.res.gold -= cost;
+    pl.res[res] += TRADE_LOT;
+    pl.prices[res] = Math.min(PRICE_MAX, price * 1.08);
+  }
+  pl.traded++;
+  return null;
 }

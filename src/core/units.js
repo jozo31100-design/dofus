@@ -63,7 +63,7 @@ function pathStillClear(world, u) {
   let x = u.x;
   let y = u.y;
   for (let i = u.pathI; i < u.path.length; i += 2) {
-    if (!world.pf.wideLineClear(x, y, u.path[i], u.path[i + 1], 0.2)) return false;
+    if (!world.gridOf(u).wideLineClear(x, y, u.path[i], u.path[i + 1], 0.2)) return false;
     x = u.path[i];
     y = u.path[i + 1];
   }
@@ -157,7 +157,7 @@ function approach(world, u, st, target, reach) {
       return 'moving';
     }
     if (world.tick < u.repathAt && !u.path) return 'moving';
-    const r = world.pf.find(u.x, u.y, goalFor(target, reach - 0.05), u.radius);
+    const r = world.gridOf(u).find(u.x, u.y, goalFor(target, reach - 0.05), u.radius);
     u.repathAt = world.tick + (mobile ? 10 : 25);
     if (!r) return 'failed';
     setPath(world, u, r, target.x, target.y);
@@ -200,7 +200,7 @@ function doMove(world, u, o, st) {
   }
   if (!u.path && world.tick >= u.repathAt) {
     if (o.started && u.stuck === 0 && o.arrived) { finishOrder(u); return; }
-    const r = world.pf.find(u.x, u.y, { kind: 'point', x: o.x, y: o.y }, u.radius);
+    const r = world.gridOf(u).find(u.x, u.y, { kind: 'point', x: o.x, y: o.y }, u.radius);
     u.repathAt = world.tick + 20;
     o.started = true;
     if (!r || r.path.length === 0) { finishOrder(u); return; }
@@ -277,7 +277,7 @@ function doIdle(world, u, st) {
       setOrder(u, { t: 'attack', target: t.id, auto: true });
       u.leash = { x: u.x, y: u.y, r: radius + 9 };
     }
-  } else if (def.heal) {
+  } else if (st.heal) {
     let best = null;
     let bd = 8;
     world.forUnitsNear(u.x, u.y, 8, (v) => {
@@ -292,18 +292,18 @@ function doIdle(world, u, st) {
 }
 
 function doHeal(world, u, o, st) {
-  const def = DEFS[u.type];
+  const heal = st.heal;
   const t = world.get(o.target);
-  if (!def.heal || !t || t.dead || t.owner !== u.owner || t.hp >= t.maxHp) { finishOrder(u); return; }
-  const r = approach(world, u, st, t, def.heal.range - 0.6);
+  if (!heal || !t || t.dead || t.owner !== u.owner || t.hp >= t.maxHp) { finishOrder(u); return; }
+  const r = approach(world, u, st, t, heal.range - 0.6);
   if (r === 'reached') {
     u.face = Math.atan2(t.y - u.y, t.x - u.x);
     u.anim = ANIM.work;
     u.work = WORK.heal;
     u.healAcc += DT;
-    if (u.healAcc >= def.heal.every) {
+    if (u.healAcc >= heal.every) {
       u.healAcc = 0;
-      t.hp = Math.min(t.maxHp, t.hp + def.heal.amount);
+      t.hp = Math.min(t.maxHp, t.hp + heal.amount);
       world.emit({ k: 'heal', x: t.x, y: t.y, id: t.id });
     }
   } else if (r === 'failed') {
@@ -382,6 +382,7 @@ function kindWork(kind) {
     case 'berries': return WORK.forage;
     case 'meat': return WORK.butcher;
     case 'farm': return WORK.farm;
+    case 'fish': return WORK.fish;
     default: return WORK.none;
   }
 }
@@ -611,7 +612,7 @@ export function separateUnits(world) {
 /** Repousse une unité hors des cases infranchissables (cercle contre carré). */
 function resolveStatic(world, u) {
   const S = world.S;
-  const blocked = world.blocked;
+  const blocked = u.naval ? world.blockedW : world.blocked;
   const r = u.radius * 0.9;
   for (let pass = 0; pass < 2; pass++) {
     const tx = Math.floor(u.x);

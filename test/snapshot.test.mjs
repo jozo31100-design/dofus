@@ -105,6 +105,7 @@ test('les événements de combat sont transmis à ceux qui les voient, pas aux a
   assert.ok(evs0.length > 0, 'le joueur 0 doit voir le combat');
   // un villageois du joueur 0 chasse un cerf loin de tout : le joueur 1 ne doit rien en savoir
   const deer = world.addAnimal('deer', 30, 60);
+  deer.until = world.tick + 1000; // il broute sans bouger : le test ne dépend pas de sa promenade
   const hunter = world.addUnit('villager', 0, 29, 60);
   world.enqueue(0, { c: 'gather', ids: [hunter.id], tid: deer.id });
   s0.drainEvents();

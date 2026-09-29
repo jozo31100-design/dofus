@@ -14,13 +14,13 @@ import { UNITS, BUILDINGS, TECHS, ANIMALS, NODES, CIV_IDS } from '../src/core/de
     try { fn(); count++; } catch (e) { problems.push(`${label} : ${e.message}`); }
   };
   const anims = ['idle', 'walk', 'work', 'attack', 'die'];
-  const works = [undefined, 'wood', 'mine', 'farm', 'forage', 'build', 'repair', 'hunt', 'butcher', 'heal'];
+  const works = [undefined, 'wood', 'mine', 'farm', 'forage', 'build', 'repair', 'hunt', 'butcher', 'fish', 'heal'];
   const carries = [null, 'wood', 'food', 'gold', 'stone'];
   for (const type of Object.keys(UNITS)) {
     for (const civ of CIV_IDS) {
       if (UNITS[type].civ && UNITS[type].civ !== civ) continue;
       for (const team of [0, 1]) for (const anim of anims) for (const dir of [1, -1]) {
-        for (const work of anim === 'work' ? works : [undefined]) for (const carry of type === 'villager' ? carries : [null]) {
+        for (const work of anim === 'work' ? works : [undefined]) for (const carry of type === 'villager' || type === 'fishingboat' ? carries : [null]) {
           attempt(`unité ${type}/${civ}/${team}/${anim}/${dir}/${work}/${carry}`, () => {
             ctx.clearRect(0, 0, 400, 300);
             for (const t of [0, 0.13, 0.5, 1.7]) art.drawUnit(ctx, { type, civ, team, sx: 200, sy: 220, t, anim, dir, aim: 0.7, work, carry, deathT: Math.min(1, t), scale: 1 });
@@ -34,7 +34,7 @@ import { UNITS, BUILDINGS, TECHS, ANIMALS, NODES, CIV_IDS } from '../src/core/de
   for (const type of Object.keys(ANIMALS)) for (const anim of ['idle', 'walk', 'flee', 'die']) for (const dir of [1, -1]) {
     attempt(`animal ${type}/${anim}`, () => art.drawAnimal(ctx, { type, sx: 100, sy: 100, t: 0.4, anim, dir, deathT: 0.5 }));
   }
-  for (const type of ['tree', 'berries', 'gold', 'stone', 'carcass']) for (let v = 0; v < 12; v++) for (const frac of [0.05, 0.3, 0.6, 1]) {
+  for (const type of ['tree', 'berries', 'gold', 'stone', 'carcass', 'fish']) for (let v = 0; v < 12; v++) for (const frac of [0.05, 0.3, 0.6, 1]) {
     attempt(`ressource ${type}/${v}/${frac}`, () => { const s = art.getNodeSprite(type, v, frac); if (!s || !s.canvas || !(s.canvas.width > 4)) throw new Error('sprite vide'); if (!(s.ax >= 0 && s.ay >= 0 && s.ay <= s.canvas.height)) throw new Error('ancre invalide'); });
   }
   for (const kind of ['arrow', 'axe', 'stone', 'bolt']) attempt(`projectile ${kind}`, () => art.drawProjectile(ctx, kind, 50, 50, 0.5, 0.2));
@@ -51,10 +51,10 @@ import { UNITS, BUILDINGS, TECHS, ANIMALS, NODES, CIV_IDS } from '../src/core/de
     }
     attempt(`métriques ${type}`, () => { const m = art.buildingMetrics(type); if (!(m.h >= 0)) throw new Error('hauteur invalide'); });
     for (const civ of CIV_IDS) attempt(`portrait bâtiment ${type}/${civ}`, () => art.drawPortrait(ctx, type, civ, 0, 64));
-    for (let size = 1; size <= 5; size++) attempt(`gravats ${size}`, () => { const r = art.getRubbleSprite(size, 3); if (!r.canvas) throw new Error('vide'); });
+    for (let size = 1; size <= 6; size++) attempt(`gravats ${size}`, () => { const r = art.getRubbleSprite(size, 3); if (!r.canvas) throw new Error('vide'); });
   }
   for (const id of Object.keys(TECHS)) attempt(`icône tech ${id}`, () => art.drawTechIcon(ctx, id, 48));
-  for (const name of ['food', 'wood', 'gold', 'stone', 'pop', 'attack', 'stop', 'delete', 'repair', 'garrison', 'ungarrison', 'cancel', 'rally', 'build-eco', 'build-mil', 'age', 'hammer', 'sword', 'shield', 'bow', 'flag', 'menu', 'pause', 'idle-villager', 'clock']) {
+  for (const name of ['food', 'wood', 'gold', 'stone', 'pop', 'attack', 'stop', 'delete', 'repair', 'garrison', 'ungarrison', 'cancel', 'rally', 'build-eco', 'build-mil', 'age', 'hammer', 'sword', 'shield', 'bow', 'flag', 'menu', 'pause', 'idle-villager', 'clock', 'heal', 'check', 'lock', 'axe', 'pickaxe', 'meat', 'berries', 'wheat', 'house', 'castle', 'fish', 'coin', 'crown', 'ship', 'hero', 'buy-food', 'buy-wood', 'buy-stone', 'sell-food', 'sell-wood', 'sell-stone']) {
     attempt(`icône ${name}`, () => art.drawIcon(ctx, name, 32));
   }
   const tt = performance.now();

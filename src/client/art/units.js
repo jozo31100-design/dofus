@@ -13,15 +13,18 @@ import { idlePose, walkPose, attackPose, workPose, diePose, full, WORK } from '.
 import { drawHorse, gallopPose, standPose, fallPose } from './unit-horse.js';
 import { drawRam, drawCatapult } from './unit-siege.js';
 import { unitSpec, METRICS } from './unit-specs.js';
+import { drawBoat, drawWater, hullOf } from './unit-naval.js';
 
 const TYPES = [
   'villager', 'militia', 'spearman', 'swordsman', 'champion', 'archer', 'crossbow', 'scout', 'cavalry',
-  'knight', 'ram', 'catapult', 'francisque', 'gesate', 'healer',
+  'knight', 'ram', 'catapult', 'francisque', 'gesate', 'healer', 'fishingboat', 'warship', 'clovis', 'vercingetorix',
 ];
 const TYPE_IDX = Object.fromEntries(TYPES.map((t, i) => [t, i]));
 const ANIMS = ['idle', 'walk', 'work', 'attack', 'die'];
 const ANIM_IDX = Object.fromEntries(ANIMS.map((a, i) => [a, i]));
-const WORKS = ['wood', 'mine', 'farm', 'forage', 'build', 'repair', 'hunt', 'butcher'];
+const WORKS = ['wood', 'mine', 'farm', 'forage', 'build', 'repair', 'hunt', 'butcher', 'fish'];
+/** Travaux des villageois (la pêche, 'fish', est réservée aux barques). */
+const VIL_WORKS = WORKS.slice(0, 8);
 const WORK_IDX = Object.fromEntries(WORKS.map((w, i) => [w, i + 1]));
 const CARRIES = [null, 'wood', 'food', 'gold', 'stone'];
 const CARRY_IDX = { wood: 1, food: 2, gold: 3, stone: 4 };
@@ -38,6 +41,9 @@ const ATT_N = 11;
 /** Durée de l'effondrement ; l'effacement suit deathT. */
 const DIE_T = 0.8;
 const DIE_N = 9;
+/** Les navires coulent plus lentement (chavirent, le mât tombe, puis ils disparaissent). */
+const SHIP_DIE_T = 1.7;
+const SHIP_DIE_N = 12;
 const AIM_N = 11;
 const AIM_MAX = 1.25;
 
@@ -75,6 +81,9 @@ function frameOf(o, S) {
   let aim = 0;
   let alpha = 1;
   const isVil = S.kind === 'human' && S.sp && S.type === 'villager';
+  const boat = S.kind === 'boat';
+  // Barque : ne pêche qu'avec work 'fish' ; elle n'attaque pas. Navire de guerre : n'a pas de travail.
+  if (boat && anim === 3 && S.ship !== 'war') anim = 0;
   if (anim === 3) {
     if (t >= ATTACK_T || t < 0) anim = 0;
     else {
@@ -96,10 +105,11 @@ function frameOf(o, S) {
     q = f / WALK_N;
   } else if (anim === 2) {
     work = WORK_IDX[o.work] || 5;
+    if (boat) work = WORK_IDX.fish;
     const T = WORK[WORKS[work - 1]].T;
     f = Math.floor(fract(t / T) * WORK_N);
     q = f / WORK_N;
-    if (!isVil) {
+    if (!isVil && !(boat && S.ship === 'fish')) {
       // Seuls les villageois travaillent : les autres restent en attente
       anim = 0;
       work = 0;
@@ -107,11 +117,13 @@ function frameOf(o, S) {
       q = f / IDLE_N;
     }
   } else if (anim === 4) {
-    f = Math.min(DIE_N - 1, Math.floor((Math.max(0, t) / DIE_T) * (DIE_N - 1)));
-    q = f / (DIE_N - 1);
+    const dn = boat ? SHIP_DIE_N : DIE_N;
+    f = Math.min(dn - 1, Math.floor((Math.max(0, t) / (boat ? SHIP_DIE_T : DIE_T)) * (dn - 1)));
+    q = f / (dn - 1);
     const d = Number.isFinite(o.deathT) ? o.deathT : 0;
     alpha = clamp((1 - d) / 0.35);
   }
+  if (boat && S.ship === 'fish' && anim !== 4 && anim !== 3) carry = o.carry === 'food' ? CARRY_IDX.food : 0;
   if (isVil && (anim === 0 || anim === 1)) {
     carry = CARRY_IDX[o.carry] || 0;
     if (!carry && o.work && WORK_IDX[o.work]) work = WORK_IDX[o.work];
@@ -287,8 +299,49 @@ function siegeFrame(ctx, S, fr) {
   else drawCatapult(ctx, S, P);
 }
 
+/** Anneau doré au sol des héros (moitié lointaine derrière les jambes : l'anneau entier est un calque sous le sujet). */
+function heroRing(ctx, fr) {
+  const pulse = 0.5 + 0.5 * Math.sin(fr.q * TAU);
+  const fade = fr.anim === 4 ? 1 - smooth(clamp(fr.q * 1.2)) : 1;
+  if (fade <= 0.01) return;
+  const rx = 12.6;
+  const ry = 4.6;
+  ctx.save();
+  ctx.translate(0.6, 0.6);
+  ctx.scale(1, ry / rx);
+  // Halo doux
+  const g = ctx.createRadialGradient(0, 0, rx * 0.6, 0, 0, rx * 1.3);
+  g.addColorStop(0, 'rgba(255,214,90,0)');
+  g.addColorStop(0.55, `rgba(255,214,90,${(0.22 + 0.1 * pulse) * fade})`);
+  g.addColorStop(1, 'rgba(255,214,90,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(0, 0, rx * 1.3, 0, TAU);
+  ctx.fill();
+  // Anneau : trait sombre, or, puis liseré clair
+  ctx.lineWidth = 2.0;
+  ctx.strokeStyle = `rgba(110,64,8,${0.7 * fade})`;
+  ctx.beginPath();
+  ctx.arc(0, 0, rx, 0, TAU);
+  ctx.stroke();
+  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = `rgba(255,205,70,${(0.9 + 0.1 * pulse) * fade})`;
+  ctx.stroke();
+  ctx.lineWidth = 0.6;
+  ctx.strokeStyle = `rgba(255,248,200,${(0.6 + 0.4 * pulse) * fade})`;
+  ctx.beginPath();
+  ctx.arc(0, 0, rx - 0.3, PI * 1.05, PI * 1.9);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function boatFrame(ctx, S, fr) {
+  drawBoat(ctx, S, { anim: fr.anim, q: fr.q, carry: fr.carry, aim: aimLimb(fr), work: fr.work });
+}
+
 function drawFrame(ctx, S, fr) {
   if (S.kind === 'human') humanFrame(ctx, S, fr);
+  else if (S.kind === 'boat') boatFrame(ctx, S, fr);
   else if (S.kind === 'mounted') mountedFrame(ctx, S, fr);
   else siegeFrame(ctx, S, fr);
 }
@@ -320,6 +373,26 @@ function shadowOf(S, fr) {
 function bakeFrame(S, fr, b) {
   const [l, t, r, bt] = S.box;
   const box = fr.dir > 0 ? [l, t, r, bt] : [-r, t, -l, bt];
+  let under = null;
+  if (S.hero) {
+    under = (ctx) => {
+      ctx.scale(fr.dir, 1);
+      heroRing(ctx, fr);
+    };
+  } else if (S.kind === 'boat') {
+    const hd = hullOf(S);
+    const dying = fr.anim === 4;
+    under = (ctx) => {
+      ctx.scale(fr.dir, 1);
+      drawWater(ctx, hd, {
+        walk: fr.anim === 1 ? 1 : 0,
+        q: fr.q,
+        ripple: fr.anim === 1 ? fr.q * 2 % 1 : fr.q,
+        sink: dying ? smooth(clamp(fr.q / 0.95)) : 0,
+        war: S.ship === 'war',
+      });
+    };
+  }
   return bakeSprite(
     box,
     b,
@@ -328,8 +401,10 @@ function bakeFrame(S, fr, b) {
       ctx.scale(fr.dir, 1);
       drawFrame(ctx, S, fr);
     },
-    shadowOf(S, fr),
+    // Un bateau n'a jamais d'ombre sur l'herbe : son reflet est peint sur l'eau (calque « sous »)
+    S.kind === 'boat' ? null : shadowOf(S, fr),
     OUTLINE,
+    under,
   );
 }
 
@@ -358,12 +433,14 @@ function bakeAllowed() {
 /**
  * Dessine une unité.
  * o : { type, civ, team, sx, sy (pieds), t (horloge en s), anim: 'idle'|'walk'|'work'|'attack'|'die',
- *       dir: 1|-1, aim (angle écran), work: 'wood'|'mine'|'farm'|'forage'|'build'|'repair'|'hunt'|'butcher',
+ *       dir: 1|-1, aim (angle écran), work: 'wood'|'mine'|'farm'|'forage'|'build'|'repair'|'hunt'|'butcher'|'fish',
  *       carry: null|'wood'|'food'|'gold'|'stone', deathT: 0..1, scale }
+ * Bateaux (fishingboat, warship) : (sx, sy) = point de flottaison au centre de la coque ; work 'fish' et carry 'food'
+ * pour la barque ; attack pour le navire de guerre. Héros (clovis, vercingetorix) : fantassins d'élite à anneau doré.
  */
 export function drawUnit(ctx, o) {
   const type = TYPE_IDX[o.type] === undefined ? 'villager' : o.type;
-  const civ = o.civ === 'gauls' || o.civ === 'franks' ? o.civ : type === 'gesate' ? 'gauls' : 'franks';
+  const civ = o.civ === 'gauls' || o.civ === 'franks' ? o.civ : type === 'gesate' || type === 'vercingetorix' ? 'gauls' : 'franks';
   const team = (o.team | 0) & 7;
   const S = specOf(type, civ, team);
   if (!S.type) S.type = type;
@@ -374,7 +451,7 @@ export function drawUnit(ctx, o) {
   const k = Math.hypot(m.a, m.b) * s;
   const b = picker.pick(k);
   const unitKey = (TYPE_IDX[type] * 2 + (civ === 'gauls' ? 1 : 0)) * 8 + team;
-  const animKey = (((unitKey * 5 + fr.anim) * 9 + fr.work) * 5 + fr.carry) * 2 + (fr.dir > 0 ? 0 : 1);
+  const animKey = (((unitKey * 5 + fr.anim) * 10 + fr.work) * 5 + fr.carry) * 2 + (fr.dir > 0 ? 0 : 1);
   const frameKey = (animKey * 16 + fr.f) * 13 + fr.aim;
   const key = frameKey * 65536 + Math.round(b * 4096);
   let spr = cache.get(key);
@@ -414,20 +491,30 @@ export function prewarmUnit(type, civ, team, anims = ['idle', 'walk', 'attack'],
   picker.stable(zoom);
   try {
     for (const anim of anims) {
-      const T = anim === 'walk' ? WALK_T : anim === 'attack' ? ATTACK_T : anim === 'die' ? DIE_T : IDLE_T;
-      const n = anim === 'walk' ? WALK_N : anim === 'attack' ? ATT_N : anim === 'die' ? DIE_N : IDLE_N;
+      const ship = type === 'fishingboat' || type === 'warship';
+      // Sans objet : les barques ne « combattent » pas, les navires de guerre ne pêchent pas
+      if ((anim === 'attack' && type === 'fishingboat') || (anim === 'work' && type !== 'villager' && type !== 'fishingboat')) continue;
+      const T = anim === 'walk' ? WALK_T : anim === 'attack' ? ATTACK_T : anim === 'die' ? (ship ? SHIP_DIE_T : DIE_T) : IDLE_T;
+      const n = anim === 'walk' ? WALK_N : anim === 'attack' ? ATT_N : anim === 'die' ? (ship ? SHIP_DIE_N : DIE_N) : anim === 'work' ? WORK_N : IDLE_N;
+      const boatFish = type === 'fishingboat';
       for (const dir of [1, -1]) {
         for (let i = 0; i < n; i++) {
           const vil = type === 'villager' && (anim === 'idle' || anim === 'walk');
-          const works = anim === 'work' || vil ? WORKS : [null];
+          const works = anim === 'work' ? (boatFish ? ['fish'] : VIL_WORKS) : vil ? VIL_WORKS : [null];
           for (const w of works) {
             const T2 = anim === 'work' ? WORK[w].T : T;
             const n2 = anim === 'work' ? WORK_N : n;
             if (i >= n2) continue;
             drawUnit(ctx, { type, civ, team, sx: 0, sy: 0, t: ((i + 0.5) / n2) * T2, anim, dir, work: w });
+            // Barque de pêche : poissons dans la barque pendant la pêche
+            if (boatFish && anim === 'work') drawUnit(ctx, { type, civ, team, sx: 0, sy: 0, t: ((i + 0.5) / n2) * T2, anim, dir, work: w, carry: 'food' });
           }
           if (vil) {
             for (const c of CARRIES) drawUnit(ctx, { type, civ, team, sx: 0, sy: 0, t: ((i + 0.5) / n) * T, anim, dir, carry: c });
+          }
+          // Barque de pêche : poissons dans la barque, à l'arrêt, en marche et en pêchant
+          if (boatFish && (anim === 'idle' || anim === 'walk')) {
+            drawUnit(ctx, { type, civ, team, sx: 0, sy: 0, t: ((i + 0.5) / n) * T, anim, dir, carry: 'food' });
           }
         }
       }

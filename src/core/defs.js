@@ -736,6 +736,18 @@ export function computeStats(typeId, civ, techs) {
   return s;
 }
 
+/** Or obtenu (vente) ou à payer (achat) pour un lot, selon le prix relatif et la commission. */
+export function tradeQuote(price, fee, sell) {
+  return sell ? Math.floor(TRADE_LOT * price * (1 - fee)) : Math.ceil(TRADE_LOT * price * (1 + fee));
+}
+
+/** Commission du marché selon les technologies acquises (ensemble ou liste d'identifiants). */
+export function tradeFee(techs) {
+  let fee = TRADE_FEE;
+  for (const id of techs || []) if (TECHS[id] && TECHS[id].trade !== undefined) fee = Math.min(fee, TECHS[id].trade);
+  return fee;
+}
+
 /** Tout ce que la civilisation peut former dans un bâtiment donné. */
 export function trainableAt(buildingId, civ) {
   const b = BUILDINGS[buildingId];

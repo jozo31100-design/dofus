@@ -2,7 +2,7 @@
 
 import {
   BUILDINGS, UNITS, DEFS, TECHS, RESOURCES, RES_LABEL, AGE_NAMES, TEAM_COLORS,
-  nameOf, trainableAt, techsAt, techForCiv, costText,
+  nameOf, trainableAt, techsAt, techForCiv, costText, tradeFee, tradeQuote, TRADE_RES, TRADE_LOT,
 } from '../core/defs.js';
 import { Renderer } from './render.js';
 import { Minimap, MINI_W, MINI_H } from './minimap.js';
@@ -13,7 +13,7 @@ import { audio } from './audio.js';
 const SLOT_CODES = ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyZ', 'KeyX', 'KeyC', 'KeyV'];
 const QWERTY_LABEL = ['Q', 'W', 'E', 'R', 'A', 'S', 'D', 'F', 'Z', 'X', 'C', 'V'];
 const RES_NAMES = ['food', 'wood', 'gold', 'stone'];
-const WORK_TEXT = { 1: 'Coupe du bois', 2: 'Mine', 3: 'Cultive', 4: 'Cueille des baies', 5: 'Construit', 6: 'Répare', 7: 'Chasse', 8: 'Dépèce le gibier', 9: 'Soigne' };
+const WORK_TEXT = { 1: 'Coupe du bois', 2: 'Mine', 3: 'Cultive', 4: 'Cueille des baies', 5: 'Construit', 6: 'Répare', 7: 'Chasse', 8: 'Dépèce le gibier', 9: 'Soigne', 10: 'Pêche' };
 const CARRY_TEXT = ['', 'nourriture', 'bois', 'or', 'pierre'];
 
 function h(tag, props = {}, ...kids) {
@@ -95,9 +95,10 @@ export class GameUI {
     this.ageEl = h('div', { id: 'agebadge', text: AGE_NAMES[1] });
     this.clockEl = h('div', { id: 'clock', text: '00:00' });
     this.fpsEl = h('div', { id: 'fps', style: 'display:none' });
+    this.wonderEl = h('div', { id: 'wonder-clock', style: 'display:none' });
     this.top = h('div', { id: 'topbar', class: 'panel' },
       resBox('food', RES_LABEL.food), resBox('wood', RES_LABEL.wood), resBox('gold', RES_LABEL.gold), resBox('stone', RES_LABEL.stone),
-      this.popEl, h('div', { class: 'spacer' }), this.ageEl, this.clockEl, this.fpsEl,
+      this.popEl, h('div', { class: 'spacer' }), this.wonderEl, this.ageEl, this.clockEl, this.fpsEl,
       h('button', { id: 'btn-menu', class: 'btn small', text: 'Menu', title: 'Menu (F10)', onclick: () => this.openMenu() }));
     this.toasts = h('div', { id: 'toasts' });
     this.banner = h('div', { id: 'banner' });
@@ -373,8 +374,8 @@ export class GameUI {
       return;
     }
     if (target && (target.cls === 'node' || target.cls === 'animal')) {
-      if (vIds.length) this.cmd({ c: 'gather', ids: vIds, tid: target.id, q });
-      if (oIds.length) this.cmd({ c: 'move', ids: oIds, x: target.x, y: target.y, q });
+      // le moteur envoie récolter ceux qui savent le faire (villageois, ou barques pour le poisson), les autres se déplacent
+      this.cmd({ c: 'gather', ids: allIds, tid: target.id, q });
       fx.marker(target.x, target.y, 'gather', now);
       return;
     }
@@ -481,6 +482,20 @@ export class GameUI {
         if (occ[i]) { bad.add(dy * n + dx); reason = 'Emplacement occupé.'; continue; }
         if (!st.explored[i] && !st.revealMap) { bad.add(dy * n + dx); reason = 'Zone inexplorée.'; }
       }
+    }
+    const def = BUILDINGS[type];
+    if (bad.size === 0 && def.shore) {
+      let water = 0;
+      for (let k = 0; k < n; k++) {
+        for (const [x, y] of [[tx + k, ty - 1], [tx + k, ty + n], [tx - 1, ty + k], [tx + n, ty + k]]) {
+          if (x < 0 || y < 0 || x >= S || y >= S) continue;
+          if (st.terrain[y * S + x] === 2 && !occ[y * S + x]) water++;
+        }
+      }
+      if (water < 2) { for (let i = 0; i < n * n; i++) bad.add(i); reason = 'Un port se construit au bord de l\'eau profonde.'; }
+    }
+    if (bad.size === 0 && def.wonder) {
+      for (const e of st.ents.values()) if (this.isOwn(e) && e.type === type) { for (let i = 0; i < n * n; i++) bad.add(i); reason = 'Une seule merveille à la fois.'; break; }
     }
     return { valid: bad.size === 0, bad, reason };
   }
@@ -712,6 +727,30 @@ export class GameUI {
       const def = BUILDINGS[b.type];
       if (b.prog >= 100) {
         let i = 0;
+        if (def.market) {
+          const fee = tradeFee(me.techs);
+          const gold = me.res[RESOURCES.indexOf('gold')];
+          TRADE_RES.forEach((r, k) => {
+            const price = me.prices[k] || 1;
+            const gain = tradeQuote(price, fee, true);
+            const cost = tradeQuote(price, fee, false);
+            const have = me.res[RESOURCES.indexOf(r)];
+            const nm = RES_LABEL[r].toLowerCase();
+            put(k, {
+              id: `sell-${r}`, icon: iconURL('ui', `sell-${r}`, civ, 0, 44), title: `Vendre ${TRADE_LOT} ${nm}`,
+              desc: `Vous recevez ${gain} or (commission ${Math.round(fee * 100)} %). Le cours de la ressource baisse quand vous vendez. Maj + clic : ×5.`,
+              enabled: have >= TRADE_LOT, reason: have >= TRADE_LOT ? '' : `Il faut ${TRADE_LOT} ${nm}`,
+              onClick: (shift) => { for (let n = 0; n < (shift ? 5 : 1); n++) this.cmd({ c: 'trade', res: r, dir: 'sell' }); },
+            });
+            put(3 + k, {
+              id: `buy-${r}`, icon: iconURL('ui', `buy-${r}`, civ, 0, 44), title: `Acheter ${TRADE_LOT} ${nm}`,
+              desc: `Coûte ${cost} or (commission ${Math.round(fee * 100)} %). Le cours de la ressource monte quand vous achetez. Maj + clic : ×5.`,
+              enabled: gold >= cost, reason: gold >= cost ? '' : 'Pas assez d\'or',
+              onClick: (shift) => { for (let n = 0; n < (shift ? 5 : 1); n++) this.cmd({ c: 'trade', res: r, dir: 'buy' }); },
+            });
+          });
+          i = 6;
+        }
         for (const id of trainableAt(b.type, civ)) {
           const u = UNITS[id];
           const cost = st.statOf(id).cost;
@@ -861,7 +900,7 @@ export class GameUI {
       e.owner >= 0 && st.players[e.owner] ? h('div', { class: 'owner', style: `color:${TEAM_COLORS[e.owner].light}`, text: own ? 'Vous' : st.players[e.owner].name }) : h('div', { class: 'owner', text: 'Nature' })));
     const body = h('div', { class: 'info-body' });
     if (e.cls === 'node') {
-      const label = { tree: 'Bois', gold: 'Or', stone: 'Pierre', berries: 'Nourriture', carcass: 'Nourriture' }[e.type];
+      const label = { tree: 'Bois', gold: 'Or', stone: 'Pierre', berries: 'Nourriture', carcass: 'Nourriture', fish: 'Nourriture' }[e.type];
       body.append(this.statRow(label, `${Math.ceil(e.amount)} restant(s)`));
     } else if (e.cls === 'animal') {
       body.append(this.hpBar(e), this.statRow('Gibier', 'à chasser avec un villageois'));
@@ -967,6 +1006,17 @@ export class GameUI {
     if (ic.textContent !== String(idle)) ic.textContent = String(idle);
     this.idleBtn.classList.toggle('active', idle > 0);
     this.pauseEl.style.display = st.paused ? 'block' : 'none';
+    // compte à rebours des merveilles achevées
+    const now = performance.now();
+    const txt = st.wonders.map((w) => {
+      const left = Math.max(0, w.left - (st.paused ? 0 : (now - w.at) / 1000));
+      const who = st.players[w.owner] ? st.players[w.owner].name : '?';
+      return `${w.owner === st.myIdx ? 'Votre merveille' : `Merveille de ${who}`} : ${fmtTime(left)}`;
+    }).join('  ·  ');
+    if (this.wonderEl.textContent !== txt) {
+      this.wonderEl.textContent = txt;
+      this.wonderEl.style.display = txt ? 'block' : 'none';
+    }
   }
 
   toast(text, kind = 'info') {
@@ -1097,7 +1147,11 @@ export class GameUI {
       ['Clic droit', 'Ordre : déplacer, attaquer, récolter, construire, réparer, point de ralliement'],
       ['Maj + clic droit', 'Ajouter l\'ordre à la file (par exemple plusieurs bâtiments à la suite)'],
       ['Molette / clic molette', 'Zoom / déplacer la vue'],
-      ['Flèches', 'Déplacer la vue (ou approcher la souris du bord en plein écran)'],
+      ['Flèches', 'Déplacer la vue (ou pousser la souris contre le bord de la fenêtre)'],
+      ['Port et bateaux', 'Le port se construit au bord de l\'eau : barques de pêche (clic droit sur un banc de poissons) et navires de guerre'],
+      ['Marché', 'Vendre ou acheter 100 ressources contre de l\'or ; les cours suivent l\'offre et la demande (Maj + clic : ×5)'],
+      ['Merveille', 'Bâtiment de l\'Âge de la Forteresse : si elle tient 10 minutes après son achèvement, son propriétaire gagne'],
+      ['Héros', 'Formé au château (un seul) : +15 % d\'attaque aux soldats proches'],
       ['A Z E R / Q S D F / W X C V*', 'Commandes du panneau en bas à droite (selon la disposition de votre clavier)'],
       ['Ctrl + 1…9 / 1…9', 'Créer un groupe / rappeler un groupe (deux fois : centrer)'],
       ['. ou ,', 'Aller au villageois inoccupé suivant'],

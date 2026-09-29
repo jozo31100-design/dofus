@@ -1,6 +1,6 @@
 // Combat : dégâts, projectiles, tir des bâtiments, choix des cibles, mort des entités.
 
-import { DT, DEFS, ANIMALS, UNITS, BUILDINGS } from './defs.js';
+import { DT, DEFS, ANIMALS, UNITS, BUILDINGS, HERO_AURA } from './defs.js';
 import { distEdge, isMilitary, recalcPop, setOrder } from './common.js';
 
 /**
@@ -16,6 +16,11 @@ export function calcDamage(attSt, defSt, defDef) {
   return Math.max(1, dmg);
 }
 
+/** Bonus d'attaque d'un allié qui se trouve près d'un héros de son camp. */
+function auraMul(world, att) {
+  return att.auraUntil > world.tick ? 1 + HERO_AURA.atk : 1;
+}
+
 /** Une unité peut-elle attaquer cette cible ? */
 export function canTarget(att, t) {
   if (!t || t.dead || t.hp <= 0) return false;
@@ -25,8 +30,8 @@ export function canTarget(att, t) {
   if (t.cls === 'node') return false;
   if (t.cls === 'animal') return def.worker === true; // seuls les villageois chassent
   if (t.owner === att.owner) return false;
-  const st = att.owner >= 0 ? null : null;
-  void st;
+  // les navires ne sont touchés que par des tireurs (ou d'autres navires)
+  if (t.naval && !(def.range > 0)) return false;
   return true;
 }
 
@@ -62,13 +67,13 @@ export function performAttack(world, att, t) {
       owner: att.owner,
       target: st.splash > 0 ? 0 : t.id,
       st,
-      dmg: calcDamage(st, tst, tdef),
+      dmg: calcDamage(st, tst, tdef) * auraMul(world, att),
       splash: st.splash,
     };
     world.projectiles.push(p);
     world.emit({ k: 'proj', kind: p.kind, x0: p.x0, y0: p.y0, x1: p.x1, y1: p.y1, dur: flight, x: att.x, y: att.y });
   } else {
-    applyDamage(world, t, calcDamage(st, tst, tdef), att);
+    applyDamage(world, t, calcDamage(st, tst, tdef) * auraMul(world, att), att);
     world.emit({ k: 'hit', x: t.x, y: t.y, big: att.type === 'ram' || att.type === 'catapult' });
   }
 }
@@ -196,6 +201,7 @@ export function findTarget(world, u, radius) {
       if (v.owner === u.owner || v.owner < 0 || v.dead || v.inside) return;
       const d = Math.hypot(v.x - u.x, v.y - u.y) - v.radius;
       if (d > radius) return;
+      if (!canTarget(u, v)) return;
       if (!world.visibleTo(u.owner, v.x, v.y)) return;
       const vd = DEFS[v.type];
       let score = d;

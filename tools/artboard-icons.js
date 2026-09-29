@@ -49,7 +49,7 @@ function label(ctx, txt, x, y) {
 }
 
 function icons() {
-  const H = 620;
+  const H = 90 + Math.ceil(ICON_NAMES.length / 11) * 118 + 90;
   const ctx = canvas(H);
   panel(ctx, 0, 0, W, H);
   title(ctx, `Icônes génériques (${ICON_NAMES.length}) à 20, 32, 48 et 64 px`, 12, 22);
@@ -83,7 +83,7 @@ function icons() {
 }
 
 function portraits() {
-  const H = 560;
+  const H = 640;
   const ctx = canvas(H);
   panel(ctx, 0, 0, W, H);
   title(ctx, 'Portraits (64 px) : unités des deux civilisations et des deux équipes, bâtiments, gibier, ressources', 12, 22);
@@ -124,12 +124,17 @@ function portraits() {
   }
   // Petits portraits (32 px) : lisibilité de la barre de sélection multiple
   x = 560;
+  let yy = y + 90;
   for (const id of UNIT_IDS) {
     for (const civ of ['gauls', 'franks']) {
       if (!unitForCiv(id, civ)) continue;
-      button(ctx, x, y + 106, 32);
+      if (x > W - 50) {
+        x = 560;
+        yy += 42;
+      }
+      button(ctx, x, yy, 32);
       ctx.save();
-      ctx.translate(x, y + 106);
+      ctx.translate(x, yy);
       drawPortrait(ctx, id, civ, civ === 'gauls' ? 0 : 1, 32);
       ctx.restore();
       x += 38;
@@ -138,7 +143,7 @@ function portraits() {
 }
 
 function techs() {
-  const H = 330;
+  const H = 60 + Math.ceil(TECH_IDS.length / 13) * 100 + 110;
   const ctx = canvas(H);
   panel(ctx, 0, 0, W, H);
   title(ctx, `Technologies (${TECH_IDS.length}) à 48 px, puis 32 px`, 12, 22);
@@ -154,21 +159,72 @@ function techs() {
     label(ctx, id, x, y + 62);
     label(ctx, TECHS[id].name.slice(0, 18), x, y + 76);
   });
+  const y32 = 40 + Math.ceil(TECH_IDS.length / 13) * 100 + 10;
   TECH_IDS.forEach((id, i) => {
     ctx.save();
-    ctx.translate(14 + i * 40, 250);
+    ctx.translate(14 + i * 40, y32);
     drawTechIcon(ctx, id, 32);
     ctx.restore();
   });
   TECH_IDS.forEach((id, i) => {
     ctx.save();
-    ctx.translate(14 + i * 40, 292);
+    ctx.translate(14 + i * 40, y32 + 42);
     drawTechIcon(ctx, id, 24);
     ctx.restore();
   });
 }
 
-const SECTIONS = { icones: icons, portraits, techs };
+/** Nouvelles icônes du port, du marché et des héros, à 44 px (taille des boutons du jeu) et 64 px, plus les 12 nouvelles technologies. */
+function nouveautes() {
+  const H = 420;
+  const ctx = canvas(H);
+  panel(ctx, 0, 0, W, H);
+  title(ctx, 'Nouveautés — icônes à 44 px (taille des boutons) et 64 px ; vente : ressource → or, achat : or → ressource', 12, 22);
+  const names = ['fish', 'coin', 'crown', 'ship', 'hero', 'sell-food', 'sell-wood', 'sell-stone', 'buy-food', 'buy-wood', 'buy-stone'];
+  names.forEach((name, i) => {
+    const x = 14 + i * 140;
+    button(ctx, x, 44, 44);
+    ctx.save();
+    ctx.translate(x, 44);
+    drawIcon(ctx, name, 44);
+    ctx.restore();
+    button(ctx, x + 56, 44, 64);
+    ctx.save();
+    ctx.translate(x + 56, 44);
+    drawIcon(ctx, name, 64);
+    ctx.restore();
+    button(ctx, x, 126, 32);
+    ctx.save();
+    ctx.translate(x, 126);
+    drawIcon(ctx, name, 32);
+    ctx.restore();
+    button(ctx, x + 44, 126, 24);
+    ctx.save();
+    ctx.translate(x + 44, 126);
+    drawIcon(ctx, name, 24);
+    ctx.restore();
+    label(ctx, name, x, 180);
+  });
+  const ids = ['hunt1', 'nets1', 'nets2', 'hull1', 'naval_atk', 'trade1', 'trade2', 'med1', 'med2', 'scout1', 'eco1', 'strat1'];
+  ids.forEach((id, i) => {
+    const x = 14 + i * 128;
+    ctx.save();
+    ctx.translate(x, 210);
+    drawTechIcon(ctx, id, 64);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(x + 70, 210);
+    drawTechIcon(ctx, id, 44);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(x + 70, 258);
+    drawTechIcon(ctx, id, 32);
+    ctx.restore();
+    label(ctx, id, x, 292);
+  });
+}
+
+const SECTIONS = { icones: icons, portraits, techs, nouveautes };
 try {
   if (only && SECTIONS[only]) SECTIONS[only]();
   else for (const k of Object.keys(SECTIONS)) SECTIONS[k]();

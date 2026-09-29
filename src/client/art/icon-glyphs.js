@@ -21,14 +21,14 @@ export function fillInk(ctx, c, w = 2.4, k1 = 0.3, k2 = -0.25, y0 = 8, y1 = 56) 
   ctx.stroke();
 }
 
-function shine(ctx, x, y, rx, ry, a = 0.55, r = 0) {
+export function shine(ctx, x, y, rx, ry, a = 0.55, r = 0) {
   ctx.fillStyle = `rgba(255,255,255,${a})`;
   ctx.beginPath();
   ell(ctx, x, y, rx, ry, r);
   ctx.fill();
 }
 
-function bar(ctx, x1, y1, x2, y2, w, c) {
+export function bar(ctx, x1, y1, x2, y2, w, c) {
   ctx.beginPath();
   capsule(ctx, x1, y1, w / 2, x2, y2, w / 2);
   fillInk(ctx, c, 2.2, 0.3, -0.25, Math.min(y1, y2) - w, Math.max(y1, y2) + w);
