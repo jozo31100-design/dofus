@@ -8,6 +8,22 @@ Jeu de stratégie en temps réel façon *Age of Empires*, **Francs contre Gauloi
   construction, armées, béliers et catapultes, tours et château, brouillard de guerre
 - Application de bureau Windows (un seul `.exe`), tout est dessiné par le code (aucune image externe)
 
+## Aperçu
+
+![Menu principal](docs/screenshots/menu.jpg)
+
+*Un village gaulois (huttes rondes, champs, forêts) et son interface : ici la maison des guerriers est sélectionnée.*
+
+![Village gaulois et interface](docs/screenshots/partie-gaulois.jpg)
+
+*Les Francs (en rouge) attaquent un village gaulois (en bleu).*
+
+![Bataille entre Francs et Gaulois](docs/screenshots/bataille.jpg)
+
+*Le salon de l'hôte : il donne son adresse à l'autre joueur, qui la voit apparaître dans sa liste ou la saisit.*
+
+![Salon de l'hôte](docs/screenshots/salon.jpg)
+
 ## Jouer
 
 ### 1. Récupérer le jeu

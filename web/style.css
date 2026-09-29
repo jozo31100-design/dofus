@@ -139,7 +139,7 @@ input[type=range] { width: 200px; accent-color: #d9a13a; }
 /* --------------------------------------------------------------------------- menus */
 #menu { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 30%, #2b3a22 0%, #14100a 70%); overflow: hidden; }
 #menu canvas.backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.menu-box { position: relative; z-index: 2; width: 480px; max-width: 94vw; padding: 26px 34px 30px; display: flex; flex-direction: column; gap: 12px; align-items: stretch; background: linear-gradient(rgba(58,42,26,.93), rgba(28,20,12,.95)); border: 3px solid var(--gold-dim); border-radius: 12px; box-shadow: 0 12px 60px #000; }
+.menu-box { position: relative; z-index: 2; width: 480px; max-width: 94vw; max-height: calc(100vh - 16px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--gold-dim) transparent; padding: 26px 34px 30px; display: flex; flex-direction: column; gap: 12px; align-items: stretch; background: linear-gradient(rgba(58,42,26,.93), rgba(28,20,12,.95)); border: 3px solid var(--gold-dim); border-radius: 12px; box-shadow: 0 12px 60px #000; }
 .menu-box.wide { width: 720px; }
 .title { text-align: center; font-size: 54px; line-height: 1; margin: 0; color: var(--gold); text-shadow: 0 3px 0 #5a3a10, 0 6px 14px #000; letter-spacing: 2px; }
 .subtitle { text-align: center; color: var(--ink-dim); margin: 0 0 8px; font-style: italic; }
@@ -178,4 +178,38 @@ input[type=range] { width: 200px; accent-color: #d9a13a; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-bar { height: 16px; background: rgba(0,0,0,.6); border: 2px solid var(--gold-dim); border-radius: 8px; overflow: hidden; }
 .loading-bar div { height: 100%; width: 0; background: linear-gradient(#f0cd7a, #b58a35); transition: width .2s; }
+/* fenêtres peu hautes (portables, mise à l'échelle de Windows) : menus plus compacts, jamais coupés */
+@media (max-height: 900px) {
+  .menu-box { padding: 16px 28px 18px; gap: 8px; }
+  .menu-box .btn { font-size: 17px; padding: 8px 14px; }
+  .title { font-size: 44px; }
+  .subtitle { margin-bottom: 2px; }
+  .civ-pick { gap: 10px; }
+  .civ-card { padding: 8px 10px; }
+  .civ-card canvas { height: 64px; }
+  .civ-card h3 { font-size: 20px; margin: 2px 0; }
+  .civ-card ul { font-size: 12.5px; line-height: 1.3; margin-top: 4px; }
+  .player-row { padding: 5px 12px; }
+  .ip-chip { font-size: 20px; padding: 3px 12px; }
+  .field input[type=text], .field select { padding: 6px 10px; font-size: 16px; }
+}
+@media (max-height: 760px) {
+  .menu-box { padding: 12px 24px 14px; gap: 5px; }
+  .menu-box .btn { padding: 6px 12px; }
+  .hint { font-size: 13px; line-height: 1.3; }
+  .civ-card canvas { height: 52px; }
+  .civ-card ul { font-size: 12px; line-height: 1.25; }
+  .field select { padding: 4px 10px; }
+}
+@media (max-height: 640px) {
+  .menu-box { padding: 10px 20px 12px; gap: 4px; }
+  .menu-box .btn { font-size: 16px; padding: 5px 12px; }
+  .title { font-size: 36px; }
+  .civ-card canvas { height: 40px; }
+  .civ-card { padding: 6px 8px; }
+  .player-row { padding: 3px 10px; }
+  .ips { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .err { min-height: 0; }
+  .version { display: none; }
+}
 .version { position: absolute; right: 14px; bottom: 10px; color: var(--ink-dim); font-size: 12px; opacity: .7; z-index: 2; }
