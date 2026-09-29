@@ -125,8 +125,10 @@ export function checkPattern(ctx, c1, c2, period) {
     g.fillStyle = c2;
     g.fillRect(0, 0, n / 2, n / 2);
     g.fillRect(n / 2, n / 2, n / 2, n / 2);
-    g.fillStyle = rgba(tone(c2, 0.4), 0.55);
-    g.fillRect(n / 4 - 0.5, 0, 1, n);
+    if (c2[0] === '#') {
+      g.fillStyle = rgba(tone(c2, 0.4), 0.55);
+      g.fillRect(n / 4 - 0.5, 0, 1, n);
+    }
   });
 }
 

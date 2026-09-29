@@ -30,6 +30,7 @@ export class HostSession {
     this.last = performance.now();
     this.lastPublish = 0;
     this.timer = setInterval(() => this.loop(), 8);
+    if (this.timer && this.timer.unref) this.timer.unref(); // côté Node (tests), ne bloque pas la fin du processus
     this.stopped = false;
     this.publish(performance.now());
   }

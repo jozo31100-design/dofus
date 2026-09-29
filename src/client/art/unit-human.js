@@ -4,6 +4,7 @@
 // jambes, jupe et torse, tête (coiffure, casque), bouclier ou arc, puis arme et bras proche.
 import {
   PI, clamp, tone, rgba, edge, capsule, ell, poly, paint, line, seg, rot, ik, sideGrad, vGrad, ballGrad, light,
+  checkPattern, mailPattern,
 } from './unit-kit.js';
 import * as G from './unit-gear.js';
 
@@ -147,69 +148,48 @@ function drawLeg(ctx, sp, hip, knee, ank, shinA, far) {
   const dk = far ? -0.22 : 0;
   const base = tone(L.kind === 'bare' ? sp.skin : L.c1, dk);
   legPath(ctx, z, hip, knee, ank);
-  ctx.fillStyle = base;
+  // Braies à carreaux : remplissage à motif (sans découpage, beaucoup plus rapide)
+  ctx.fillStyle = L.kind === 'check' ? checkPattern(ctx, base, tone(L.c2, dk), 2.6 * z) : base;
   ctx.fill();
-  if (L.kind === 'check' || L.kind === 'wrap' || sp.paint) {
-    ctx.save();
-    ctx.clip();
-    if (L.kind === 'check') {
-      // Braies à carreaux : quadrillage de la seconde couleur
-      const c2 = tone(L.c2, dk);
-      ctx.fillStyle = c2;
-      const x0 = Math.min(hip[0], knee[0], ank[0]) - 2 * z;
-      const x1 = Math.max(hip[0], knee[0], ank[0]) + 2 * z;
-      const y0 = Math.min(hip[1], knee[1], ank[1]) - 2 * z;
-      const y1 = Math.max(hip[1], knee[1], ank[1]) + 2 * z;
-      const st = 1.3 * z;
-      for (let y = y0, j = 0; y < y1; y += st, j++) {
-        for (let x = x0 + (j & 1) * st; x < x1; x += st * 2) ctx.fillRect(x, y, st, st);
-      }
-      ctx.strokeStyle = rgba(tone(L.c2, 0.35), 0.55);
-      ctx.lineWidth = 0.3 * z;
-      ctx.beginPath();
-      for (let x = x0 + st * 0.5; x < x1; x += st * 2) {
-        ctx.moveTo(x, y0);
-        ctx.lineTo(x, y1);
-      }
-      ctx.stroke();
-    } else if (L.kind === 'wrap') {
-      // Bandes molletières croisées (lanières) sur le tibia
-      ctx.strokeStyle = tone(L.c2, dk);
-      ctx.lineWidth = 0.5 * z;
-      ctx.beginPath();
-      const n = 4;
-      for (let i = 0; i < n; i++) {
-        const t0 = 0.12 + (i / n) * 0.85;
-        const t1 = t0 + 0.2;
-        const ax = knee[0] + (ank[0] - knee[0]) * t0;
-        const ay = knee[1] + (ank[1] - knee[1]) * t0;
-        const bx = knee[0] + (ank[0] - knee[0]) * t1;
-        const by = knee[1] + (ank[1] - knee[1]) * t1;
-        ctx.moveTo(ax - 1.4 * z, ay);
-        ctx.lineTo(bx + 1.4 * z, by);
-        ctx.moveTo(ax + 1.4 * z, ay);
-        ctx.lineTo(bx - 1.4 * z, by);
-      }
-      ctx.stroke();
-    }
-    if (sp.paint) {
-      // Peinture de guerre au pastel (guède) sur la jambe nue
-      ctx.strokeStyle = rgba('#2f55b8', far ? 0.55 : 0.8);
-      ctx.lineWidth = 0.45 * z;
-      ctx.beginPath();
-      ctx.moveTo(hip[0] - 1 * z, hip[1] + 1.5 * z);
-      ctx.quadraticCurveTo(knee[0] + 1.5 * z, (hip[1] + knee[1]) / 2, knee[0] - 0.5 * z, knee[1] - 0.5 * z);
-      ctx.moveTo(knee[0] + 0.8 * z, knee[1] + 1.5 * z);
-      ctx.lineTo(ank[0] - 0.6 * z, ank[1] - 1.8 * z);
-      ctx.stroke();
-    }
-    ctx.restore();
-    legPath(ctx, z, hip, knee, ank);
-  }
-  // Modelé : trait clair sur le devant de la jambe
   ctx.strokeStyle = edge(base, 0.6);
   ctx.lineWidth = 0.7;
   ctx.stroke();
+  if (L.kind === 'wrap') {
+    // Bandes molletières croisées (lanières) sur le tibia
+    ctx.strokeStyle = tone(L.c2, dk);
+    ctx.lineWidth = 0.5 * z;
+    ctx.beginPath();
+    const dx = ank[0] - knee[0];
+    const dy = ank[1] - knee[1];
+    const len = Math.hypot(dx, dy) || 1;
+    const px = (-dy / len) * 0.85 * z;
+    const py = (dx / len) * 0.85 * z;
+    const n = 4;
+    for (let i = 0; i < n; i++) {
+      const t0 = 0.14 + (i / n) * 0.8;
+      const t1 = t0 + 0.18;
+      const ax = knee[0] + dx * t0;
+      const ay = knee[1] + dy * t0;
+      const bx = knee[0] + dx * t1;
+      const by = knee[1] + dy * t1;
+      ctx.moveTo(ax - px, ay - py);
+      ctx.lineTo(bx + px, by + py);
+      ctx.moveTo(ax + px, ay + py);
+      ctx.lineTo(bx - px, by - py);
+    }
+    ctx.stroke();
+  }
+  if (sp.paint) {
+    // Peinture de guerre au pastel (guède) sur la jambe nue
+    ctx.strokeStyle = rgba('#2f55b8', far ? 0.55 : 0.8);
+    ctx.lineWidth = 0.45 * z;
+    ctx.beginPath();
+    ctx.moveTo(hip[0] - 0.6 * z, hip[1] + 1.4 * z);
+    ctx.quadraticCurveTo(knee[0] + 0.9 * z, (hip[1] + knee[1]) / 2, knee[0] - 0.3 * z, knee[1] - 0.5 * z);
+    ctx.moveTo(knee[0] + 0.4 * z, knee[1] + 1.4 * z);
+    ctx.lineTo(ank[0] - 0.3 * z, ank[1] - 1.6 * z);
+    ctx.stroke();
+  }
   // Pied chaussé
   const fr = clamp(-shinA * 0.6, -0.6, 1.2);
   const [fx, fy] = rot(1.0 * z, 0.35 * z, fr);
@@ -249,7 +229,18 @@ function drawArm(ctx, sp, sh, el, hand, far) {
   cf = tone(cf, dk);
   ctx.beginPath();
   capsule(ctx, sh[0], sh[1], 1.45 * z, el[0], el[1], 1.1 * z);
-  paint(ctx, sideGrad(ctx, Math.min(sh[0], el[0]) - 1.5 * z, Math.max(sh[0], el[0]) + 1.5 * z, cu, 0.18, -0.2), edge(cu), 0.65);
+  const ax0 = Math.min(sh[0], el[0]) - 1.5 * z;
+  const ax1 = Math.max(sh[0], el[0]) + 1.5 * z;
+  if (sl === 'mail') {
+    // Manche de mailles
+    ctx.fillStyle = mailPattern(ctx, cu, 2.3 * z);
+    ctx.fill();
+    ctx.fillStyle = shadeOverlay(ctx, ax0, ax1);
+    ctx.fill();
+    ctx.strokeStyle = edge(cu);
+    ctx.lineWidth = 0.65;
+    ctx.stroke();
+  } else paint(ctx, sideGrad(ctx, ax0, ax1, cu, 0.18, -0.2), edge(cu), 0.65);
   ctx.beginPath();
   capsule(ctx, el[0], el[1], 1.1 * z, hand[0], hand[1], sl === 'robe' ? 1.25 * z : 0.9 * z);
   paint(ctx, cf, edge(cf), 0.65);
@@ -287,6 +278,17 @@ function legXAt(R, hip, thighA, shinA, d, z) {
   return hip[0] + Math.sin(thighA) * T + Math.sin(shinA) * (d - T);
 }
 
+/** Dégradé d'ombrage translucide (clair côté lumière, sombre à l'opposé) à poser sur un motif. */
+function shadeOverlay(ctx, x0, x1, y = 0, a1 = 0.22, a2 = 0.3) {
+  const lit = light.s < 0 ? x0 : x1;
+  const dark = light.s < 0 ? x1 : x0;
+  const g = ctx.createLinearGradient(lit, y, dark, y);
+  g.addColorStop(0, `rgba(255,255,255,${a1})`);
+  g.addColorStop(0.45, 'rgba(255,255,255,0)');
+  g.addColorStop(1, `rgba(0,0,0,${a2})`);
+  return g;
+}
+
 function drawSkirt(ctx, sp, R, P, color, hem, mail, band) {
   const z = sp.sz;
   const h = hem * z;
@@ -298,37 +300,25 @@ function drawSkirt(ctx, sp, R, P, color, hem, mail, band) {
   const [t2x, t2y] = rot(3.5 * z, 0, P.lean);
   const top = R.hy - 0.8 * z;
   const bot = R.hy + h;
-  const path = () => {
-    ctx.beginPath();
-    ctx.moveTo(R.hx + t1x, top + t1y);
-    ctx.lineTo(R.hx + t2x, top + t2y);
-    ctx.quadraticCurveTo(xr - 0.2 * z, (top + bot) / 2, xr, bot - 0.3 * z);
-    ctx.quadraticCurveTo((xl + xr) / 2, bot + 1.1 * z, xl, bot - 0.2 * z);
-    ctx.quadraticCurveTo(xl + 0.3 * z, (top + bot) / 2, R.hx + t1x, top + t1y);
-    ctx.closePath();
-  };
-  path();
-  paint(ctx, sideGrad(ctx, xl, xr, color, 0.15, -0.3, bot), edge(color), 0.7);
-  if (band) {
-    // Bande brodée aux couleurs de l'équipe au bas de la robe
-    ctx.save();
-    ctx.clip();
-    const robe = color === sp.robe;
-    ctx.strokeStyle = band;
-    ctx.lineWidth = (robe ? 1.7 : 1.0) * z;
-    ctx.beginPath();
-    ctx.moveTo(xr + 1, bot - (robe ? 1.5 : 1.0) * z);
-    ctx.quadraticCurveTo((xl + xr) / 2, bot + (robe ? -0.2 : 0.3) * z, xl - 1, bot - (robe ? 1.4 : 0.9) * z);
-    ctx.stroke();
-    ctx.restore();
-    path();
-    ctx.strokeStyle = edge(color);
+  ctx.beginPath();
+  ctx.moveTo(R.hx + t1x, top + t1y);
+  ctx.lineTo(R.hx + t2x, top + t2y);
+  ctx.quadraticCurveTo(xr - 0.2 * z, (top + bot) / 2, xr, bot - 0.3 * z);
+  ctx.quadraticCurveTo((xl + xr) / 2, bot + 1.1 * z, xl, bot - 0.2 * z);
+  ctx.quadraticCurveTo(xl + 0.3 * z, (top + bot) / 2, R.hx + t1x, top + t1y);
+  ctx.closePath();
+  if (mail) {
+    // Pan de cotte de mailles : motif d'anneaux puis ombrage translucide
+    ctx.fillStyle = mailPattern(ctx, color, 2.3 * z);
+    ctx.fill();
+    ctx.fillStyle = shadeOverlay(ctx, xl, xr, bot);
+    ctx.fill();
+    ctx.strokeStyle = edge(color, 0.7);
     ctx.lineWidth = 0.7;
     ctx.stroke();
-  }
-  if (mail) mailTexture(ctx, xl, top, xr, bot + 1, z, color);
-  else {
-    // Plis
+  } else {
+    paint(ctx, sideGrad(ctx, xl, xr, color, 0.15, -0.3, bot), edge(color), 0.7);
+    // Pli
     ctx.strokeStyle = rgba(tone(color, -0.45), 0.5);
     ctx.lineWidth = 0.45 * z;
     ctx.beginPath();
@@ -337,26 +327,22 @@ function drawSkirt(ctx, sp, R, P, color, hem, mail, band) {
     ctx.lineTo(mx + (xn - xf) * 0.1, bot + 0.3 * z);
     ctx.stroke();
   }
-}
-
-/** Texture de cotte de mailles : rangées d'écailles claires/sombres dans le chemin courant (déjà rempli). */
-function mailTexture(ctx, x0, y0, x1, y1, z, c) {
-  ctx.save();
-  ctx.clip();
-  const st = 1.15 * z;
-  ctx.lineWidth = 0.35 * z;
-  for (let y = y0 + 0.6 * z, j = 0; y < y1; y += st * 0.85, j++) {
-    ctx.strokeStyle = rgba(tone(c, -0.5), 0.55);
+  if (band) {
+    // Galon (tunique) ou bande brodée aux couleurs de l'équipe (robe) le long de l'ourlet
+    const bw = (color === sp.robe ? 1.8 : 1.0) * z;
+    const cx = (xl + xr) / 2;
     ctx.beginPath();
-    for (let x = x0 + (j & 1) * st * 0.5; x < x1; x += st) {
-      ctx.moveTo(x - st * 0.5, y);
-      ctx.quadraticCurveTo(x, y + st * 0.7, x + st * 0.5, y);
-    }
+    ctx.moveTo(xr - 0.05 * z, bot - 0.3 * z);
+    ctx.quadraticCurveTo(cx, bot + 1.1 * z, xl + 0.05 * z, bot - 0.2 * z);
+    ctx.lineTo(xl + 0.2 * z, bot - 0.2 * z - bw);
+    ctx.quadraticCurveTo(cx, bot + 1.1 * z - bw, xr - 0.2 * z, bot - 0.3 * z - bw);
+    ctx.closePath();
+    ctx.fillStyle = band;
+    ctx.fill();
+    ctx.strokeStyle = rgba(tone(band, -0.5), 0.45);
+    ctx.lineWidth = 0.4;
     ctx.stroke();
   }
-  ctx.fillStyle = rgba('#ffffff', 0.12);
-  ctx.fillRect(x0, y0, (x1 - x0) * 0.35, y1 - y0);
-  ctx.restore();
 }
 
 function torsoPath(ctx) {
@@ -429,8 +415,13 @@ function drawTorso(ctx, sp, R, P) {
     ctx.bezierCurveTo(4.25, -5.6, 4.05, -3.4, 3.25, -1.6);
     ctx.lineTo(3.6, 0.9);
     ctx.closePath();
-    paint(ctx, sideGrad(ctx, -3.9, 4.1, sp.mail.c, 0.25, -0.3, -4), edge(sp.mail.c, 0.7), lw);
-    mailTexture(ctx, -4, -9, 4.3, 1, 1, sp.mail.c);
+    ctx.fillStyle = mailPattern(ctx, sp.mail.c, 2.3);
+    ctx.fill();
+    ctx.fillStyle = shadeOverlay(ctx, -3.9, 4.1, -4);
+    ctx.fill();
+    ctx.strokeStyle = edge(sp.mail.c, 0.7);
+    ctx.lineWidth = lw;
+    ctx.stroke();
   }
   if (sp.tabard) {
     // Tabard aux couleurs de l'équipe par-dessus la cotte (lisibilité des camps dans la mêlée)

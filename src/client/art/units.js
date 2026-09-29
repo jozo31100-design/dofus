@@ -348,6 +348,29 @@ function bakeFrame(S, fr, b) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Budget de cuisson : une image nouvelle coûte ~0,5 à 1 ms. Pour éviter les à-coups quand beaucoup
+// d'images apparaissent d'un coup (début de bataille, changement de zoom), on s'accorde au plus ~5 ms de
+// cuisson par image affichée (seau à jetons) ; au-delà, on affiche temporairement la même image déjà
+// cuite à une autre résolution, ou à défaut la dernière image cuite de la même animation, et la bonne
+// image est cuite aux images suivantes. Le résultat final est identique ; seule la montée en cache
+// est étalée.
+// ---------------------------------------------------------------------------
+
+const BUDGET_MAX = 16;
+const BUDGET_RATE = 0.3; // ms de cuisson accordées par ms écoulée
+const budget = { tokens: BUDGET_MAX, last: -1, force: false };
+const sameFrame = new Map(); // image (toutes résolutions) -> dernier sprite cuit
+const sameAnim = new Map(); // animation (toutes images) -> dernier sprite cuit
+
+function bakeAllowed() {
+  if (budget.force) return true;
+  const now = performance.now();
+  if (budget.last >= 0) budget.tokens = Math.min(BUDGET_MAX, budget.tokens + (now - budget.last) * BUDGET_RATE);
+  budget.last = now;
+  return budget.tokens > 0;
+}
+
 /**
  * Dessine une unité.
  * o : { type, civ, team, sx, sy (pieds), t (horloge en s), anim: 'idle'|'walk'|'work'|'attack'|'die',
@@ -366,20 +389,32 @@ export function drawUnit(ctx, o) {
   const s = o.scale || 1;
   const k = Math.hypot(m.a, m.b) * s;
   const b = picker.pick(k);
-  const key =
-    ((((((((TYPE_IDX[type] * 2 + (civ === 'gauls' ? 1 : 0)) * 8 + team) * 5 + fr.anim) * 9 + fr.work) * 5 + fr.carry) * 16 + fr.f) * 2 +
-      (fr.dir > 0 ? 0 : 1)) * 13 + fr.aim) * 65536 + Math.round(b * 4096);
+  const animKey = (((((TYPE_IDX[type] * 2 + (civ === 'gauls' ? 1 : 0)) * 8 + team) * 5 + fr.anim) * 9 + fr.work) * 5 + fr.carry) * 2 + (fr.dir > 0 ? 0 : 1);
+  const frameKey = (animKey * 16 + fr.f) * 13 + fr.aim;
+  const key = frameKey * 65536 + Math.round(b * 4096);
   let spr = cache.get(key);
   if (!spr) {
+    const alt = sameFrame.get(frameKey) || sameAnim.get(animKey);
+    if (alt && !bakeAllowed()) {
+      blit(ctx, alt.spr, o.sx, o.sy, s, alt.b, m, fr.alpha);
+      return;
+    }
+    const t0 = performance.now();
     spr = bakeFrame(S, fr, b);
+    if (!budget.force) budget.tokens -= performance.now() - t0;
     cache.set(key, spr);
+    if (sameFrame.size > 12000) sameFrame.clear();
+    if (sameAnim.size > 4000) sameAnim.clear();
+    sameFrame.set(frameKey, { spr, b });
+    sameAnim.set(animKey, { spr, b });
   }
   blit(ctx, spr, o.sx, o.sy, s, b, m, fr.alpha);
 }
 
 /**
- * Prépare à l'avance les images d'une unité (évite de petits à-coups la première fois qu'elles
- * apparaissent). anims : liste parmi 'idle', 'walk', 'attack', 'die', 'work'. zoom : échelle prévue.
+ * Prépare à l'avance les images d'une unité (écran de chargement) pour qu'elles ne soient pas cuites
+ * pendant la partie. anims : liste parmi 'idle', 'walk', 'attack', 'die', 'work'. zoom : échelle prévue
+ * (zoom × devicePixelRatio).
  */
 export function prewarmUnit(type, civ, team, anims = ['idle', 'walk', 'attack'], zoom = 1) {
   const m = { a: zoom, b: 0, c: 0, d: zoom, e: 0, f: 0 };
@@ -389,15 +424,25 @@ export function prewarmUnit(type, civ, team, anims = ['idle', 'walk', 'attack'],
     drawImage() {},
     globalAlpha: 1,
   };
-  for (const anim of anims) {
-    const T = anim === 'walk' ? WALK_T : anim === 'attack' ? ATTACK_T : anim === 'die' ? DIE_T : IDLE_T;
-    const n = anim === 'walk' ? WALK_N : anim === 'attack' ? ATT_N : anim === 'die' ? DIE_N : IDLE_N;
-    for (const dir of [1, -1]) {
-      for (let i = 0; i < n; i++) {
-        const works = anim === 'work' ? WORKS : [null];
-        for (const w of works) drawUnit(ctx, { type, civ, team, sx: 0, sy: 0, t: ((i + 0.5) / n) * T, anim, dir, work: w });
+  budget.force = true;
+  try {
+    for (const anim of anims) {
+      const T = anim === 'walk' ? WALK_T : anim === 'attack' ? ATTACK_T : anim === 'die' ? DIE_T : IDLE_T;
+      const n = anim === 'walk' ? WALK_N : anim === 'attack' ? ATT_N : anim === 'die' ? DIE_N : IDLE_N;
+      for (const dir of [1, -1]) {
+        for (let i = 0; i < n; i++) {
+          const works = anim === 'work' ? WORKS : [null];
+          for (const w of works) {
+            const T2 = w ? WORK[w].T : T;
+            const n2 = w ? WORK_N : n;
+            if (i >= n2) continue;
+            drawUnit(ctx, { type, civ, team, sx: 0, sy: 0, t: ((i + 0.5) / n2) * T2, anim, dir, work: w });
+          }
+        }
       }
     }
+  } finally {
+    budget.force = false;
   }
 }
 

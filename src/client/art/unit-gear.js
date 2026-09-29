@@ -430,22 +430,16 @@ export function shield(ctx, cx, cy, z, kind, face, s = 1, tilt = 0, deco = 'boss
     ell(ctx, 0, 0, rx, ry);
     paint(ctx, sideGrad(ctx, -rx, rx, face, 0.22, -0.28), edge(face, 0.7), 0.7);
     if (deco === 'segments' || deco === 'boss') {
-      // Quartiers peints plus clairs
-      ctx.save();
-      ctx.beginPath();
-      ell(ctx, 0, 0, rx * 0.93, ry * 0.93);
-      ctx.clip();
+      // Quartiers peints plus clairs (secteurs d'ellipse, sans découpage)
       ctx.fillStyle = rgba('#ffffff', 0.22);
+      ctx.beginPath();
       for (let i = 0; i < 4; i++) {
         const a0 = (i / 4) * TAU + 0.3;
-        ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(a0) * rx * 2, Math.sin(a0) * ry * 2);
-        ctx.lineTo(Math.cos(a0 + TAU / 8) * rx * 2, Math.sin(a0 + TAU / 8) * ry * 2);
+        ctx.ellipse(0, 0, rx * 0.93, ry * 0.93, 0, a0, a0 + TAU / 8);
         ctx.closePath();
-        ctx.fill();
       }
-      ctx.restore();
+      ctx.fill();
     } else if (deco === 'cross') {
       ctx.fillStyle = rgba('#ffffff', 0.5);
       ctx.fillRect(-0.6 * k, -ry * 0.85, 1.2 * k, ry * 1.7);
@@ -473,17 +467,19 @@ export function shield(ctx, cx, cy, z, kind, face, s = 1, tilt = 0, deco = 'boss
     if (kind === 'hex') poly(ctx, [0, -ry, rx, -ry * 0.62, rx, ry * 0.62, 0, ry, -rx, ry * 0.62, -rx, -ry * 0.62]);
     else ell(ctx, 0, 0, rx, ry);
     paint(ctx, sideGrad(ctx, -rx, rx, face, 0.22, -0.3), edge(face, 0.75), 0.7);
-    // Motif clair : bandes courbes (style de La Tène)
-    ctx.save();
-    ctx.clip();
-    ctx.strokeStyle = rgba('#fff4d8', 0.45);
+    // Motif clair : volutes (style de La Tène), tracées à l'intérieur du bouclier
+    ctx.strokeStyle = rgba('#fff4d8', 0.5);
     ctx.lineWidth = 0.7 * k;
     ctx.beginPath();
-    ctx.arc(-rx * 0.2, -ry * 0.55, rx * 1.1, 0.2, Math.PI - 0.2);
-    ctx.moveTo(rx * 0.9, ry * 0.55);
-    ctx.arc(-rx * 0.2, ry * 0.55, rx * 1.1, -0.2, -Math.PI + 0.2, true);
+    ctx.moveTo(-rx * 0.62, -ry * 0.3);
+    ctx.quadraticCurveTo(0, -ry * 0.02, rx * 0.62, -ry * 0.3);
+    ctx.moveTo(-rx * 0.62, ry * 0.3);
+    ctx.quadraticCurveTo(0, ry * 0.02, rx * 0.62, ry * 0.3);
+    ctx.moveTo(-rx * 0.35, -ry * 0.62);
+    ctx.quadraticCurveTo(0, -ry * 0.45, rx * 0.35, -ry * 0.62);
+    ctx.moveTo(-rx * 0.35, ry * 0.62);
+    ctx.quadraticCurveTo(0, ry * 0.45, rx * 0.35, ry * 0.62);
     ctx.stroke();
-    ctx.restore();
     // Spina (arête de bois verticale)
     ctx.beginPath();
     capsule(ctx, 0.3 * k, -ry * 0.82, 0.45 * k, 0.3 * k, ry * 0.82, 0.45 * k);

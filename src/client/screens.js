@@ -278,8 +278,11 @@ export class App {
     const found = h('div', { class: 'found' });
     const btn = h('button', { class: 'btn', text: 'Se connecter' });
     const connect = async (address, port) => {
-      const target = (address || ipInput.value).trim();
+      let target = (address || ipInput.value).trim();
       if (!target) { err.textContent = 'Saisissez l\'adresse de l\'hôte.'; return; }
+      // « adresse:port » est accepté (si l'hôte a dû choisir un autre port)
+      const m = /^(.+):(\d{2,5})$/.exec(target);
+      if (m && !port) { target = m[1]; port = Number(m[2]); }
       err.textContent = '';
       btn.disabled = true;
       btn.textContent = 'Connexion…';

@@ -1037,18 +1037,36 @@ export function groundPatch(g, plans, o = {}) {
   if (!g.drawing || !plans.length) return;
   const c = g.ctx;
   const grow = o.grow ?? 0.18;
-  c.save();
-  c.filter = `blur(${o.blur ?? 2.5}px)`;
-  c.fillStyle = o.col || rgba('#8a6a48', o.alpha ?? 0.55);
+  // peinte à demi-résolution puis agrandie : bords adoucis sans filtre de flou
+  const k = 0.5;
+  const cw = c.canvas.width;
+  const chh = c.canvas.height;
+  const tmp = document.createElement('canvas');
+  tmp.width = Math.ceil(cw * k);
+  tmp.height = Math.ceil(chh * k);
+  const t = tmp.getContext('2d');
+  t.scale(k, k);
+  t.fillStyle = o.col || '#8a6a48';
   for (const p of plans) {
     const pts = planOutline(p, grow).map(([x, y]) => g.P(x, y, 0));
-    g.path(p.k === 'rect' ? roundCorners(pts, 6) : pts);
-    c.fill();
+    const q = p.k === 'rect' ? roundCorners(pts, 6) : pts;
+    t.beginPath();
+    t.moveTo(q[0][0], q[0][1]);
+    for (let i = 1; i < q.length; i++) t.lineTo(q[i][0], q[i][1]);
+    t.closePath();
+    t.fill();
   }
+  c.save();
+  c.globalAlpha = o.alpha ?? 0.55;
+  c.imageSmoothingQuality = 'high';
+  c.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, tmp.width / k, tmp.height / k);
   c.restore();
   if (o.speckle !== false) {
-    // cailloux et brins de paille
+    // cailloux et brins de paille (regroupés en trois tracés)
     const rnd = g.rng(77, plans.length);
+    const dark = new Path2D();
+    const light = new Path2D();
+    const straw = new Path2D();
     for (const p of plans) {
       const pts = planOutline(p, grow * 0.6);
       const xs = pts.map((q) => q[0]);
@@ -1064,19 +1082,21 @@ export function groundPatch(g, plans, o = {}) {
         if (p.k === 'circle' && Math.hypot(x - p.x, y - p.y) > p.r + grow * 0.5) continue;
         const [sx, sy] = g.P(x, y, 0);
         const k = rnd();
-        if (k < 0.45) {
-          c.fillStyle = k < 0.2 ? 'rgba(60,40,20,0.35)' : 'rgba(230,210,170,0.45)';
-          c.fillRect(sx, sy, 1.4, 0.9);
-        } else if (k < 0.62 && o.straw !== false) {
-          c.strokeStyle = 'rgba(225,190,100,0.6)';
-          c.lineWidth = 0.7;
-          c.beginPath();
-          c.moveTo(sx, sy);
-          c.lineTo(sx + (rnd() - 0.5) * 5, sy + (rnd() - 0.5) * 2);
-          c.stroke();
+        if (k < 0.2) dark.rect(sx, sy, 1.4, 0.9);
+        else if (k < 0.45) light.rect(sx, sy, 1.4, 0.9);
+        else if (k < 0.62 && o.straw !== false) {
+          straw.moveTo(sx, sy);
+          straw.lineTo(sx + (rnd() - 0.5) * 5, sy + (rnd() - 0.5) * 2);
         }
       }
     }
+    c.fillStyle = 'rgba(60,40,20,0.35)';
+    c.fill(dark);
+    c.fillStyle = 'rgba(230,210,170,0.45)';
+    c.fill(light);
+    c.strokeStyle = 'rgba(225,190,100,0.6)';
+    c.lineWidth = 0.7;
+    c.stroke(straw);
   }
 }
 
@@ -1157,7 +1177,7 @@ export function foundation(g, plans, o = {}) {
   }
   if (!g.drawing) return;
   const c = g.ctx;
-  groundPatch(g, plans, { alpha: 0.75, col: rgba('#7d5f40', 0.8), grow: 0.12, blur: 1.5, density: 40 });
+  groundPatch(g, plans, { alpha: 0.8, col: '#7d5f40', grow: 0.12, density: 40 });
   // tranchées : contour sombre des murs futurs
   for (const p of plans) {
     const pts = planOutline(p, -0.02).map(([x, y]) => g.P(x, y, 0));

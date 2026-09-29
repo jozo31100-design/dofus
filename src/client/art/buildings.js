@@ -33,25 +33,31 @@ export function buildingMetrics(typeId) {
   return { h: HEIGHT[typeId] || 60 };
 }
 
-/** Ombres relevées : polygones fondus dans un calque, flouté et translucide. */
+/**
+ * Ombres relevées : polygones fondus dans un calque à demi-résolution (l'agrandissement lissé
+ * les adoucit sans filtre de flou, bien plus rapide), posé translucide sous le bâtiment.
+ */
 function paintShadows(g) {
-  if (!g.shadows.length || (globalThis.__exp || {}).noshadow) return;
+  if (!g.shadows.length) return;
   const src = g.ctx.canvas;
-  const { canvas, ctx } = makeCanvas(src.width, src.height);
+  const k = 0.5;
+  const { canvas, ctx } = makeCanvas(src.width * k, src.height * k);
+  ctx.scale(k, k);
   ctx.fillStyle = '#0c1226';
+  ctx.beginPath();
   for (const poly of g.shadows) {
     if (poly.length < 3) continue;
-    ctx.beginPath();
     ctx.moveTo(poly[0][0], poly[0][1]);
     for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0], poly[i][1]);
     ctx.closePath();
-    ctx.fill();
   }
+  ctx.fill('nonzero');
   const c = g.ctx;
   c.save();
   c.globalAlpha = 0.27;
-  c.filter = 'blur(1.6px)';
-  c.drawImage(canvas, 0, 0);
+  c.imageSmoothingEnabled = true;
+  c.imageSmoothingQuality = 'high';
+  c.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, canvas.width / k, canvas.height / k);
   c.restore();
 }
 
@@ -122,7 +128,6 @@ export function getBuildingSprite(typeId, civ, teamIdx, stage = 3) {
   const def = BUILDINGS[typeId];
   const n = def ? def.size : 2;
   const design = DESIGNS[cv][typeId];
-  const T0 = performance.now();
   const W = workCanvas(n, (HEIGHT[typeId] || 100) + 30);
   const g = new Gfx(W.ctx, W.ax, W.ay, { stage: st, civ: cv, team: tm, size: n, seed: hash(typeId, cv) });
   if (!design) {
@@ -140,36 +145,27 @@ export function getBuildingSprite(typeId, civ, teamIdx, stage = 3) {
     design(g);
     const plans = g.plans;
     g.mode = 'draw';
-    globalThis.__t1 = performance.now() - T0;
     if (st === 0) {
       foundation(g, plans, design.found || {});
       siteFlag(g);
     } else {
       if (design.ground) design.ground(g, plans);
       else groundPatch(g, plans, { alpha: st === 3 ? 0.5 : 0.62 });
-      globalThis.__t2 = performance.now() - T0;
-      let T = performance.now();
       g.mode = 'shadow';
       design(g);
-      const tS1 = performance.now() - T; T = performance.now();
       paintShadows(g);
-      const tS2 = performance.now() - T; T = performance.now();
       g.mode = 'draw';
       design(g);
-      const tD = performance.now() - T;
-      if (globalThis.__prof) globalThis.__prof.push([typeId, civ, st, tS1.toFixed(1), tS2.toFixed(1), tD.toFixed(1)]);
       if (st < 3) siteFlag(g);
     }
   }
   // hauteur du sommet mesurée avant la fumée (dessins différés)
-  const T3 = performance.now();
   const top = topRow(W.canvas);
   for (const f of g.late) f();
   const cr = crop(W.canvas);
   const ax = W.ax - cr.dx;
   const ay = W.ay - cr.dy;
   s = { canvas: cr.canvas, ax, ay, h: Math.max(4, Math.round(W.ay - top)) };
-  if (globalThis.__prof) globalThis.__prof.push(['setup+plan', globalThis.__t1.toFixed(1), 'ground', globalThis.__t2.toFixed(1), 'crop', (performance.now() - T3).toFixed(1), 'total', (performance.now() - T0).toFixed(1)]);
   cache.set(key, s);
   return s;
 }

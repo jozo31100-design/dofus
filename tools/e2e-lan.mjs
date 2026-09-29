@@ -44,8 +44,10 @@ await pa.screenshot({ path: path.join(shots, '1-hote-attente.png') });
 
 // --- l'invité se connecte (adresse locale saisie à la main)
 await pb.click('text=Rejoindre une partie');
-await pb.fill('input[placeholder^="ex."]', '127.0.0.1');
-await pb.click('button:has-text("Se connecter")');
+await pb.waitForSelector('.found button:has-text("Partie de Jo")', { timeout: 12000 });
+log('découverte automatique : la partie de Jo apparaît dans la liste');
+await pb.screenshot({ path: path.join(shots, '1b-invite-liste.png') });
+await pb.click('.found button:has-text("Partie de Jo")');
 await pb.waitForSelector('text=Connecté !', { timeout: 10000 });
 await pa.waitForSelector('text=Papa', { timeout: 10000 });
 log('invité connecté : le salon de l\'hôte le montre');
@@ -130,6 +132,33 @@ log(`après le départ de l'invité, côté hôte : ${JSON.stringify(over)}`);
 assert.ok(over.over && over.over.winner === 0, 'l\'hôte doit gagner par abandon');
 await pa.screenshot({ path: path.join(shots, '5-hote-victoire.png') });
 await A.close();
+
+// --- scénario 2 : adresse saisie à la main, puis l'hôte quitte en pleine partie
+log('scénario 2 : l\'hôte quitte en pleine partie');
+const C = await launch('hote2');
+const D = await launch('invite2');
+const pc = await C.firstWindow();
+const pd = await D.firstWindow();
+for (const [k, p] of [['C', pc], ['D', pd]]) p.on('pageerror', (e) => errs[k === 'C' ? 'A' : 'B'].push(e.message));
+await pc.waitForSelector('text=Terres de Gaule');
+await pd.waitForSelector('text=Terres de Gaule');
+await pc.click('text=Héberger une partie en réseau');
+await pc.waitForSelector('text=En attente d\'un joueur');
+await pd.click('text=Rejoindre une partie');
+await pd.fill('input[placeholder^="ex."]', '127.0.0.1:47615');
+await pd.click('button:has-text("Se connecter")');
+await pd.waitForSelector('text=Connecté !', { timeout: 10000 });
+await pc.waitForSelector('.player-row:not(.waiting) >> nth=1', { timeout: 10000 });
+await pc.click('button:has-text("Lancer la partie")');
+await pd.waitForFunction(() => window.__game && window.__game.state.ents.size > 100 && window.__game.state.tick > 20, null, { timeout: 60000 });
+await sleep(1500);
+await C.close();
+await pd.waitForSelector('text=Connexion perdue', { timeout: 15000 });
+log('l\'invité voit « Connexion perdue » quand l\'hôte quitte');
+await pd.screenshot({ path: path.join(shots, '6-invite-connexion-perdue.png') });
+await pd.click('text=Retour au menu');
+await pd.waitForSelector('text=Jouer contre l\'ordinateur');
+await D.close();
 
 const all = [...errs.A, ...errs.B];
 if (all.length) { console.log('ERREURS :\n' + all.join('\n')); process.exit(1); }

@@ -4,7 +4,7 @@
 // attaque, mort), détails agrandis ×3, travaux et charges des villageois, animations image par image,
 // foule mélangée à zoom 0,6 sur l'herbe, et mesure de performance (400 drawUnit par image).
 // Une ancre (#revue, #details, #villageois, #anim, #foule, #perf) limite l'affichage à une section.
-import { drawUnit, unitMetrics } from '../src/client/art/units.js';
+import { drawUnit, unitMetrics, prewarmUnit, unitCacheSize } from '../src/client/art/units.js';
 import { mulberry32 } from '../src/client/art/palette.js';
 
 const W = 1600;
@@ -223,7 +223,7 @@ function crowd() {
 // 6. Performance : 400 drawUnit par image
 // ---------------------------------------------------------------------------
 function perf() {
-  const H = 150;
+  const H = 170;
   const ctx = canvas(H);
   grass(ctx, 0, 0, W, H, 17);
   const off = document.createElement('canvas');
@@ -238,24 +238,31 @@ function perf() {
     list.push({ type: t, civ: side ? 'franks' : 'gauls', team: side, sx: 40 + r() * 1520, sy: 60 + r() * 900, t: r() * 5, anim: ['idle', 'walk', 'attack', 'work'][i % 4], work: 'wood', dir: r() < 0.5 ? 1 : -1 });
   }
   const lines = [];
+  // Première image à froid (cache vide, budget de cuisson actif)
+  const c0 = performance.now();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  for (const u of list) drawUnit(g, u);
+  lines.push(`première image à froid (cache vide) : ${(performance.now() - c0).toFixed(1)} ms`);
   for (const zoom of [1, 0.6, 1.25]) {
-    // Préchauffage (cuisson des images) puis mesure à l'état stable
+    // Préchauffage de toutes les images utilisées (écran de chargement), puis mesure en régime établi
     const t0 = performance.now();
-    for (let f = 0; f < 3; f++) {
-      g.setTransform(zoom, 0, 0, zoom, 0, 0);
-      for (const u of list) drawUnit(g, { ...u, t: u.t + f * 0.05 });
-    }
+    for (const civ of CIVS) for (const team of [0, 1]) for (const t of TYPES.slice(0, 10)) prewarmUnit(t, civ, team, ['idle', 'walk', 'attack'], zoom);
+    prewarmUnit('villager', 'gauls', 0, ['work'], zoom);
+    prewarmUnit('villager', 'franks', 1, ['work'], zoom);
     const warm = performance.now() - t0;
     const n = 30;
+    let worst = 0;
     const t1 = performance.now();
     for (let f = 0; f < n; f++) {
+      const tf = performance.now();
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.clearRect(0, 0, 1600, 1000);
       g.setTransform(zoom, 0, 0, zoom, 0, 0);
-      for (const u of list) drawUnit(g, { ...u, t: u.t + (f % 3) * 0.05 });
+      for (const u of list) drawUnit(g, { ...u, t: u.t + f * 0.037 });
+      worst = Math.max(worst, performance.now() - tf);
     }
     const per = (performance.now() - t1) / n;
-    lines.push(`zoom ${zoom} : 400 drawUnit = ${per.toFixed(2)} ms par image (préchauffage ${warm.toFixed(0)} ms)`);
+    lines.push(`zoom ${zoom} : 400 drawUnit = ${per.toFixed(2)} ms par image (pire ${worst.toFixed(2)} ms) ; préchauffage ${warm.toFixed(0)} ms, ${unitCacheSize()} sprites en cache`);
   }
   title(ctx, 'Performance (Chromium sans GPU)', 12, 24);
   lines.forEach((l, i) => label(ctx, l, 16, 56 + i * 22));

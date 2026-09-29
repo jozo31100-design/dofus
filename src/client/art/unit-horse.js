@@ -1,6 +1,6 @@
 // Cheval vu de profil (tourné de trois-quarts), regardant vers +x, sabots au sol (y = 0).
 // Robes, crinière, selle ou caparaçon aux couleurs de l'équipe ; galop paramétré par une phase.
-import { PI, TAU, clamp, lerp, smooth, tone, rgba, edge, capsule, ell, poly, paint, line, seg, rot, sideGrad, vGrad, ballGrad, light } from './unit-kit.js';
+import { PI, TAU, clamp, lerp, smooth, tone, rgba, edge, capsule, ell, poly, paint, line, seg, rot, sideGrad, vGrad, ballGrad, light, checkPattern } from './unit-kit.js';
 
 /** Pose neutre du cheval. Angles des pattes : convention des membres (0 = vertical, + = vers l'avant). */
 export const HPOSE0 = {
@@ -131,17 +131,14 @@ export function drawHorse(ctx, H, P, mid) {
   ctx.rotate(P.pitch);
   bodyPath(ctx, z);
   paint(ctx, ballGrad(ctx, -1 * z, -3.5 * z, 16 * z, H.coat, 0.24, -0.32), edge(H.coat, 0.65), 0.75);
-  // Ventre plus sombre, reflet du dos, muscles de l'épaule et de la cuisse
-  ctx.save();
+  // Ventre plus sombre et reflet du dos (second remplissage du même contour, sans découpage)
   bodyPath(ctx, z);
-  ctx.clip();
-  ctx.fillStyle = rgba(tone(H.coat, -0.5), 0.32);
-  ctx.beginPath();
-  ell(ctx, -1 * z, 6.8 * z, 14 * z, 3.6 * z);
-  ctx.fill();
-  ctx.fillStyle = rgba('#ffffff', 0.13);
-  ctx.beginPath();
-  ell(ctx, -3 * z, -6.2 * z, 9 * z, 1.4 * z);
+  const bg = ctx.createLinearGradient(0, -7 * z, 0, 6.5 * z);
+  bg.addColorStop(0, 'rgba(255,255,255,0.14)');
+  bg.addColorStop(0.3, 'rgba(255,255,255,0)');
+  bg.addColorStop(0.72, 'rgba(0,0,0,0)');
+  bg.addColorStop(1, 'rgba(0,0,0,0.3)');
+  ctx.fillStyle = bg;
   ctx.fill();
   if (H.dapple) {
     ctx.fillStyle = rgba('#ffffff', 0.2);
@@ -159,7 +156,6 @@ export function drawHorse(ctx, H, P, mid) {
   ctx.moveTo(7.4 * z, -5.6 * z);
   ctx.quadraticCurveTo(5.4 * z, -0.6 * z, 7.6 * z, 4.0 * z);
   ctx.stroke();
-  ctx.restore();
 
   if (H.caparison) {
     // Caparaçon aux couleurs de l'équipe, bordure dorée et motif
@@ -172,18 +168,17 @@ export function drawHorse(ctx, H, P, mid) {
     for (const [x, y] of hem) ctx.lineTo(x * z, y * z);
     ctx.closePath();
     paint(ctx, sideGrad(ctx, -14 * z, 12 * z, c, 0.24, -0.32), edge(c, 0.8), 0.75);
-    ctx.save();
-    ctx.clip();
+    if (H.capPattern === 'check') {
+      // Carreaux gaulois (motif translucide sur le même contour)
+      ctx.fillStyle = checkPattern(ctx, 'rgba(255,255,255,0)', 'rgba(255,255,255,0.22)', 4.6 * z);
+      ctx.fill();
+    }
     ctx.strokeStyle = H.capTrim || '#e8c050';
     ctx.lineWidth = 1.2 * z;
     ctx.beginPath();
-    hem.forEach(([x, y], i) => (i ? ctx.lineTo(x * z, (y - 1.0) * z) : ctx.moveTo(x * z, (y - 1.0) * z)));
+    hem.forEach(([x, y], i) => (i ? ctx.lineTo(x * z, (y - 1.0) * z) : ctx.moveTo((x + 0.4) * z, (y - 1.0) * z)));
     ctx.stroke();
-    if (H.capPattern === 'check') {
-      // Carreaux gaulois
-      ctx.fillStyle = rgba('#ffffff', 0.2);
-      for (let i = -7; i < 6; i++) for (let j = -4; j < 4; j++) if ((i + j) & 1) ctx.fillRect(i * 2.3 * z, j * 2.3 * z, 2.3 * z, 2.3 * z);
-    } else {
+    if (H.capPattern !== 'check') {
       // Fleurs de lys dorées
       ctx.fillStyle = H.capTrim || '#e8c050';
       for (const [lx, ly] of [[-9, 2], [-3, 3], [3, 2], [-6, -3.4], [0, -3], [6.5, -2.5]]) {
@@ -194,7 +189,6 @@ export function drawHorse(ctx, H, P, mid) {
         ctx.fill();
       }
     }
-    ctx.restore();
   } else if (H.cloth) {
     // Tapis de selle aux couleurs de l'équipe, bordure claire et franges
     const c = H.cloth;

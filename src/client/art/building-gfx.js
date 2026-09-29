@@ -136,104 +136,128 @@ export function rrect(c, x, y, w, h, r) {
 
 // ---------------------------------------------------------------------------
 // Textures planes : dessinées dans le repère local d'une face (u vers la droite, v vers le bas),
-// en couleurs naturelles. Signature : (c, w, h, rnd, col, m).
+// en couleurs naturelles. Signature : (c, w, h, rnd, col, m). Elles sont PÉRIODIQUES de période (w, h) :
+// les matériaux marqués `tile` sont rendus une fois dans une tuile de 96 px, posée ensuite en motif.
 // ---------------------------------------------------------------------------
+
+/** Largeurs aléatoires (moyenne mean, variation relative ±vr) dont la somme vaut exactement T. */
+function partition(T, mean, vr, rnd) {
+  const out = [];
+  let sum = 0;
+  while (sum < T - mean * 0.5 || !out.length) {
+    const w = mean * (1 - vr + rnd() * 2 * vr);
+    out.push(w);
+    sum += w;
+  }
+  const k = T / sum;
+  return out.map((w) => w * k);
+}
+
+/** Appelle f(x, y) pour chaque copie périodique utile d'un élément de rayon r en (x, y). */
+function wrap4(W, H, x, y, r, f) {
+  const xs = [x];
+  if (x - r < 0) xs.push(x + W);
+  if (x + r > W) xs.push(x - W);
+  const ys = [y];
+  if (y - r < 0) ys.push(y + H);
+  if (y + r > H) ys.push(y - H);
+  for (const a of xs) for (const b of ys) f(a, b);
+}
+
+/** Pose une rangée d'éléments [u, u + bw] décalée de off, recopiée de part et d'autre de la période W. */
+function rowItems(W, widths, off, f) {
+  let u = off;
+  for (const bw of widths) {
+    f(u, bw);
+    if (u + bw > W) f(u - W, bw);
+    if (u < 0) f(u + W, bw);
+    u += bw;
+  }
+}
 
 /** Planches verticales. m.pw : largeur moyenne d'une planche. */
 export function texPlanks(c, w, h, rnd, col, m = {}) {
-  const pw = m.pw || 5;
   const seam = tone(col, 0.5);
   const grain = tone(col, 0.78);
-  let u = -rnd() * pw;
-  while (u < w) {
-    const bw = pw * (0.8 + rnd() * 0.45);
+  let u = 0;
+  for (const bw of partition(w, m.pw || 5, 0.22, rnd)) {
     c.fillStyle = tone(col, 0.9 + rnd() * 0.2);
-    c.fillRect(u, -1, bw, h + 2);
+    c.fillRect(u, 0, bw, h);
     c.fillStyle = grain;
     c.globalAlpha = 0.35;
-    for (let k = 0; k < 2; k++) c.fillRect(u + 1 + rnd() * (bw - 2), rnd() * h * 0.5, 0.6, h * (0.3 + rnd() * 0.5));
+    for (let k = 0; k < 2; k++) {
+      const gx = u + 1 + rnd() * Math.max(0.1, bw - 2);
+      const gy = rnd() * h;
+      const gl = h * (0.2 + rnd() * 0.3);
+      c.fillRect(gx, gy, 0.6, gl);
+      if (gy + gl > h) c.fillRect(gx, gy - h, 0.6, gl);
+    }
     c.globalAlpha = 1;
     c.fillStyle = seam;
-    c.fillRect(u, -1, 0.9, h + 2);
+    c.fillRect(u, 0, 0.9, h);
     c.fillStyle = 'rgba(255,240,210,0.14)';
-    c.fillRect(u + 0.9, -1, 0.7, h + 2);
-    if (rnd() < 0.22) {
+    c.fillRect(u + 0.9, 0, 0.7, h);
+    if (rnd() < 0.3) {
       c.fillStyle = seam;
-      c.beginPath();
-      c.ellipse(u + bw * 0.5, 2 + rnd() * (h - 4), 0.8, 1.3, 0, 0, 7);
-      c.fill();
+      const ky = rnd() * h;
+      wrap4(w, h, u + bw * 0.5, ky, 2, (x, y) => {
+        c.beginPath();
+        c.ellipse(x, y, 0.8, 1.3, 0, 0, 7);
+        c.fill();
+      });
     }
     u += bw;
-  }
-  if (m.battens) {
-    // traverses horizontales clouées
-    c.fillStyle = tone(col, 0.8);
-    for (const f of m.battens) {
-      c.fillRect(-1, h * f - 1.2, w + 2, 2.4);
-      c.fillStyle = 'rgba(0,0,0,0.25)';
-      c.fillRect(-1, h * f + 1.2, w + 2, 0.7);
-      c.fillStyle = tone(col, 0.8);
-    }
   }
 }
 
 /** Rondins horizontaux (mur de rondins). */
 export function texLogsH(c, w, h, rnd, col, m = {}) {
-  const lh = m.lh || 4.5;
-  for (let v = h; v > -lh; v -= lh) {
+  const rows = Math.max(1, Math.round(h / (m.lh || 4.8)));
+  const lh = h / rows;
+  for (let r = 0; r < rows; r++) {
+    const v = h - r * lh;
     const g = c.createLinearGradient(0, v - lh, 0, v);
     g.addColorStop(0, tone(col, 1.12));
     g.addColorStop(0.55, col);
     g.addColorStop(1, tone(col, 0.62));
     c.fillStyle = g;
-    c.fillRect(-1, v - lh, w + 2, lh);
+    c.fillRect(0, v - lh, w, lh);
     c.fillStyle = 'rgba(40,20,5,0.45)';
-    c.fillRect(-1, v - 0.8, w + 2, 0.8);
-    if (rnd() < 0.5) {
-      c.fillStyle = tone(col, 0.7);
-      c.fillRect(rnd() * w, v - lh * 0.6, 3 + rnd() * 5, 0.6);
-    }
+    c.fillRect(0, v - 0.8, w, 0.8);
+    c.fillStyle = tone(col, 0.7);
+    const x = rnd() * w;
+    const L = 3 + rnd() * 5;
+    c.fillRect(x, v - lh * 0.6, L, 0.6);
+    if (x + L > w) c.fillRect(x - w, v - lh * 0.6, L, 0.6);
   }
 }
 
-/** Assises de pierres taillées. m.rh : hauteur d'assise, m.sw : longueur moyenne. */
+/** Assises de pierres taillées (rangées posées depuis le bas). m.rh : hauteur d'assise, m.sw : longueur moyenne. */
 export function texStone(c, w, h, rnd, col, m = {}) {
-  const rh = m.rh || 5;
+  const rows = Math.max(1, Math.round(h / (m.rh || 5)));
+  const rh = h / rows;
   const sw = m.sw || 10;
   c.fillStyle = tone(col, 0.62);
-  c.fillRect(-1, -1, w + 2, h + 2);
-  for (let v = h; v > -rh; v -= rh) {
-    let u = -rnd() * sw;
-    while (u < w) {
-      const bw = sw * (0.55 + rnd() * 0.9);
+  c.fillRect(0, 0, w, h);
+  for (let r = 0; r < rows; r++) {
+    const v = h - r * rh;
+    rowItems(w, partition(w, sw, 0.45, rnd), -rnd() * sw, (u, bw) => {
       c.fillStyle = tone(col, 0.86 + rnd() * 0.26);
       rrect(c, u + 0.55, v - rh + 0.6, bw - 1.1, rh - 1.15, 1.2);
       c.fill();
       c.fillStyle = 'rgba(255,250,235,0.22)';
       c.fillRect(u + 1.2, v - rh + 0.65, bw - 2.4, 0.75);
-      u += bw;
-    }
-  }
-  if (m.moss) {
-    c.fillStyle = 'rgba(90,110,50,0.22)';
-    for (let i = 0; i < w * h / 160; i++) {
-      c.beginPath();
-      c.ellipse(rnd() * w, h - rnd() * rnd() * h, 2 + rnd() * 3, 1 + rnd() * 1.5, 0, 0, 7);
-      c.fill();
-    }
+    });
   }
 }
 
-/** Pierres sèches plates et irrégulières (murets gaulois). */
+/** Pierres sèches plates et irrégulières (murets gaulois) ; m.beams : têtes de poutres du murus gallicus. */
 export function texDryStone(c, w, h, rnd, col, m = {}) {
   c.fillStyle = tone(col, 0.45);
-  c.fillRect(-1, -1, w + 2, h + 2);
+  c.fillRect(0, 0, w, h);
   let v = h;
-  while (v > -5) {
-    const rh = 2.6 + rnd() * 2.4;
-    let u = -rnd() * 8;
-    while (u < w) {
-      const bw = 3.5 + rnd() * 9;
+  for (const rh of partition(h, 3.8, 0.32, rnd)) {
+    rowItems(w, partition(w, 8, 0.55, rnd), -rnd() * 8, (u, bw) => {
       c.fillStyle = tone(col, 0.8 + rnd() * 0.32);
       c.beginPath();
       c.moveTo(u + 0.5, v - 0.45);
@@ -244,20 +268,22 @@ export function texDryStone(c, w, h, rnd, col, m = {}) {
       c.fill();
       c.fillStyle = 'rgba(255,248,230,0.2)';
       c.fillRect(u + 1, v - rh + 0.6, bw - 2.2, 0.6);
-      u += bw;
-    }
+    });
     v -= rh;
   }
   if (m.beams) murusBeams(c, w, h, m);
 }
 
-/** Têtes de poutres en quinconce du murus gallicus. */
-function murusBeams(c, w, h, m) {
-  const dx = m.bx || 13;
-  const dy = m.by || 10;
-  let row = 0;
-  for (let v = h - 5; v > 3; v -= dy, row++) {
-    for (let u = (row % 2) * dx * 0.5 + 4; u < w - 2; u += dx) {
+/** Têtes de poutres en quinconce du murus gallicus (grille périodique). */
+function murusBeams(c, w, h) {
+  const nx = Math.max(1, Math.round(w / 13));
+  const ny = Math.max(2, Math.round(h / 10 / 2) * 2);
+  const dx = w / nx;
+  const dy = h / ny;
+  for (let r = 0; r < ny; r++) {
+    const v = h - (r + 0.5) * dy;
+    for (let k = 0; k <= nx; k++) {
+      const u = (k + (r % 2) * 0.5) * dx;
       c.fillStyle = '#4a2f18';
       c.fillRect(u - 1.9, v - 1.9, 3.8, 3.8);
       c.fillStyle = '#9a7048';
@@ -268,31 +294,29 @@ function murusBeams(c, w, h, m) {
   }
 }
 
-/** Torchis chaulé : plaques d'enduit et salissures au pied. */
-export function texDaub(c, w, h, rnd, col, m = {}) {
+/** Torchis chaulé : plaques et reprises d'enduit. */
+export function texDaub(c, w, h, rnd) {
   const n = Math.ceil((w * h) / 70);
   for (let i = 0; i < n; i++) {
     c.fillStyle = rnd() < 0.55 ? 'rgba(255,255,250,0.16)' : 'rgba(140,110,70,0.08)';
-    c.beginPath();
-    c.ellipse(rnd() * w, rnd() * h, 2 + rnd() * 5, 1.2 + rnd() * 2.5, 0, 0, 7);
-    c.fill();
+    const rx = 2 + rnd() * 5;
+    const ry = 1.2 + rnd() * 2.5;
+    wrap4(w, h, rnd() * w, rnd() * h, rx, (x, y) => {
+      c.beginPath();
+      c.ellipse(x, y, rx, ry, 0, 0, 7);
+      c.fill();
+    });
   }
+}
+
+/** Salissures de terre au pied d'un mur de torchis (dépend de la hauteur de la face). */
+function daubDirt(c, w, h) {
   const hh = Math.min(10, h * 0.6);
   const g = c.createLinearGradient(0, h, 0, h - hh);
   g.addColorStop(0, 'rgba(110,78,45,0.5)');
   g.addColorStop(1, 'rgba(110,78,45,0)');
   c.fillStyle = g;
   c.fillRect(-1, h - hh, w + 2, hh + 1);
-  if (m.frame) {
-    // colombage : poteaux et sablières
-    const tim = m.timber || '#6a4526';
-    const step = m.frame;
-    c.fillStyle = tim;
-    for (let u = step * 0.5; u < w; u += step) c.fillRect(u - 1.3, -1, 2.6, h + 2);
-    c.fillRect(-1, -1, w + 2, 2.6);
-    c.fillStyle = 'rgba(255,230,190,0.2)';
-    for (let u = step * 0.5; u < w; u += step) c.fillRect(u - 1.3, -1, 0.7, h + 2);
-  }
 }
 
 /** Chaume sur un pan plat (fibres dans le sens de la pente, rangs superposés). */
@@ -306,41 +330,50 @@ export function texThatch(c, w, h, rnd, col, m = {}) {
     c.globalAlpha = a;
     c.beginPath();
     for (let i = 0; i < n / 2; i++) {
-      const u = rnd() * w;
-      const v = rnd() * h;
       const L = 3 + rnd() * 5;
-      c.moveTo(u, v);
-      c.lineTo(u + (rnd() - 0.5) * 0.8, v + L);
+      const du = (rnd() - 0.5) * 0.8;
+      wrap4(w, h, rnd() * w, rnd() * h, L, (u, v) => {
+        c.moveTo(u, v);
+        c.lineTo(u + du, v + L);
+      });
     }
     c.stroke();
   }
   c.globalAlpha = 1;
-  const lh = m.lh || 7;
-  for (let v = lh * (0.6 + rnd() * 0.4); v < h - 2; v += lh) {
+  const rows = Math.max(1, Math.round(h / (m.lh || 7)));
+  const lh = h / rows;
+  const steps = Math.max(1, Math.round(w / 4));
+  for (let r = 0; r < rows; r++) {
+    const v = (r + 0.7) * lh;
     c.fillStyle = 'rgba(70,45,10,0.28)';
     c.beginPath();
-    c.moveTo(-1, v);
-    for (let u = 0; u <= w + 4; u += 4) c.lineTo(u, v + (rnd() - 0.5) * 1.4);
-    c.lineTo(w + 2, v + 1.8);
-    c.lineTo(-1, v + 1.8);
+    c.moveTo(0, v);
+    const jit = [];
+    for (let i = 0; i <= steps; i++) jit.push(i === steps ? jit[0] : (rnd() - 0.5) * 1.4);
+    for (let i = 0; i <= steps; i++) c.lineTo((i * w) / steps, v + jit[i]);
+    c.lineTo(w, v + 1.8);
+    c.lineTo(0, v + 1.8);
     c.fill();
     c.fillStyle = 'rgba(255,240,190,0.22)';
-    c.fillRect(-1, v - 1.2, w + 2, 1);
+    c.fillRect(0, v - 1.2, w, 1);
   }
 }
 
 /** Bardeaux / ardoises : rangs posés de l'égout (bas) vers le faîte (haut). m.rh, m.tw, m.round, m.moss. */
 export function texShingles(c, w, h, rnd, col, m = {}) {
-  const rh = m.rh || 4;
-  const tw = m.tw || 5;
+  const rows = Math.max(1, Math.round(h / (m.rh || 4)));
+  const rh = h / rows;
+  const cols = Math.max(1, Math.round(w / (m.tw || 5)));
+  const tw = w / cols;
   const seam = rgba(tone(col, 0.4), 0.6);
-  let row = 0;
-  for (let v = h; v > -rh; v -= rh, row++) {
-    const off = (row % 2) * tw * 0.5 + (rnd() - 0.5) * 1.2;
-    for (let u = -tw + off; u < w + tw; u += tw) {
-      const r = rnd();
+  for (let r = 0; r < rows; r++) {
+    const v = h - r * rh;
+    const off = (r % 2) * tw * 0.5;
+    for (let i = -1; i <= cols; i++) {
+      const u = off + i * tw;
+      const q = rnd();
       // quelques bardeaux neufs (clairs) ou très patinés (sombres)
-      const k = r < 0.07 ? 1.14 + rnd() * 0.1 : r < 0.14 ? 0.72 + rnd() * 0.08 : 0.88 + rnd() * 0.2;
+      const k = q < 0.07 ? 1.14 + rnd() * 0.1 : q < 0.14 ? 0.72 + rnd() * 0.08 : 0.88 + rnd() * 0.2;
       c.fillStyle = tone(col, k);
       if (m.round) {
         c.beginPath();
@@ -353,7 +386,6 @@ export function texShingles(c, w, h, rnd, col, m = {}) {
         c.fill();
       } else {
         c.fillRect(u, v - rh - 0.3, tw, rh + 0.6);
-        // fil du bois
         c.fillStyle = 'rgba(40,25,10,0.12)';
         c.fillRect(u + tw * (0.3 + rnd() * 0.4), v - rh, 0.5, rh);
       }
@@ -361,20 +393,21 @@ export function texShingles(c, w, h, rnd, col, m = {}) {
       c.fillRect(u, v - rh, 0.55, rh * (m.round ? 0.6 : 1));
     }
     c.fillStyle = 'rgba(10,5,20,0.24)';
-    c.fillRect(-1, v - rh, w + 2, 0.9);
+    c.fillRect(0, v - rh, w, 0.9);
     c.fillStyle = 'rgba(255,245,220,0.14)';
-    c.fillRect(-1, v - 1.1, w + 2, 0.6);
+    c.fillRect(0, v - 1.1, w, 0.6);
   }
   if (m.moss !== false) {
-    // mousse et lichens, surtout vers l'égout
-    const n = Math.ceil((w * h) / 260);
+    const n = Math.ceil((w * h) / 320);
     for (let i = 0; i < n; i++) {
-      const x = rnd() * w;
-      const y = h - Math.pow(rnd(), 1.8) * h;
-      c.fillStyle = rnd() < 0.7 ? 'rgba(96,118,52,0.22)' : 'rgba(200,190,120,0.2)';
-      c.beginPath();
-      c.ellipse(x, y, 2 + rnd() * 5, 1 + rnd() * 1.8, 0, 0, 7);
-      c.fill();
+      c.fillStyle = rnd() < 0.7 ? 'rgba(96,118,52,0.2)' : 'rgba(200,190,120,0.18)';
+      const rx = 2 + rnd() * 5;
+      const ry = 1 + rnd() * 1.8;
+      wrap4(w, h, rnd() * w, rnd() * h, rx, (x, y) => {
+        c.beginPath();
+        c.ellipse(x, y, rx, ry, 0, 0, 7);
+        c.fill();
+      });
     }
   }
 }
@@ -384,30 +417,86 @@ export function texWicker(c, w, h, rnd, col) {
   const lt = tone(col, 1.2);
   const dk = tone(col, 0.6);
   c.fillStyle = dk;
-  c.fillRect(-1, -1, w + 2, h + 2);
-  const sh = 2.2;
-  let row = 0;
-  for (let v = 0.5; v < h + sh; v += sh, row++) {
-    for (let u = (row % 2) * 3 - 3; u < w + 3; u += 6) {
+  c.fillRect(0, 0, w, h);
+  const rows = Math.max(1, Math.round(h / 2.4));
+  const sh = h / rows;
+  const cols = Math.max(1, Math.round(w / 6));
+  const cw = w / cols;
+  for (let r = 0; r <= rows; r++) {
+    const v = r * sh + 0.5;
+    for (let i = -1; i <= cols; i++) {
+      const u = i * cw + (r % 2) * cw * 0.5;
       c.fillStyle = tone(col, 0.9 + rnd() * 0.2);
       c.beginPath();
-      c.ellipse(u + 3, v, 3.2, sh * 0.55, 0, 0, 7);
+      c.ellipse(u + cw * 0.5, v, cw * 0.53, sh * 0.55, 0, 0, 7);
       c.fill();
       c.fillStyle = lt;
       c.globalAlpha = 0.4;
-      c.fillRect(u + 1.5, v - sh * 0.45, 3, 0.5);
+      c.fillRect(u + cw * 0.25, v - sh * 0.45, cw * 0.5, 0.5);
       c.globalAlpha = 1;
     }
   }
+  // la dernière rangée recouvre la première (période verticale)
 }
 
 /** Terre battue (sols intérieurs, chantiers). */
-export function texEarth(c, w, h, rnd, col) {
+export function texEarth(c, w, h, rnd) {
   const n = Math.ceil((w * h) / 30);
   for (let i = 0; i < n; i++) {
     c.fillStyle = rnd() < 0.5 ? 'rgba(255,240,200,0.12)' : 'rgba(40,25,10,0.14)';
-    c.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 2, 1);
+    const L = 1 + rnd() * 2;
+    wrap4(w, h, rnd() * w, rnd() * h, L, (x, y) => c.fillRect(x, y, L, 1));
   }
+}
+
+/** Colombage (poteaux réguliers et sablière haute) sur une face de torchis. */
+function daubFrame(c, w, h, m) {
+  const tim = m.timber || '#6a4526';
+  const n = Math.max(1, Math.round(w / (m.frame || 14)));
+  const step = w / n;
+  c.fillStyle = tim;
+  for (let i = 0; i < n; i++) c.fillRect((i + 0.5) * step - 1.3, -1, 2.6, h + 2);
+  c.fillRect(-1, -1, w + 2, 2.6);
+  c.fillStyle = 'rgba(255,230,190,0.2)';
+  for (let i = 0; i < n; i++) c.fillRect((i + 0.5) * step - 1.3, -1, 0.7, h + 2);
+}
+
+const TILE = 96;
+const tiles = new Map();
+/** Tuile de texture (canvas TILE × TILE) d'un matériau, rendue une fois. */
+function tileOf(mat) {
+  let t = tiles.get(mat);
+  if (!t) {
+    t = document.createElement('canvas');
+    t.width = TILE;
+    t.height = TILE;
+    const c = t.getContext('2d');
+    c.fillStyle = mat.col;
+    c.fillRect(0, 0, TILE, TILE);
+    mat.tex(c, TILE, TILE, mulberry32(hash(mat.col, mat.rh || 0, mat.tw || 0, mat.pw || 0)), mat.col, mat);
+    tiles.set(mat, t);
+  }
+  return t;
+}
+
+/** Peint la texture d'un matériau sur [0, w] × [0, h] (repère local déjà en place). */
+function paintTexture(c, mat, w, h, rnd) {
+  if (mat.tile) {
+    const t = tileOf(mat);
+    const pat = c.createPattern(t, 'repeat');
+    // rangées alignées sur le bas de la face ; décalage horizontal aléatoire
+    const ox = Math.floor(rnd() * TILE);
+    const oy = mat.rows ? h : Math.floor(rnd() * TILE);
+    pat.setTransform(new DOMMatrix([1, 0, 0, 1, ox, oy]));
+    c.fillStyle = pat;
+    c.fillRect(0, 0, w, h);
+  } else {
+    c.fillStyle = mat.col;
+    c.fillRect(-2, -2, w + 4, h + 4);
+    mat.tex(c, w, h, rnd, mat.col, mat);
+  }
+  if (mat.dirt) daubDirt(c, w, h);
+  if (mat.frame) daubFrame(c, w, h, mat);
 }
 
 // ---------------------------------------------------------------------------
@@ -447,6 +536,13 @@ export function ctexStone(c, X, Y, rx, ry, z0, z1, rnd, col, m = {}) {
   c.fillStyle = tone(col, 0.6);
   c.fillRect(X - rx - 2, Y - z1 - ry - 2, rx * 2 + 4, z1 - z0 + ry * 2 + 4);
   const dry = !!m.dry;
+  // pierres regroupées par teinte (5 nuances) : un seul remplissage par nuance
+  const NB = 5;
+  const k0 = dry ? 0.8 : 0.86;
+  const kr = dry ? 0.32 : 0.26;
+  const paths = [];
+  for (let i = 0; i < NB; i++) paths.push(new Path2D());
+  const lips = new Path2D();
   for (let z = z0; z < z1; z += dry ? 0 : rh) {
     const hh = dry ? 2.6 + rnd() * 2.4 : rh;
     let t = -rnd() * (sw / rx);
@@ -456,22 +552,25 @@ export function ctexStone(c, X, Y, rx, ry, z0, z1, rnd, col, m = {}) {
       const tb = Math.min(t + dt, PI + 0.05);
       if (tb > ta) {
         const g = 0.55 / (rx * Math.max(0.25, Math.sin((ta + tb) / 2)));
-        c.fillStyle = tone(col, (dry ? 0.8 : 0.86) + rnd() * (dry ? 0.32 : 0.26));
-        c.beginPath();
-        c.ellipse(X, Y - z - 0.5, rx, ry, 0, ta + g, tb - g, false);
-        c.ellipse(X, Y - z - hh + 0.6, rx, ry, 0, tb - g, ta + g, true);
-        c.closePath();
-        c.fill();
+        const p = paths[Math.min(NB - 1, (rnd() * NB) | 0)];
+        p.moveTo(X + rx * Math.cos(ta + g), Y - z - 0.5 + ry * Math.sin(ta + g));
+        p.ellipse(X, Y - z - 0.5, rx, ry, 0, ta + g, tb - g, false);
+        p.ellipse(X, Y - z - hh + 0.6, rx, ry, 0, tb - g, ta + g, true);
+        p.closePath();
       }
       t += dt;
     }
-    c.strokeStyle = 'rgba(255,250,235,0.18)';
-    c.lineWidth = 0.7;
-    c.beginPath();
-    c.ellipse(X, Y - z - hh + 0.9, rx, ry, 0, 0.05, PI - 0.05);
-    c.stroke();
+    lips.moveTo(X + rx * Math.cos(0.05), Y - z - hh + 0.9 + ry * Math.sin(0.05));
+    lips.ellipse(X, Y - z - hh + 0.9, rx, ry, 0, 0.05, PI - 0.05);
     if (dry) z += hh;
   }
+  for (let i = 0; i < NB; i++) {
+    c.fillStyle = tone(col, k0 + (kr * (i + 0.5)) / NB);
+    c.fill(paths[i]);
+  }
+  c.strokeStyle = 'rgba(255,250,235,0.18)';
+  c.lineWidth = 0.7;
+  c.stroke(lips);
   if (m.beams) {
     // têtes de poutres du murus gallicus
     const dz = m.by || 10;
@@ -528,24 +627,24 @@ export function ctexLogs(c, X, Y, rx, ry, z0, z1, rnd, col, m = {}) {
 // ---------------------------------------------------------------------------
 
 export const MAT = {
-  daub: { col: '#ede3c9', tex: texDaub, ctex: ctexDaub },
-  daubFrame: { col: '#ede3c9', tex: texDaub, frame: 14, timber: '#6a4526' },
-  planks: { col: '#8e7458', tex: texPlanks, ctex: ctexLogs, pw: 5, lw: 4 },
-  planksGrey: { col: '#8a7d6c', tex: texPlanks, ctex: ctexLogs, pw: 5, lw: 4 },
-  planksDark: { col: '#6c5540', tex: texPlanks, pw: 4.5 },
-  logs: { col: '#8a6440', tex: texLogsH, ctex: ctexLogs, lw: 5 },
-  stone: { col: '#aaa69c', tex: texStone, ctex: ctexStone, rh: 5, sw: 10 },
-  stoneLight: { col: '#c2bdb0', tex: texStone, ctex: ctexStone, rh: 5, sw: 11 },
-  stoneDark: { col: '#8e8a82', tex: texStone, ctex: ctexStone, rh: 4, sw: 8 },
-  dryStone: { col: '#a79c86', tex: texDryStone, ctex: ctexStone, dry: true },
-  murus: { col: '#a79c86', tex: texDryStone, ctex: ctexStone, dry: true, beams: true },
-  thatch: { col: '#c9a257', tex: texThatch, lh: 7 },
-  shingle: { col: '#86705c', tex: texShingles, rh: 4, tw: 5 },
-  slate: { col: '#5f6d7f', tex: texShingles, rh: 3.5, tw: 4.5, round: true, moss: false },
-  wicker: { col: '#9a7a4c', tex: texWicker },
-  earth: { col: '#8e7152', tex: texEarth },
+  daub: { col: '#ede3c9', tex: texDaub, ctex: ctexDaub, tile: true, dirt: true },
+  daubFrame: { col: '#ede3c9', tex: texDaub, tile: true, dirt: true, frame: 14, timber: '#6a4526' },
+  planks: { col: '#8e7458', tex: texPlanks, ctex: ctexLogs, pw: 5, lw: 4, tile: true },
+  planksGrey: { col: '#8a7d6c', tex: texPlanks, ctex: ctexLogs, pw: 5, lw: 4, tile: true },
+  planksDark: { col: '#6c5540', tex: texPlanks, pw: 4.5, tile: true },
+  logs: { col: '#8a6440', tex: texLogsH, ctex: ctexLogs, lw: 5, tile: true, rows: true },
+  stone: { col: '#aaa69c', tex: texStone, ctex: ctexStone, rh: 5, sw: 10, tile: true, rows: true },
+  stoneLight: { col: '#c2bdb0', tex: texStone, ctex: ctexStone, rh: 5, sw: 11, tile: true, rows: true },
+  stoneDark: { col: '#8e8a82', tex: texStone, ctex: ctexStone, rh: 4, sw: 8, tile: true, rows: true },
+  dryStone: { col: '#a79c86', tex: texDryStone, ctex: ctexStone, dry: true, tile: true },
+  murus: { col: '#a79c86', tex: texDryStone, ctex: ctexStone, dry: true, beams: true, tile: true },
+  thatch: { col: '#c9a257', tex: texThatch, lh: 7, tile: true },
+  shingle: { col: '#86705c', tex: texShingles, rh: 4, tw: 5, tile: true, rows: true },
+  slate: { col: '#5f6d7f', tex: texShingles, rh: 3.5, tw: 4.5, round: true, moss: false, tile: true, rows: true },
+  wicker: { col: '#9a7a4c', tex: texWicker, tile: true },
+  earth: { col: '#8e7152', tex: texEarth, tile: true },
   timber: { col: '#6f4a2a' },
-  plaster: { col: '#e4dccb', tex: texDaub },
+  plaster: { col: '#e4dccb', tex: texDaub, tile: true, dirt: true },
 };
 
 // ---------------------------------------------------------------------------
@@ -728,19 +827,20 @@ export class Gfx {
    */
   plane(O, U, V, w, h, mat, k, o = {}) {
     const c = this.ctx;
-    const X = globalThis.__exp || {};
-    if (X.flat) { c.save(); c.setTransform(U[0], U[1], V[0], V[1], O[0], O[1]); c.beginPath(); if (o.shape) o.shape(c, w, h); else c.rect(0, 0, w, h); c.fillStyle = tone(mat.col, k); c.fill(); c.restore(); return; }
+
     c.save();
     c.setTransform(U[0], U[1], V[0], V[1], O[0], O[1]);
     c.beginPath();
     if (o.shape) o.shape(c, w, h);
     else c.rect(0, 0, w, h);
     c.clip();
-    c.fillStyle = mat.col;
-    c.fillRect(-2, -2, w + 4, h + 4);
-    if (mat.tex && !X.notex) mat.tex(c, w, h, o.rnd || this.rng(O[0], O[1], w, h, k), mat.col, mat);
+    if (mat.tex) paintTexture(c, mat, w, h, o.rnd || this.rng(O[0], O[1], w, h, k));
+    else {
+      c.fillStyle = mat.col;
+      c.fillRect(-2, -2, w + 4, h + 4);
+    }
     if (o.deco) o.deco(c, w, h);
-    if (o.ao !== false && h > 4 && !X.noao) {
+    if (o.ao !== false && h > 4) {
       const hh = Math.min(9, h * 0.5);
       const g = c.createLinearGradient(0, h - hh, 0, h);
       g.addColorStop(0, 'rgba(30,18,6,0)');
@@ -756,7 +856,7 @@ export class Gfx {
       c.fillRect(-2, -2, w + 4, o.eave + 2);
     }
     if (o.grad) o.grad(c, w, h);
-    if (k < 0.995 && !X.nomul) {
+    if (k < 0.995) {
       c.globalCompositeOperation = 'multiply';
       c.fillStyle = mulCol(k);
       c.fillRect(-2, -2, w + 4, h + 4);
@@ -803,10 +903,61 @@ export class Gfx {
       if (o.shadow !== false) this.shadowBox(x0, y0, x1, y1, z0, z1);
       return;
     }
+    // petits volumes (merlons, pierres, caisses…) : trois aplats ombrés et un seul contour, sans texture
+    const sw = (x1 - x0 + y1 - y0) * HX;
+    if (!o.decoL && !o.decoR && !o.decoT && (o.quick || (sw < 16 && z1 - z0 < 14))) {
+      this.quickBox(x0, y0, x1, y1, z0, z1, mat, o);
+      return;
+    }
     const base = { ao: o.ao, eave: o.eave, k: undefined };
     this.faceR(x1, y0, y1, z0, z1, o.matR || mat, { ...base, deco: o.decoR, k: o.kR });
     this.faceL(x0, x1, y1, z0, z1, o.matL || mat, { ...base, deco: o.decoL, k: o.kL });
     if (o.top !== false) this.faceTop(x0, y0, x1, y1, z1, o.topMat || mat, { deco: o.decoT });
+  }
+
+  /** Prisme sans texture : dessus, faces gauche et droite en aplats, liseré clair et contour. */
+  quickBox(x0, y0, x1, y1, z0, z1, mat, o = {}) {
+    const c = this.ctx;
+    const col = mat.col;
+    const top = (o.topMat || mat).col;
+    const a = this.P(x0, y1, z0);
+    const b = this.P(x1, y1, z0);
+    const d = this.P(x1, y0, z0);
+    const A = this.P(x0, y1, z1);
+    const B = this.P(x1, y1, z1);
+    const D = this.P(x1, y0, z1);
+    const T = this.P(x0, y0, z1);
+    this.path([A, B, b, a]);
+    c.fillStyle = tone(col, o.kL ?? K_LEFT);
+    c.fill();
+    this.path([B, D, d, b]);
+    c.fillStyle = tone(col, o.kR ?? K_RIGHT);
+    c.fill();
+    if (o.top !== false) {
+      this.path([T, D, B, A]);
+      c.fillStyle = tone(top, 1);
+      c.fill();
+      c.strokeStyle = rgba(tone(top, 1.25), 0.6);
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(A[0], A[1] + 0.3);
+      c.lineTo(B[0], B[1] + 0.3);
+      c.lineTo(D[0], D[1] + 0.3);
+      c.stroke();
+    }
+    c.beginPath();
+    c.moveTo(T[0], T[1]);
+    c.lineTo(D[0], D[1]);
+    c.lineTo(d[0], d[1]);
+    c.lineTo(b[0], b[1]);
+    c.lineTo(a[0], a[1]);
+    c.lineTo(A[0], A[1]);
+    c.closePath();
+    c.moveTo(B[0], B[1]);
+    c.lineTo(b[0], b[1]);
+    c.strokeStyle = ink(col, 0.5);
+    c.lineWidth = 1;
+    c.stroke();
   }
 
   // --- Volumes de révolution --------------------------------------------------
@@ -851,7 +1002,6 @@ export class Gfx {
     const [X, Y] = this.P(cx, cy, 0);
     const rx = r * RX;
     const ry = r * RY;
-    if ((globalThis.__exp || {}).nocyl) { this.cylPath(X, Y, rx, ry, z0, z1); c.fillStyle = mat.col; c.fill(); return; }
     c.save();
     this.cylPath(X, Y, rx, ry, z0, z1);
     c.clip();
@@ -902,7 +1052,7 @@ export class Gfx {
       const S = r * HX;
       c.setTransform(1, 0.5, -1, 0.5, X, Y);
       c.translate(-S, -S);
-      mat.tex(c, S * 2, S * 2, this.rng(cx, cy, z, 7), mat.col, mat);
+      paintTexture(c, mat, S * 2, S * 2, this.rng(cx, cy, z, 7));
       c.setTransform(1, 0, 0, 1, 0, 0);
     }
     if (o.inner) o.inner(c, X, Y, rx, ry);

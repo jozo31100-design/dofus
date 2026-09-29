@@ -1150,6 +1150,16 @@ export class GameUI {
 
   async start(onProgress) {
     await this.renderer.init(onProgress);
+    // astuces de début de partie : seulement pour les trois premières parties de cette installation
+    let played = 0;
+    try { played = Number(localStorage.getItem('tdg-games') || 0); localStorage.setItem('tdg-games', String(played + 1)); } catch (e) { /* ignore */ }
+    this.tips = played < 3 ? [
+      [4, 'Astuce : sélectionnez vos villageois, puis faites un clic droit sur un buisson de baies ou sur un arbre pour récolter.'],
+      [18, 'Astuce : cliquez sur la salle principale, puis sur le premier bouton pour former des villageois.'],
+      [50, 'Astuce : construisez des maisons (villageois → Bâtiments civils) pour pouvoir former plus d\'unités.'],
+      [95, 'Astuce : un moulin près des baies et une scierie près d\'une forêt rendent la récolte bien plus rapide.'],
+      [160, 'Astuce : F1 affiche l\'aide et la liste des raccourcis.'],
+    ] : [];
     this.needCenter = true; // la caméra se place sur notre salle dès qu'on la connaît (immédiat en solo, après le premier instantané en réseau)
     this.lastFrame = performance.now();
     const loop = (now) => {
@@ -1205,6 +1215,7 @@ export class GameUI {
       if (e.type === 'villager' && e.anim === 0) { if (!e.idleSince) e.idleSince = now; } else e.idleSince = 0;
     }
     this.handleEvents(now);
+    while (this.tips && this.tips.length && st.tick / 20 >= this.tips[0][0] && !st.over) this.toast(this.tips.shift()[1], 'info');
     // survol
     if (this.mouse.in && !this.mouse.overHud && !this.drag) {
       const h2 = r.pick(this.mouse.x, this.mouse.y);
