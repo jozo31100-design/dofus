@@ -923,7 +923,11 @@ export class GameUI {
   infoMany(list) {
     const st = this.state;
     const grid = h('div', { class: 'multi' });
-    for (const e of list.slice(0, 40)) {
+    // seules les icônes qui tiennent dans le panneau (3 rangées) sont dessinées, la dernière case indique le reste
+    const cols = Math.max(4, Math.floor(((this.infoEl.clientWidth || 470) - 28) / 43));
+    const cap = cols * 3;
+    const shown = list.length > cap ? cap - 1 : list.length;
+    for (const e of list.slice(0, shown)) {
       const civ = e.owner >= 0 && st.players[e.owner] ? st.players[e.owner].civ : st.civ;
       const f = Math.max(0, Math.min(1, e.hp / e.maxHp));
       const cell = h('div', { class: 'm-item', title: nameOf(e.type, civ), onclick: () => { this.setSel([e]); } },
@@ -931,6 +935,7 @@ export class GameUI {
         h('div', { class: 'm-hp' }, h('div', { style: `width:${f * 100}%;background:${f > 0.6 ? '#4fd05a' : f > 0.3 ? '#e8bd3a' : '#dc4a3d'}` })));
       grid.append(cell);
     }
+    if (shown < list.length) grid.append(h('div', { class: 'm-item m-more', text: `+${list.length - shown}` }));
     const counts = {};
     for (const e of list) counts[e.type] = (counts[e.type] || 0) + 1;
     const summary = Object.entries(counts).map(([t, n]) => `${n} ${nameOf(t, st.civ).toLowerCase()}`).join(' · ');
