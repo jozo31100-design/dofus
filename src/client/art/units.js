@@ -9,11 +9,10 @@ import {
   PI, TAU, clamp, lerp, smooth, fract, setLightSide, bakeSprite, alive, SpriteCache, ScalePicker, blit,
 } from './unit-kit.js';
 import { drawHuman } from './unit-human.js';
-import { idlePose, walkPose, attackPose, workPose, diePose, full, WORK, STANCE } from './unit-poses.js';
+import { idlePose, walkPose, attackPose, workPose, diePose, full, WORK } from './unit-poses.js';
 import { drawHorse, gallopPose, standPose, fallPose } from './unit-horse.js';
 import { drawRam, drawCatapult } from './unit-siege.js';
 import { unitSpec, METRICS } from './unit-specs.js';
-import * as G from './unit-gear.js';
 
 const TYPES = [
   'villager', 'militia', 'spearman', 'swordsman', 'champion', 'archer', 'crossbow', 'scout', 'cavalry',
@@ -335,21 +334,18 @@ function bakeFrame(S, fr, b) {
 }
 
 // ---------------------------------------------------------------------------
-// Budget de cuisson : une image nouvelle coûte ~0,5 à 1 ms. Pour éviter les à-coups quand beaucoup
-// d'images apparaissent d'un coup (début de bataille, changement de zoom), on s'accorde au plus ~5 ms de
-// cuisson par image affichée (seau à jetons) ; au-delà, on affiche temporairement la même image déjà
-// cuite à une autre résolution, ou à défaut la dernière image cuite de la même animation, et la bonne
-// image est cuite aux images suivantes. Le résultat final est identique ; seule la montée en cache
-// est étalée.
+// Budget de cuisson : une image nouvelle coûte ~0,5 à 1 ms. Après un changement de zoom, toutes les
+// images visibles devraient être recuites à la nouvelle résolution d'un coup ; on s'accorde au plus
+// ~5 ms de cuisson par image affichée (seau à jetons) et, au-delà, on affiche temporairement LA MÊME
+// image d'animation cuite à l'ancienne résolution (mise à l'échelle, donc un peu moins nette).
+// La pose affichée est donc toujours exacte ; une image jamais cuite l'est immédiatement.
 // ---------------------------------------------------------------------------
 
 const BUDGET_MAX = 16;
 const BUDGET_RATE = 0.3; // ms de cuisson accordées par ms écoulée
 const budget = { tokens: BUDGET_MAX, last: -1, force: false };
 const stats = { baked: 0, fallbacks: 0 };
-const sameFrame = new Map(); // image (toutes résolutions) -> dernier sprite cuit
-const sameAnim = new Map(); // animation (toutes images) -> dernier sprite cuit
-const sameUnit = new Map(); // unité (type, civilisation, équipe) -> dernier sprite cuit
+const sameFrame = new Map(); // image d'animation (toutes résolutions) -> dernier sprite cuit
 
 function bakeAllowed() {
   if (budget.force) return true;
@@ -383,9 +379,7 @@ export function drawUnit(ctx, o) {
   const key = frameKey * 65536 + Math.round(b * 4096);
   let spr = cache.get(key);
   if (!spr) {
-    let alt = sameFrame.get(frameKey);
-    if (!alt || !alive(alt.spr)) alt = sameAnim.get(animKey);
-    if (!alt || !alive(alt.spr)) alt = sameUnit.get(unitKey);
+    const alt = sameFrame.get(frameKey);
     if (alt && alive(alt.spr) && !bakeAllowed()) {
       stats.fallbacks++;
       blit(ctx, alt.spr, o.sx, o.sy, s, alt.b, m, fr.alpha);
@@ -397,10 +391,7 @@ export function drawUnit(ctx, o) {
     if (!budget.force) budget.tokens -= performance.now() - t0;
     cache.set(key, spr);
     if (sameFrame.size > 12000) sameFrame.clear();
-    if (sameAnim.size > 4000) sameAnim.clear();
     sameFrame.set(frameKey, { spr, b });
-    sameAnim.set(animKey, { spr, b });
-    sameUnit.set(unitKey, { spr, b });
   }
   blit(ctx, spr, o.sx, o.sy, s, b, m, fr.alpha);
 }

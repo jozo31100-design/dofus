@@ -6,6 +6,7 @@ import { HostSession, GuestSession } from './session.js';
 import { GameUI } from './ui.js';
 import { iconURL } from './icons.js';
 import { audio } from './audio.js';
+import { renderDiorama } from './diorama.js';
 
 function h(tag, props = {}, ...kids) {
   const el = document.createElement(tag);
@@ -89,25 +90,17 @@ export class App {
   }
 
   backdrop(menu) {
-    // décor : deux peuples face à face (dessiné avec les mêmes sprites que le jeu)
+    // décor : deux peuples face à face (dessiné avec les mêmes sprites que le jeu ; construit une seule fois)
     const c = h('canvas', { class: 'backdrop' });
     menu.append(c);
-    requestAnimationFrame(() => {
-      try {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const W = (c.width = Math.max(600, c.clientWidth) * dpr);
-        const H = (c.height = Math.max(400, c.clientHeight) * dpr);
-        const g = c.getContext('2d');
-        g.scale(dpr, dpr);
-        const w = W / dpr;
-        const hh = H / dpr;
-        const sky = g.createLinearGradient(0, 0, 0, hh);
-        sky.addColorStop(0, 'rgba(20,16,10,0)');
-        sky.addColorStop(1, 'rgba(0,0,0,0.5)');
-        g.fillStyle = sky;
-        g.fillRect(0, 0, w, hh);
-      } catch (e) { /* décor facultatif */ }
-    });
+    try {
+      if (!this._diorama) this._diorama = renderDiorama(1600, 900);
+      c.width = 1600;
+      c.height = 900;
+      c.getContext('2d').drawImage(this._diorama, 0, 0);
+    } catch (e) {
+      console.error('décor du menu impossible', e);
+    }
   }
 
   // ---------------------------------------------------------------------------------------

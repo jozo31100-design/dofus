@@ -1,8 +1,8 @@
 // Engins de siège : bélier couvert (tortue) et catapulte (onagre), vus en projection oblique de trois-quarts
 // (axe de l'engin horizontal à l'écran, flanc proche en bas, face avant visible à droite).
 // Coordonnées modèle : u vers l'avant, v vers le spectateur, h vers le haut.
-import { PI, TAU, clamp, lerp, smooth, tone, rgba, edge, capsule, ell, poly, paint, line, sideGrad, vGrad, ballGrad } from './unit-kit.js';
-import { WOOD, WOOD_D, WOOD_L, IRON, BRONZE, GOLD } from './unit-gear.js';
+import { PI, TAU, lerp, smooth, tone, rgba, edge, capsule, ell, poly, paint, line, sideGrad, vGrad, ballGrad } from './unit-kit.js';
+import { WOOD, WOOD_D, IRON, BRONZE, GOLD } from './unit-gear.js';
 
 const LX = -0.5;
 const LY = 0.42;

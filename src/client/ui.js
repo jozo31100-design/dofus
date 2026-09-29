@@ -703,7 +703,7 @@ export class GameUI {
           return slots;
         }
       }
-      if (mil.length || vills.length) common(mil.length > 0);
+      common(mil.length > 0); // arrêter, supprimer (et attaquer en marchant pour les soldats)
       return slots;
     }
     if (blds.length) {

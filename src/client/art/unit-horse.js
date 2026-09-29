@@ -1,6 +1,6 @@
 // Cheval vu de profil (tourné de trois-quarts), regardant vers +x, sabots au sol (y = 0).
 // Robes, crinière, selle ou caparaçon aux couleurs de l'équipe ; galop paramétré par une phase.
-import { PI, TAU, clamp, lerp, smooth, tone, rgba, edge, capsule, ell, poly, paint, line, seg, rot, sideGrad, vGrad, ballGrad, light, checkPattern } from './unit-kit.js';
+import { TAU, clamp, lerp, smooth, tone, rgba, edge, capsule, ell, poly, paint, line, seg, rot, sideGrad, ballGrad, checkPattern } from './unit-kit.js';
 
 /** Pose neutre du cheval. Angles des pattes : convention des membres (0 = vertical, + = vers l'avant). */
 export const HPOSE0 = {

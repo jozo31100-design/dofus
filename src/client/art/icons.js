@@ -6,7 +6,6 @@ import { unitMetrics, drawUnit } from './units.js';
 import { getBuildingSprite } from './buildings.js';
 import { getNodeSprite, drawAnimal } from './nature.js';
 import { TAU, PI, tone, rgba, capsule, ell, poly, line } from './unit-kit.js';
-import { team } from './palette.js';
 import * as I from './icon-glyphs.js';
 
 const INK = '#23170e';

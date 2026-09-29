@@ -1,6 +1,6 @@
 // Gibier : cerf et mouton, vus de profil (tournés vers +x), sabots au sol (y = 0).
 // Poses paramétrées (broutage, marche, fuite bondissante, chute sur le flanc) et carcasses dépecées.
-import { TAU, clamp, lerp, smooth, tone, rgba, edge, capsule, ell, poly, paint, line, seg, rot, sideGrad, ballGrad } from './unit-kit.js';
+import { TAU, clamp, lerp, smooth, tone, rgba, edge, capsule, ell, paint, line, seg, rot, sideGrad, ballGrad } from './unit-kit.js';
 
 /** Pose neutre d'un quadrupède. Angles des pattes : 0 = vertical, + = vers l'avant. */
 export const APOSE0 = {

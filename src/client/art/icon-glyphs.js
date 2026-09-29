@@ -468,16 +468,35 @@ export function gPlow(ctx, x = 32, y = 32, s = 1, iron = false) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
-  // Mancherons
-  bar(ctx, -22, -18, 0, 8, 4.4, '#a8723e');
-  bar(ctx, -14, -22, 4, 6, 4.4, '#9a6634');
-  // Age
-  bar(ctx, -2, 6, 26, 2, 5, '#8a5a32');
-  // Soc
+  // Terre labourée
   ctx.beginPath();
-  poly(ctx, [-6, 4, 8, 4, 18, 16, -2, 14]);
-  fillInk(ctx, iron ? '#b8c0c8' : '#b88450', 2.2, 0.35, -0.25, 4, 16);
-  if (iron) shine(ctx, 6, 8, 3, 1.4, 0.8);
+  poly(ctx, [-28, 14, 28, 10, 28, 24, -28, 26]);
+  fillInk(ctx, '#8a5a32', 2.2, 0.2, -0.3, 10, 26);
+  ctx.strokeStyle = 'rgba(60,35,15,0.8)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-26, 20);
+  ctx.lineTo(8, 17.5);
+  ctx.moveTo(-26, 24);
+  ctx.lineTo(4, 22);
+  ctx.stroke();
+  // Mancheron et age (poutre courbe)
+  bar(ctx, -24, -24, -12, -6, 5, '#b07a42');
+  ctx.beginPath();
+  ctx.moveTo(-14, -8);
+  ctx.quadraticCurveTo(-2, -4, 6, 8);
+  ctx.lineWidth = 9;
+  ctx.strokeStyle = INK;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.lineWidth = 5.4;
+  ctx.strokeStyle = '#a06a38';
+  ctx.stroke();
+  // Soc triangulaire qui entre dans la terre
+  ctx.beginPath();
+  poly(ctx, [0, 4, 14, 2, 28, 16, 6, 16]);
+  fillInk(ctx, iron ? '#c4ccd4' : '#c08a52', 2.4, 0.4, -0.25, 2, 16);
+  if (iron) line(ctx, 6, 6, 22, 14, 'rgba(255,255,255,0.8)', 1.8);
   ctx.restore();
 }
 

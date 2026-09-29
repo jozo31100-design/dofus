@@ -1,5 +1,5 @@
 // Ressources, gibier et projectiles (API publique : getNodeSprite, drawAnimal, drawProjectile).
-import { TAU, PI, clamp, fract, tone, rgba, edge, capsule, ell, poly, paint, line, ballGrad, setLightSide, bake, bakeSprite, SpriteCache, ScalePicker, blit } from './unit-kit.js';
+import { TAU, clamp, fract, rgba, ell, poly, paint, line, ballGrad, setLightSide, bake, bakeSprite, SpriteCache, ScalePicker, blit } from './unit-kit.js';
 import { drawTree, treeShadow, TREE_KINDS } from './nature-trees.js';
 import { drawBerries, drawGold, drawStone } from './nature-nodes.js';
 import { drawBeast, drawCarcass, grazePose, walkPoseA, fleePose, fallPoseA } from './nature-animals.js';

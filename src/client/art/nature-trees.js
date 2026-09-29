@@ -3,7 +3,7 @@
 // festonnées (ombre, ton moyen, lumière en haut à gauche) pour que les arbres voisins se fondent en une
 // canopée continue dans les forêts denses. Origine = pied du tronc au sol.
 import { mulberry32 } from './palette.js';
-import { TAU, clamp, lerp, tone, rgba, edge, capsule, ell, paint, line, sideGrad } from './unit-kit.js';
+import { TAU, lerp, tone, rgba, edge, capsule, ell, paint, line, sideGrad } from './unit-kit.js';
 
 /** Essences : hauteur visible (px), demi-largeur et demi-hauteur du houppier, couleurs. */
 export const TREE_KINDS = [

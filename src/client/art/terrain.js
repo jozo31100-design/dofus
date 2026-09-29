@@ -314,14 +314,22 @@ function stamps() {
       }
     }
   };
+  const grainA = grain(256, 7000, 11);
+  const grainB = grain(256, 7000, 23);
   const meadow = mk(T, T, (c) => {
+    // grain (brins minuscules), touffes, cailloux, mottes et bouquets de fleurs dans une même tuile
+    c.fillStyle = c.createPattern(grainA, 'repeat');
+    c.fillRect(0, 0, T, T);
+    c.save();
+    c.translate(97, 53);
+    c.fillStyle = c.createPattern(grainB, 'repeat');
+    c.globalAlpha = 0.8;
+    c.fillRect(-97, -53, T, T);
+    c.restore();
     scatter(c, null, 1500, () => tufts[(rnd() * tufts.length) | 0]);
     scatter(c, null, 70, () => pebbles[(rnd() * 3) | 0]);
     scatter(c, dirt, 22);
-  });
-  const flowerTile = mk(T, T, (c) => {
-    // bouquets groupés par couleur en petites taches
-    for (let k = 0; k < 44; k++) {
+    for (let k = 0; k < 30; k++) {
       const fl = flowers[k % flowers.length];
       const cx = rnd() * T;
       const cy = rnd() * T;
@@ -342,7 +350,7 @@ function stamps() {
       for (const ox of [0, -256, 256]) for (const oy of [0, -256, 256]) c.drawImage(im, (x + ox) | 0, (y + oy) | 0);
     }
   });
-  STAMPS = { tufts, flowers, pebbles, dirt, ripples, sparkle, glint, waves, meadow, flowerTile, waveTile, grainA: grain(256, 7000, 11), grainB: grain(331, 9000, 23) };
+  STAMPS = { tufts, flowers, pebbles, dirt, ripples, sparkle, glint, waves, meadow, waveTile };
   return STAMPS;
 }
 
@@ -352,7 +360,6 @@ function stamps() {
 
 /** terrain : Uint8Array (0 herbe, 1 gué, 2 eau profonde), W × H cases. Renvoie un canvas W·PPT × H·PPT. */
 export function renderTerrainTexture(terrain, W, H, seed = 1) {
-  const T = [['start', performance.now()]]; globalThis.__tt = T;
   const PPT = TERRAIN_PPT;
   const { canvas, ctx } = makeCanvas(W * PPT, H * PPT);
   const lw = W * LR;
@@ -389,13 +396,11 @@ export function renderTerrainTexture(terrain, W, H, seed = 1) {
     boxBlur(deepC, lw, lh, 11, 2, tmp);
   }
 
-  ctx.getImageData(0, 0, 1, 1); T.push(['masques+flous', performance.now()]);
   // 2. bruits (fin, moyen, large) et couleur de chaque pixel basse résolution
   const nF = valueNoise(lw, lh, 5, rnd);
   const nM = valueNoise(lw, lh, 22, rnd);
   const nL = valueNoise(lw, lh, 70, rnd);
   const nX = valueNoise(lw, lh, 11, rnd);
-  ctx.getImageData(0, 0, 1, 1); T.push(['bruits', performance.now()]);
   const lo = makeCanvas(lw, lh);
   const img = lo.ctx.createImageData(lw, lh);
   const px = img.data;
@@ -505,17 +510,15 @@ export function renderTerrainTexture(terrain, W, H, seed = 1) {
     px[j + 2] = b;
     px[j + 3] = 255;
   }
-  ctx.getImageData(0, 0, 1, 1); T.push(['pixels', performance.now()]);
   lo.ctx.putImageData(img, 0, 0);
 
   // 3. agrandissement lissé du sol
   const FW = W * PPT;
   const FH = H * PPT;
   ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
+  ctx.imageSmoothingQuality = 'medium';
   ctx.drawImage(lo.canvas, 0, 0, lw, lh, 0, 0, FW, FH);
 
-  ctx.getImageData(0, 0, 1, 1); T.push(['agrandissement', performance.now()]);
   // 4. détails du sol
   const S = stamps();
   const fieldAt = (x, y) => {
@@ -523,42 +526,24 @@ export function renderTerrainTexture(terrain, W, H, seed = 1) {
     const iy = Math.min(lh - 1, Math.max(0, (y / PPT) * LR | 0));
     return iy * lw + ix;
   };
-  ctx.save();
-  ctx.fillStyle = ctx.createPattern(S.grainA, 'repeat');
-  ctx.fillRect(0, 0, FW, FH);
-  ctx.fillStyle = ctx.createPattern(S.grainB, 'repeat');
-  ctx.globalAlpha = 0.8;
-  ctx.fillRect(0, 0, FW, FH);
-  ctx.restore();
-  ctx.getImageData(0, 0, 1, 1); T.push(['grain', performance.now()]);
-  // masques basse résolution de densité : prairie (touffes, cailloux), taches de fleurs
-  const mk2 = () => {
-    const m = makeCanvas(lw, lh);
-    return { ...m, img: m.ctx.createImageData(lw, lh) };
-  };
-  const mM = mk2();
-  const mF = mk2();
+  // masque basse résolution de densité des détails du sol (nul sur l'eau et le sable)
+  const mM = makeCanvas(lw, lh);
+  const mImg = mM.ctx.createImageData(lw, lh);
   for (let i = 0; i < N; i++) {
     const sh = anyWet ? shore[i] : 0;
     const land = 1 - smooth(0.04, 0.24, sh);
-    const j = i * 4 + 3;
-    mM.img.data[j] = 255 * land * (0.55 + 0.45 * smooth(0.1, 0.7, nM[i]));
-    mF.img.data[j] = 255 * land * smooth(0.5, 0.68, nX[i]) * (1 - smooth(0.0, 0.08, sh));
+    mImg.data[i * 4 + 3] = 255 * land * (0.6 + 0.4 * smooth(0.1, 0.7, nM[i]));
   }
-  ctx.getImageData(0, 0, 1, 1); T.push(['masques', performance.now()]);
+  mM.ctx.putImageData(mImg, 0, 0);
+  // calque de détails : masque agrandi, puis motif posé « à l'intérieur » du masque
   const layer = makeCanvas(FW, FH);
   const lc = layer.ctx;
-  lc.imageSmoothingQuality = 'high';
-  for (const [msk, tile] of [[mM, S.meadow], [mF, S.flowerTile]]) {
-    msk.ctx.putImageData(msk.img, 0, 0);
-    lc.globalCompositeOperation = 'copy';
-    lc.fillStyle = lc.createPattern(tile, 'repeat');
-    lc.fillRect(0, 0, FW, FH);
-    lc.globalCompositeOperation = 'destination-in';
-    lc.drawImage(msk.canvas, 0, 0, lw, lh, 0, 0, FW, FH);
-    ctx.drawImage(layer.canvas, 0, 0);
-  }
-  ctx.getImageData(0, 0, 1, 1); T.push(['calques prairie+fleurs', performance.now()]);
+  lc.imageSmoothingQuality = 'low';
+  lc.drawImage(mM.canvas, 0, 0, lw, lh, 0, 0, FW, FH);
+  lc.globalCompositeOperation = 'source-in';
+  lc.fillStyle = lc.createPattern(S.meadow, 'repeat');
+  lc.fillRect(0, 0, FW, FH);
+  ctx.drawImage(layer.canvas, 0, 0);
   // galets des rives : tamponnés seulement le long du rivage
   if (anyWet) {
     for (let i = 0; i < N; i += 1) {
@@ -570,18 +555,45 @@ export function renderTerrainTexture(terrain, W, H, seed = 1) {
     }
   }
 
-  ctx.getImageData(0, 0, 1, 1); T.push(['galets', performance.now()]);
   // 5. eau : calque translucide agrandi, vaguelettes (motif gardé là où il y a de l'eau), reflets
   if (anyWet) {
     wo.ctx.putImageData(wimg, 0, 0);
-    ctx.drawImage(wo.canvas, 0, 0, lw, lh, 0, 0, FW, FH);
-    lc.globalCompositeOperation = 'copy';
-    lc.fillStyle = lc.createPattern(S.waveTile, 'repeat');
-    lc.fillRect(0, 0, FW, FH);
-    lc.globalCompositeOperation = 'destination-in';
-    lc.drawImage(wo.canvas, 0, 0, lw, lh, 0, 0, FW, FH);
-    ctx.drawImage(layer.canvas, 0, 0);
-  ctx.getImageData(0, 0, 1, 1); T.push(['eau+vaguelettes', performance.now()]);
+    // eau et vaguelettes, bloc par bloc (seulement là où il y a de l'eau)
+    const B = 16; // cases par bloc
+    const bw = B * PPT;
+    const blk = makeCanvas(bw, bw);
+    const bc = blk.ctx;
+    bc.imageSmoothingQuality = 'low';
+    const wavePat = bc.createPattern(S.waveTile, 'repeat');
+    for (let by = 0; by < H; by += B) {
+      for (let bx = 0; bx < W; bx += B) {
+        let any = false;
+        for (let y = by; y < Math.min(H, by + B + 1) && !any; y++) {
+          for (let x = Math.max(0, bx - 1); x < Math.min(W, bx + B + 1); x++) {
+            if (terrain[y * W + x]) {
+              any = true;
+              break;
+            }
+          }
+        }
+        if (!any) continue;
+        const sx = bx * LR;
+        const sy = by * LR;
+        const sw = Math.min(B, W - bx) * LR;
+        const shh = Math.min(B, H - by) * LR;
+        const dw = sw * (PPT / LR);
+        const dh = shh * (PPT / LR);
+        ctx.drawImage(wo.canvas, sx, sy, sw, shh, bx * PPT, by * PPT, dw, dh);
+        bc.globalCompositeOperation = 'copy';
+        bc.drawImage(wo.canvas, sx, sy, sw, shh, 0, 0, dw, dh);
+        bc.globalCompositeOperation = 'source-in';
+        bc.setTransform(1, 0, 0, 1, -bx * PPT, -by * PPT);
+        bc.fillStyle = wavePat;
+        bc.fillRect(bx * PPT, by * PPT, dw, dh);
+        bc.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.drawImage(blk.canvas, 0, 0, dw, dh, bx * PPT, by * PPT, dw, dh);
+      }
+    }
     // reflets, étincelles et galets vus sous l'eau des gués
     for (let i = 0; i < N; i++) {
       const sh = shore[i];
@@ -600,7 +612,6 @@ export function renderTerrainTexture(terrain, W, H, seed = 1) {
       else if (r < 0.15) ctx.drawImage(S.sparkle, x | 0, y | 0);
     }
   }
-  ctx.getImageData(0, 0, 1, 1); T.push(['reflets', performance.now()]);
   layer.canvas.width = 1;
   return canvas;
 }

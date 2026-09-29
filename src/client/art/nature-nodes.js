@@ -1,7 +1,7 @@
 // Ressources au sol : buisson de baies, filon d'or, carrière de pierre (origine = centre de la case).
 // frac = quantité restante (0..1) : moins de baies, de pépites, de blocs.
 import { mulberry32 } from './palette.js';
-import { TAU, clamp, lerp, tone, rgba, edge, capsule, ell, poly, paint, line, sideGrad, ballGrad } from './unit-kit.js';
+import { TAU, clamp, tone, rgba, edge, ell, poly, paint, line, ballGrad } from './unit-kit.js';
 
 /**
  * Rocher à facettes : silhouette irrégulière, dessus éclairé, flanc droit dans l'ombre.

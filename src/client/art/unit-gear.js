@@ -1,7 +1,7 @@
 // Accessoires des unités : armes, outils, boucliers, carquois, charges portées.
 // Toutes les armes se dessinent depuis la main (x, y) selon un angle a (convention des membres :
 // 0 = vers le bas, π/2 = vers l'avant, π = vers le haut). z = échelle du personnage.
-import { tone, rgba, edge, capsule, ell, poly, paint, line, sideGrad, ballGrad, light, TAU } from './unit-kit.js';
+import { tone, rgba, edge, capsule, ell, poly, paint, line, sideGrad, ballGrad, TAU } from './unit-kit.js';
 
 export const STEEL = '#c3cad3';
 export const IRON = '#8e959e';

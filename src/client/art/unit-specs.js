@@ -3,7 +3,7 @@
 // la face du bouclier, le tapis de selle ou le caparaçon.
 import { team as teamColors } from './palette.js';
 import { tone } from './unit-kit.js';
-import { IRON, BRONZE, GOLD, STEEL } from './unit-gear.js';
+import { IRON, BRONZE, GOLD } from './unit-gear.js';
 
 // Palettes des deux peuples
 const GAUL = {

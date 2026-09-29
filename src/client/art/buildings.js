@@ -21,10 +21,13 @@ const DESIGNS = {
   franks: { ...FRANKS, farm },
 };
 
-/** Hauteur nominale (px, zoom 1) du sommet de chaque bâtiment terminé au-dessus du sol. */
+/**
+ * Hauteur (px, zoom 1) du sommet de chaque bâtiment terminé au-dessus du centre de l'emprise, mesurée sur les
+ * sprites (maximum des deux civilisations, fanions compris, fumée exclue). Sert aussi à dimensionner le canvas.
+ */
 const HEIGHT = {
-  hall: 144, house: 54, farm: 30, mill: 92, lumber: 50, mining: 48, barracks: 100, archery: 80,
-  stable: 76, forge: 92, tower: 166, temple: 120, siege: 92, castle: 214,
+  hall: 150, house: 68, farm: 54, mill: 94, lumber: 67, mining: 67, barracks: 114, archery: 112,
+  stable: 108, forge: 107, tower: 168, temple: 137, siege: 141, castle: 220,
 };
 
 const cache = new Map();
@@ -159,10 +162,14 @@ export function getBuildingSprite(typeId, civ, teamIdx, stage = 3) {
       if (st < 3) siteFlag(g);
     }
   }
-  // hauteur du sommet mesurée avant la fumée (dessins différés)
-  const top = topRow(W.canvas);
-  for (const f of g.late) f();
+  // hauteur du sommet mesurée avant la fumée (dessins différés) ; une seule lecture de pixels sinon
+  let top = -1;
+  if (g.late.length) {
+    top = topRow(W.canvas);
+    for (const f of g.late) f();
+  }
   const cr = crop(W.canvas);
+  if (top < 0) top = cr.dy + 1;
   const ax = W.ax - cr.dx;
   const ay = W.ay - cr.dy;
   s = { canvas: cr.canvas, ax, ay, h: Math.max(4, Math.round(W.ay - top)) };

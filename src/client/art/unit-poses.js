@@ -1,6 +1,6 @@
 // Animations des fantassins et villageois : chaque fonction renvoie une pose complète (cf. POSE0)
 // et des options de dessin, à partir d'une phase (0..1) déjà quantifiée par le cache d'images.
-import { PI, TAU, clamp, lerp, smooth, keyPose, wave } from './unit-kit.js';
+import { TAU, clamp, lerp, smooth, keyPose, wave } from './unit-kit.js';
 import { POSE0 } from './unit-human.js';
 
 /** Complète une pose partielle avec les valeurs neutres. */
