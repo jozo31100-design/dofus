@@ -373,22 +373,21 @@ export class SpriteCache {
 const STEPS = [0.5, 0.625, 0.75, 0.875, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5, 6, 8];
 
 export class ScalePicker {
-  constructor(threshold = 500) {
-    this.last = -1;
-    this.count = 0;
+  constructor(threshold = 400) {
+    this.counts = new Map();
     this.threshold = threshold;
   }
   /** Renvoie la résolution de cuisson pour une échelle effective k. */
   pick(k) {
     const q = Math.round(k * 64) / 64;
-    if (q === this.last) {
-      if (this.count < this.threshold) this.count++;
-    } else {
-      this.last = q;
-      this.count = 0;
+    for (let i = 0; i < STEPS.length; i++) if (STEPS[i] === q) return q;
+    // Échelle hors paliers : on la compte ; utilisée telle quelle dès qu'elle est stable.
+    let c = this.counts.get(q) || 0;
+    if (c < this.threshold) {
+      if (this.counts.size > 48) this.counts.clear();
+      this.counts.set(q, ++c);
     }
-    for (let i = 0; i < STEPS.length; i++) if (Math.abs(STEPS[i] - q) < 1e-6) return q;
-    if (this.count >= this.threshold && q >= 0.25 && q <= 8) return q;
+    if (c >= this.threshold && q >= 0.25 && q <= 8) return q;
     for (let i = 0; i < STEPS.length; i++) if (STEPS[i] >= q * 0.98) return STEPS[i];
     return STEPS[STEPS.length - 1];
   }

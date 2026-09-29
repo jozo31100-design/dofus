@@ -46,6 +46,7 @@ export const POSE0 = {
   rot: 0, // rotation globale (chute)
   flat: 1, // écrasement vertical (corps allongé au sol)
   fx: 0, // décalage horizontal global (chute)
+  seat: 0, mx: 0, my: 0, // à cheval : position du bassin sur la selle (px)
 };
 
 /** Calcule les articulations d'une pose. */
@@ -59,8 +60,9 @@ export function rig(sp, P) {
   const eN = T * cN + S * Math.cos(P.nS) + F;
   const eF = T * cF + S * Math.cos(P.fS) + F;
   const low = Math.max(eN, eF, T * cN + 1.2 * z, T * cF + 1.2 * z);
-  const hx = P.bx * z;
-  const hy = -low + P.dy * z;
+  // À cheval, le bassin est posé sur la selle ; à pied, le pied le plus bas touche le sol.
+  const hx = P.seat ? P.mx + P.bx * z : P.bx * z;
+  const hy = P.seat ? P.my : -low + P.dy * z;
   const hipN = [hx + BODY.hipN * z, hy];
   const hipF = [hx + BODY.hipF * z, hy];
   const kneeN = seg(hipN[0], hipN[1], P.nT, T);
@@ -842,6 +844,9 @@ function drawWeapon(ctx, sp, R, P, which) {
     case 'sickle':
       G.sickle(ctx, x, y, a, z);
       break;
+    case 'lance':
+      G.lance(ctx, x, y, a, z, sp.pennant || sp.tunic, P.cape * 1.5);
+      break;
     default:
       break;
   }
@@ -877,9 +882,9 @@ export function drawHuman(ctx, sp, P, opt = {}) {
   // 2. Bras lointain (derrière le torse)
   drawArm(ctx, sp, R.shF, R.elF, R.handF, true);
 
-  // 3. Jambes
+  // 3. Jambes (à cheval, la jambe lointaine est cachée par la monture)
   if (!sp.robe) {
-    drawLeg(ctx, sp, R.hipF, R.kneeF, R.ankF, P.fS, true);
+    if (!opt.mounted) drawLeg(ctx, sp, R.hipF, R.kneeF, R.ankF, P.fS, true);
     drawLeg(ctx, sp, R.hipN, R.kneeN, R.ankN, P.nS, false);
   } else {
     // Sous la robe, seuls les pieds dépassent
