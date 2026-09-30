@@ -25,6 +25,8 @@ import { CITY } from './building-city.js';
 import { SPARTA } from './building-sparta.js';
 import { VIKINGS } from './building-vikings.js';
 import { EGYPT } from './building-egypt.js';
+import { EGYPT_MORE } from './building-egypt-more.js';
+import { EGYPT_WALLS } from './building-egypt-walls.js';
 import { POINTS } from './building-points.js';
 import { COUNTERSIEGE } from './building-countersiege.js';
 import { SLINGTOWER } from './building-slingtower.js';
@@ -35,7 +37,7 @@ const DESIGNS = {
   franks: { ...FRANKS, farm, dock: DOCK.franks, market: MARKET.franks, academy: ACADEMY.franks, wonder: WONDER.franks, ...WALLS.franks, ...DEFENSE.franks, ...CITY.franks, ...POINTS, ...COUNTERSIEGE.franks, ...SLINGTOWER.franks, castle: castleFranks },
   sparta: SPARTA,
   vikings: VIKINGS,
-  egypt: EGYPT,
+  egypt: { ...EGYPT, ...EGYPT_MORE, ...EGYPT_WALLS, farm },
 };
 
 /**
@@ -213,7 +215,7 @@ export function getBuildingSprite(typeId, civ, teamIdx, stage = 3, mask = 0) {
   const design = (DESIGNS[cv] && DESIGNS[cv][typeId]) || DESIGNS[base][typeId];
   const W = workCanvas(n, (HEIGHT[typeId] || 100) + 30);
   const g = new Gfx(W.ctx, W.ax, W.ay, { stage: st, civ: base, team: tm, size: n, seed: hash(typeId, cv, mk) });
-  const finishing = st >= 1 && (cv === 'gauls' || cv === 'franks' || cv === 'vikings');
+  const finishing = st >= 1 && (cv === 'gauls' || cv === 'franks' || cv === 'vikings' || cv === 'sparta');
   g.civId = cv;
   g.mask = mk;
   if (!design) {

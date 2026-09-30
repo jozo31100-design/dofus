@@ -13,7 +13,7 @@ const PI = Math.PI;
 
 const MUD = { col: '#c4905a', tex: per32(texStone, 31), rh: 4.6, sw: 9.5, tile: true, rows: true };
 const MUD_BIG = { col: '#c4905a', tex: per32(texStone, 32), rh: 5.6, sw: 11.5, tile: true, rows: true };
-const LIME = { col: '#ecdcb6', tex: per32(texStone, 33), rh: 5, sw: 10.5, tile: true, rows: true };
+const LIME = { col: '#f0d797', tex: per32(texStone, 33), rh: 5, sw: 10.5, tile: true, rows: true };
 
 const flagOf = (g, x, y, z0, h, len = 17) => pennant(g, x, y, z0, h, { symbol: false, len, h: 8, poleCol: '#c9a13a', knob: GOLD });
 
@@ -209,7 +209,7 @@ function bastion(g) {
     d: 0,
     f: () => {
       const z0 = 54 * k;
-      frustum(g, -0.75, -0.75, 0.75, 0.75, z0, z0 + 36 * k, 0.1, LIME, {
+      frustum(g, -0.75, -0.75, 0.75, 0.75, z0, z0 + 36 * k, 0.1, SAND_L, {
         plan: false, topMat: { col: '#e6d29c' },
         decoL: (c, w, h, pad) => { if (st >= 2) { teamFrieze(c, tc, 0, w, (pad || 0) + h * 0.12, 4); c.fillStyle = '#2b1d13'; c.fillRect(w * 0.5 - 1.3, (pad || 0) + h * 0.45, 2.6, 8); } },
         decoR: (c, w, h, pad) => { if (st >= 2) { teamFrieze(c, tc, 0, w, (pad || 0) + h * 0.12, 4); c.fillStyle = '#2b1d13'; c.fillRect(w * 0.5 - 1.3, (pad || 0) + h * 0.45, 2.6, 8); } },

@@ -28,6 +28,7 @@ function hall(g) {
     return;
   }
   g.box(-1.95, -1.95, 1.95, 1.95, 0, 4, STYL, { topMat: { col: '#c6c0ae' } });
+  if (st === 3) olive(g, -1.8, -1.75, 0.95);
   if (st >= 2) g.box(-1.82, -1.82, 1.82, 1.82, 4, 8, MARBLE, { topMat: { col: '#d6d0c0' } });
   doric(g, {
     x0: -1.6, y0: -1.2, x1: 1.5, y1: 1.2, z0: 8, colH: 32, ny: 6, nx: 8, pedH: 30, entH: 9, stepH: 6, cut: -0.3,
@@ -43,7 +44,6 @@ function hall(g) {
   if (st === 3) {
     olive(g, -1.75, 1.75, 1.05);
     olive(g, 1.75, 1.85, 0.9);
-    olive(g, -1.8, -1.75, 0.95);
   }
 }
 
@@ -256,8 +256,8 @@ function castle(g) {
   items.push({ d: -0.4, f: () => tower(1.85, -1.85, 50) });
   items.push({ d: 4, f: () => tower(1.85, 1.85, 50) });
   if (st === 3) {
-    items.push({ d: 1, f: () => olive(g, -1.75, 0.2, 0.95) });
-    items.push({ d: 1, f: () => olive(g, 0.3, -1.85, 0.9) });
+    items.push({ d: -3, f: () => olive(g, -1.75, 0.2, 0.95) });
+    items.push({ d: -3, f: () => olive(g, 0.3, -1.85, 0.9) });
     items.push({ d: 3, f: () => tripod(g, 1.78, 0.85, H, 1.0) });
     items.push({ d: 3, f: () => tripod(g, 1.78, -0.85, H, 1.0) });
   }
@@ -281,6 +281,7 @@ function wonder(g) {
   const st = g.stage;
   g.box(-2.6, -2.6, 2.6, 2.6, 0, 6, STYL, { topMat: { col: '#c2bcab' } });
   g.box(-2.35, -2.35, 2.35, 2.35, 6, 12, MARBLE, { topMat: { col: '#d4cebe' } });
+  if (st === 3) olive(g, -2.4, -2.3, 1.0);
   if (st >= 2 && g.drawing) {
     for (const y of [-1.6, 1.6]) brazier(g, 2.15, y, 12, 20);
   }
@@ -312,7 +313,6 @@ function wonder(g) {
       tripod(gg, 2.3, 0.35, 12, 1.3);
       olive(gg, -2.35, 2.35, 1.1);
       olive(gg, 2.35, 2.4, 1.0);
-      olive(gg, -2.4, -2.3, 1.0);
     },
   });
 }

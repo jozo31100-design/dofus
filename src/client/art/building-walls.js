@@ -800,7 +800,7 @@ function palGatePiece(g, P) {
       g.beam(x1, y1, zl - 10, xn, yn, zl, P.post, 2);
       if (st === 3) {
         if (P.civ === 'franks') banner(g, 0, 0, zl + 2, 14, { w: 9, h: 12, pole: true });
-        else pennant(g, 0, 0, zl + 2, 14, { len: 17, h: 8 });
+        else pennant(g, 0, 0, zl + 2, 14, { len: 17, h: 8, symbol: P.civ !== 'vikings' });
       }
     }
   }
@@ -1073,6 +1073,7 @@ wallGa.noFlag = true;
 export { FRANK_WALL, GAUL_WALL, merlon, uvMerlons, gatePath, gateCentering, markDeco };
 
 export { per32, phaseRnd };
+export { palisadePiece, palGatePiece };
 export { MAT };
 
 export const WALLS = {

@@ -266,3 +266,6 @@ void tone;
 void stick;
 
 export const DOCK = { gauls: dockGauls, franks: dockFranks };
+
+// Pièces réutilisables par d'autres peuples (plate-forme sur pilotis, amarrage, garde-corps, fondations du chantier)
+export { deck as dockDeck, deckRail as dockDeckRail, mooring as dockMooring, foundExtra as dockFoundExtra, ZT as DOCK_ZT, E as DOCK_E };

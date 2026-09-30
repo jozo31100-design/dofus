@@ -7,6 +7,7 @@ import { base, BOX } from './unit-base.js';
 import { balisteSpec } from './unit-baliste.js';
 import { HOOKS, BRONZE_S, CREST_RED } from './unit-sparta-wear.js';
 import { unitSpec } from './unit-specs.js';
+import { spProw, spSailCols, spShieldCols } from './unit-sparta-ship.js';
 
 const BOX_HERO = [-44, -74, 50, 10];
 const BOX_FOOT = [-34, -60, 38, 10];
@@ -474,7 +475,7 @@ export function spartaBase(type, teamIdx) {
       fs.weapon = null;
       fs.helmet = { kind: 'leather', c: '#9a7a52' };
       fs.hem = 3.0;
-      return { ...f, sp: fs };
+      return { ...f, civ: 'sparta', sp: fs };
     }
     case 'warship': {
       const f = unitSpec(type, 'franks', teamIdx);
@@ -487,7 +488,7 @@ export function spartaBase(type, teamIdx) {
       ar.weapon = 'bow';
       ar.back = 'quiver';
       ar.hem = 3.0;
-      return { ...f, sp: fs, archer: ar };
+      return { ...f, civ: 'sparta', sp: fs, archer: ar, prow: spProw, sailCols: spSailCols, shieldCols: spShieldCols };
     }
     default:
       return null;

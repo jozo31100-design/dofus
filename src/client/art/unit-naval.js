@@ -25,6 +25,8 @@ const HULLS = {
   'war/franks': { L: 88, B: 7.4, H: 6.4, hb: 13, hs: 9.5, wl: 0.5, pe: 2.4, pq: 0.72, ph: 2.8, strakes: 4, light: '#cfa76c', dark: '#6a4527' },
   'fish/vikings': { L: 50, B: 6.4, H: 5.0, hb: 10.5, hs: 6.5, wl: 0.56, pe: 2.3, pq: 0.72, ph: 2.6, strakes: 3, light: '#7a5634', dark: '#33231a' },
   'war/vikings': { L: 92, B: 7.0, H: 6.0, hb: 16, hs: 12, wl: 0.46, pe: 2.4, pq: 0.72, ph: 2.6, strakes: 4, light: '#8a6440', dark: '#2c1e14' },
+  'fish/sparta': { L: 48, B: 6.4, H: 4.6, hb: 7.5, hs: 6.8, wl: 0.58, pe: 2.4, pq: 0.72, ph: 2.6, strakes: 3, light: '#b98a54', dark: '#6b4626' },
+  'war/sparta': { L: 96, B: 6.2, H: 4.8, hb: 8, hs: 14, wl: 0.46, pe: 2.6, pq: 0.7, ph: 2.7, strakes: 4, light: '#d8b27a', dark: '#6a4527' },
   'war/gauls': { L: 78, B: 10.6, H: 10.5, hb: 9.5, hs: 10.5, wl: 0.62, pe: 3.0, pq: 0.55, ph: 2.6, strakes: 5, light: '#7d5735', dark: '#4f3620' },
 };
 Object.assign(HULLS, EG_HULLS); // coques égyptiennes (clés 'fish/egypt' et 'war/egypt')

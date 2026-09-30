@@ -17,6 +17,8 @@ import {
   TURF, DARK, DARKER, SHINGLE, STONE_BASE, CREAM, vShield, shieldRowV, dragonPost, vBanner, fishRack, firePit, runeColumn,
 } from './building-vikings-kit.js';
 import { VIKINGS_ECO } from './building-vikings-eco.js';
+import { VIKINGS_CIVIC } from './building-vikings-civic.js';
+import { VIKINGS_WALLS } from './building-vikings-walls.js';
 
 // ---------------------------------------------------------------------------
 // Maison longue (2×2)
@@ -639,4 +641,4 @@ function wonder(g) {
 }
 wonder.found = { stone: true };
 
-export const VIKINGS = { house, hall, barracks, temple, castle, dock, monument, wonder, ...VIKINGS_ECO };
+export const VIKINGS = { house, hall, barracks, temple, castle, dock, monument, wonder, ...VIKINGS_ECO, ...VIKINGS_CIVIC, ...VIKINGS_WALLS };

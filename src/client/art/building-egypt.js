@@ -53,36 +53,29 @@ const flag = (g, x, y, z0, h, len = 17) => pennant(g, x, y, z0, h, { symbol: fal
 function house(g) {
   const st = g.stage;
   const hW = st === 1 ? 11 : 24;
+  const tcOf = g.tc;
   const items = [];
   items.push({ d: -1.6, f: () => palm(g, -0.88, -0.78, 52, 1) });
   items.push({
     d: 0,
     f: () => {
-      g.box(-0.6, -0.55, 0.52, 0.45, 0, hW, BRICK, {
+      g.box(-0.6, -0.55, 0.52, 0.45, 0, hW, PLASTER, {
         plan: true,
         topMat: { col: '#cdb07a' },
         decoL: (c, w, h) => {
           if (st < 2) return;
           doorLocal(c, w * 0.3, h, 7, 13, { leaf: false });
           windowLocal(c, w * 0.72, h * 0.4, 3.2, 4.4, { shutters: false });
-          c.fillStyle = '#4a3020';
-          for (let u = 3; u < w; u += 5.4) {
-            c.beginPath();
-            c.arc(u, 2.3, 1.1, 0, 2 * PI);
-            c.fill();
-          }
-          c.fillStyle = 'rgba(255,248,225,0.5)';
-          c.fillRect(0, h * 0.62, w, 1.4);
+          c.fillStyle = '#b98a58';
+          c.fillRect(0, h - 3.6, w, 3.6);
+          c.fillStyle = tcOf.main;
+          c.fillRect(0, h * 0.06, w, 2);
         },
         decoR: (c, w, h) => {
           if (st < 2) return;
           windowLocal(c, w * 0.5, h * 0.36, 3.2, 4.4, { shutters: false });
-          c.fillStyle = '#4a3020';
-          for (let u = 3; u < w; u += 5.4) {
-            c.beginPath();
-            c.arc(u, 2.3, 1.1, 0, 2 * PI);
-            c.fill();
-          }
+          c.fillStyle = '#b98a58';
+          c.fillRect(0, h - 3.6, w, 3.6);
         },
       });
     },
@@ -91,7 +84,7 @@ function house(g) {
     items.push({
       d: 0.1,
       f: () => {
-        parapet(g, -0.6, -0.55, 0.52, 0.45, hW, 3.6, BRICK, () => {
+        parapet(g, -0.6, -0.55, 0.52, 0.45, hW, 3.6, PLASTER, () => {
           // pièce haute blanchie
           g.box(-0.42, -0.38, 0.08, 0.08, hW, hW + 13, PLASTER, {
             decoL: (c, w, h) => {
@@ -113,6 +106,15 @@ function house(g) {
     items.push({ d: 1.0, f: () => amphora(g, 0.74, 0.74, 0, 0.85) });
     items.push({ d: 1.1, f: () => sack(g, -0.75, 0.68, 0, { s: 0.85 }) });
     items.push({ d: 0.5, f: () => flag(g, -0.22, -0.2, hW + 15, 24, 15) });
+    // loggia : auvent de roseaux sur quatre poteaux, côté terrasse
+    items.push({
+      d: 0.9,
+      f: () => {
+        const ps = [[0.14, -0.3], [0.14, 0.3], [0.44, -0.3], [0.44, 0.3]].sort((p, q) => p[0] + p[1] - (q[0] + q[1]));
+        for (const [x, y] of ps) g.post(x, y, hW + 3.6, hW + 19, '#9a7a4a', 2.2);
+        g.box(0.08, -0.36, 0.5, 0.36, hW + 19, hW + 22, { col: '#b39350' }, { ao: false, quick: true, topMat: { col: '#c9ab64' } });
+      },
+    });
   }
   if (st === 1) items.push({ d: 1, f: () => scaffoldBox(g, -0.6, -0.55, 0.52, 0.45, 20, { step: 0.45 }) });
   if (st === 2) items.push({ d: 1, f: () => stonePile(g, 0.95, 0.5, 4, '#c29563') });

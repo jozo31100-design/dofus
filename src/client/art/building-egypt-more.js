@@ -695,7 +695,7 @@ function dock(g) {
   list.push({
     d: -5,
     f: () => {
-      if (g.drawing) {
+      if (g.drawing && st >= 2) {
         const c = g.ctx;
         g.path([g.P(-QE, -QE, 0), g.P(QE, -QE, 0), g.P(QE, QE, 0), g.P(-QE, QE, 0)]);
         c.fillStyle = 'rgba(8,16,30,0.45)';

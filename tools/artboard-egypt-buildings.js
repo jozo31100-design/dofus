@@ -1,13 +1,14 @@
 // Planche de contrôle des bâtiments égyptiens (DESIGNS.egypt) : tous les stades, les deux équipes, zoom 1 et portraits.
 //   node tools/shot.mjs tools/artboard-egypt-buildings.js .scratch/art/egypt-buildings.png 1600x1000
-import { getBuildingSprite } from '../src/client/art/buildings.js';
+import { getBuildingSprite, buildingMetrics } from '../src/client/art/buildings.js';
+import { BUILDINGS } from '../src/core/defs.js';
 import { drawPortrait } from '../src/client/art/icons.js';
 
-const LIST = globalThis.__egB || ['house', 'barracks', 'hall', 'temple', 'castle', 'market', 'academy', 'monument', 'wonder'];
+const LIST = globalThis.__egB || ['house', 'barracks', 'hall', 'temple', 'castle', 'market', 'academy', 'monument', 'mill', 'lumber', 'mining', 'archery', 'stable', 'forge', 'tower', 'slingtower', 'siege', 'dock', 'infirmary', 'great_house', 'countersiege', 'bastion', 'outpost'];
 const W = 1600;
 const c = document.createElement('canvas');
 c.width = W;
-const rowH = (t) => (t === 'wonder' ? 440 : t === 'castle' ? 380 : t === 'hall' || t === 'temple' ? 300 : 240);
+const rowH = (t) => Math.max(130, buildingMetrics(t).h + ((BUILDINGS[t] && BUILDINGS[t].size) || 2) * 30 + 50);
 let H = 40;
 for (const t of LIST) H += rowH(t);
 c.height = H;
