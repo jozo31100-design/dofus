@@ -198,3 +198,59 @@ dorée ; l'essentiel : deux familles clairement différentes et lisibles à 44 p
 `drawTechIcon` : ajouter `hunt1 nets1 nets2 hull1 naval_atk trade1 trade2 med1 med2 scout1 eco1 strat1` (chien de chasse, filet, filet doublé,
 coque renforcée, baliste, balance/marchand, sac de pièces, herbes/gui, bénédiction, longue-vue/carte, calendrier/faucille, casque + épée…),
 niveaux I/II distingués comme les autres.
+
+## 6. Extension 2 : héros par âge, unités spéciales, machines de siège, murailles et cité
+
+Identifiants et caractéristiques : lire `src/core/defs.js` (UNIT_LIST, BUILDING_LIST, TECH_LIST, CHOICES). Toujours **ajouter sans casser** l'existant.
+
+### 6.1 Cadre d'extension des unités (déjà en place, à utiliser)
+Chaque artiste d'unités remplit **son** module (et ses propres fichiers annexes) : `unit-ext-gauls.js`, `unit-ext-franks.js` ou `unit-ext-common.js`.
+Contrat de chaque module (voir `unit-ext.js`) : `TYPES` (les identifiants dessinés), `METRICS` (`{ id: { h, w } }`), `KINDS` (nouveaux genres de dessin :
+`{ nom: { draw(ctx, S, fr), shadow?(S, fr, m) } }`) et `spec(type, civ, teamIdx)` qui renvoie `{ kind, sp, hold, horse?, box, hero? }` ou `null`.
+Les genres existants : `human` (fantassin articulé : `sp` = costume, voir `base()` dans `unit-base.js` et `unit-specs.js` pour des exemples), `mounted` (cavalier),
+`ram`, `catapult`, `boat`. Un héros a `hero: true` dans sa spec (anneau doré au sol, déjà géré). Pour la pose `hold` : réutiliser `sword spear bow xbow staff throw fury lance`.
+Nouveau genre = nouveau `KINDS[...]` dessinant une image d'animation selon `fr` = `{ anim: 0 attente | 1 marche | 2 travail | 3 attaque | 4 mort, q (0..1, avancement du cycle), work, carry, aim, dir }`.
+Règles de collaboration : **ne jamais réécrire en entier** un fichier partagé (`unit-human.js`, `unit-gear.js`, `unit-kit.js`, `unit-poses.js`, `unit-specs.js`, `units.js`) ;
+seulement de petites modifications ciblées (outil Edit), et mettre le gros du nouveau code dans vos propres fichiers. D'autres artistes travaillent en même temps dans les mêmes dossiers.
+
+### 6.2 Héros (fantassins ou cavaliers d'élite, anneau doré, ~42–46 px) et unités spéciales
+Style identique aux unités existantes (voir §2) : Gaulois = moustaches, braies à carreaux, torques, boucliers ovales, casques simples ou ailés ; Francs = tuniques longues,
+jambes lacées, cottes de mailles, boucliers ronds, casques coniques. **Tous différents et reconnaissables** ; couleur d'équipe bien visible (tunique, cape, bouclier, caparaçon).
+Héros gaulois : `brennus` (Brennus, Sénon : colosse roux, casque à cornes de bronze, grande épée, peaux de loup, boucliers trophées), `ambiorix` (Éburon : agile, lanceur de javelots, cape verte, bonnet de cuir),
+`vercingetorix` (existe déjà), `camulogene` (Parisii : vétéran en cotte de mailles, casque d'Agen, grand bouclier, cheveux gris), `divico` (Helvète : armure de parade dorée, casque ailé, longue épée),
+`commios` (Atrébate : noble au manteau de carreaux riche, diadème, torque épais, épée et bouclier orné).
+Héros francs : `childeric` (cavalier, cheval blanc, casque à nasal et couronne simple, lance), `clotilde` (la reine : longue robe bleue et manteau, voile et couronne, croix, bâton ; pas d'arme),
+`clovis` (existe déjà), `charles_martel` (massif, cotte de mailles et gros marteau de guerre, casque rond), `charlemagne` (empereur : manteau de pourpre, couronne impériale, barbe blanche, grande épée Joyeuse),
+`roland` (paladin à cheval, cheval gris, armure complète, épée Durandal, bouclier peint).
+Unités spéciales gauloises : `frondeur` (fronde qui tournoie, sac de pierres, tunique simple), `molosse` (**chien de guerre** : grand chien de meute au collier cloûté, en genre `dog`, marche/attaque/mort),
+`barde` (joueur de **carnyx** : long cor de bronze à tête de sanglier, manteau clair), `essedaire` (**char de guerre** à deux chevaux et roues à rayons, guerrier lançant des javelots ; genre `chariot`, ~64 px de long),
+`soldurius` (guerrier d'élite voué : torse nu peint, armes en bronze, bouclier hexagonal), `baliste` (**baliste** à deux bras sur affût roulant, servant gaulois ; genre `baliste`, ~50 px, tir = corde qui claque et carreau).
+Unités spéciales franques : `antrustion` (garde du roi : cotte de mailles, bouclier rond aux couleurs, casque conique, épée), `leude` (cavalier léger, lance, bouclier rond), `sergent` (sergent d'armes : fantassin lourd, long bouclier en amande, masse),
+`moine` (moine soldat : robe de bure, tonsure, bâton ferré, croix), `preux` (chevalier d'élite : cheval caparaçonné aux couleurs d'équipe et fleur de lys, lance à fanion, heaume à cimier), `arbaletrier_imp` (arbalétrier impérial : cotte, brigandine aux couleurs, grande arbalète).
+`metrics` : fantassins h 33–38, héros 42–46, cavaliers 46–54, chien h 18 w 12, char h 46 w 34, baliste h 38 w 26.
+
+### 6.3 Machines et escalade (module `unit-ext-common.js`)
+`sapper` (Sapeur, les deux peuples) : fantassin trapu avec pioche et sac de poudre/tonnelet, casque de cuir, mèche ; `attack` = il lance son tonnelet / creuse ; `die` = petite explosion de poussière.
+`siegetower` (Tour de siège, les deux peuples) : grande tour roulante en bois (~100 px de haut, 3 étages, peaux mouillées anti-feu, pont-levis en haut, petites roues, bannière d'équipe) ; genre `tower` ;
+`walk` : elle roule lentement ; `die` : elle s'écroule. Metrics h 100 w 36.
+**Escalade** : `work === 'climb'` (déjà câblé : toutes les unités `human` peuvent l'afficher) : le fantassin grimpe à une **échelle de bois** appuyée contre un mur, derrière lui (dessiner l'échelle avec lui, rails + barreaux, penchée) ;
+mouvement cyclique mains/pieds (pose de base déjà dans `unit-poses.js`, à peaufiner).
+
+### 6.4 Icônes (`icons.js`, `icon-glyphs*.js`)
+`drawTechIcon` : ajouter `ladders` (échelle), `fire_arrows` (flèche enflammée), `mason1` `mason2` (truelle et mur / muraille et tour), `age4` (couronne et rayons, âge impérial),
+et les 12 **bonus de choix** : `g2a` (forêt sacrée : chêne et hache), `g2b` (clans : trois boucliers/hache), `g3a` (forge : enclume, épée), `g3b` (oppidum : rempart de pierre), `g4a` (grande assemblée : assemblée autour d'un feu/chaudron),
+`g4b` (Teutatès : tête de sanglier rugissant), `f2a` (terres du fisc : gerbe de blé et sceau), `f2b` (leudes : tête de cheval), `f3a` (forges carolingiennes : cotte de mailles), `f3b` (marches : tour de guet et mur),
+`f4a` (empire : couronne et globe), `f4b` (douze pairs : douze épées en couronne). `drawIcon` : `star` (étoile dorée), `choice` (parchemin avec étoile), `wall` (mur), `gate` (porte), `ladder`, `hero` (existe déjà), `unit-special`.
+
+### 6.5 Bâtiments : murailles, portes, bastion, poste de guet, cité (module `building-*.js`)
+Nouveaux types (emprises dans `defs.js`) : `palisade` (1×1), `palisade_gate` (1×1), `wall` (1×1, Gaulois : *murus gallicus* à poutres apparentes ; Francs : mur de pierre à créneaux), `gate` (1×1, porte fortifiée),
+`rampart` (**2×2**, Gaulois : grand rempart à poutres et parement de pierre ; Francs : grande muraille de pierre crénelée avec chemin de ronde), `great_gate` (**2×2**, grande porte à tour), `bastion` (3×3, tour massive à créneaux et hourds),
+`outpost` (1×1, mirador de bois), `infirmary` (3×3, Francs : Hôtel-Dieu de pierre avec jardin de simples ; Gaulois : maison des guérisseurs, hutte longue ornée de gui), `great_house` (3×3, grande hutte gauloise / grande maison franque à étage),
+`monument` (2×2, Gaulois : menhir sculpté avec spirales et offrandes ; Francs : haute croix de pierre monumentale sur un socle).
+**Murs et portes : connexion automatique.** `getBuildingSprite(typeId, civ, teamIdx, stage, mask = 0)` reçoit un 5ᵉ paramètre optionnel `mask` (entier 0..15, ignoré par les autres bâtiments) :
+bit 1 = un élément de muraille voisin du côté +x (tuile à droite dans le repère de la carte, vers le **bas-droite** de l'écran), bit 2 = voisin du côté +y (bas-gauche de l'écran), bit 4 = voisin −x (haut-gauche),
+bit 8 = voisin −y (haut-droite). Le sprite doit **se raccorder** aux voisins (le mur se prolonge jusqu'au bord de la tuile dans les directions voisines ; une pièce isolée a des bouts de mur ou un poteau d'angle ; 16 variantes,
+toutes mises en cache par (type, civ, équipe, stade, mask)). Les **portes** s'ouvrent dans l'alignement de leurs voisins (arche ou vantaux, herse). Les murs pierre et rempart ont un **chemin de ronde crénelé** visible ; le rempart et la grande porte
+doivent avoir de l'allure (épais, hauts ~70–90 px, contreforts). La palissade : troncs pointus liés, plus bas (~34 px). Stades 0 à 2 : chantier (piquets, pierres, échafaudage).
+`getBuildingSprite(…)` conserve `{ canvas, ax, ay, h }` ; `buildingMetrics` couvre les nouveaux types. Les pièces de 1×1 mesurent 64 × 32 px au sol : le sprite doit rester **compact** et proche de la tuile
+pour que les lignes de murs soient propres en isométrie.

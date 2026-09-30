@@ -14,15 +14,17 @@ import { drawHorse, gallopPose, standPose, fallPose } from './unit-horse.js';
 import { drawRam, drawCatapult } from './unit-siege.js';
 import { unitSpec, METRICS } from './unit-specs.js';
 import { drawBoat, drawWater, hullOf } from './unit-naval.js';
+import { EXT_TYPES, EXT_KINDS } from './unit-ext.js';
 
 const TYPES = [
   'villager', 'militia', 'spearman', 'swordsman', 'champion', 'archer', 'crossbow', 'scout', 'cavalry',
   'knight', 'ram', 'catapult', 'francisque', 'gesate', 'healer', 'fishingboat', 'warship', 'clovis', 'vercingetorix',
+  ...EXT_TYPES,
 ];
 const TYPE_IDX = Object.fromEntries(TYPES.map((t, i) => [t, i]));
 const ANIMS = ['idle', 'walk', 'work', 'attack', 'die'];
 const ANIM_IDX = Object.fromEntries(ANIMS.map((a, i) => [a, i]));
-const WORKS = ['wood', 'mine', 'farm', 'forage', 'build', 'repair', 'hunt', 'butcher', 'fish'];
+const WORKS = ['wood', 'mine', 'farm', 'forage', 'build', 'repair', 'hunt', 'butcher', 'fish', 'climb'];
 /** Travaux des villageois (la pêche, 'fish', est réservée aux barques). */
 const VIL_WORKS = WORKS.slice(0, 8);
 const WORK_IDX = Object.fromEntries(WORKS.map((w, i) => [w, i + 1]));
@@ -109,7 +111,7 @@ function frameOf(o, S) {
     const T = WORK[WORKS[work - 1]].T;
     f = Math.floor(fract(t / T) * WORK_N);
     q = f / WORK_N;
-    if (!isVil && !(boat && S.ship === 'fish')) {
+    if (!isVil && !(boat && S.ship === 'fish') && !(S.kind === 'human' && o.work === 'climb')) {
       // Seuls les villageois travaillent : les autres restent en attente
       anim = 0;
       work = 0;
@@ -343,6 +345,7 @@ function drawFrame(ctx, S, fr) {
   if (S.kind === 'human') humanFrame(ctx, S, fr);
   else if (S.kind === 'boat') boatFrame(ctx, S, fr);
   else if (S.kind === 'mounted') mountedFrame(ctx, S, fr);
+  else if (EXT_KINDS[S.kind]) EXT_KINDS[S.kind].draw(ctx, S, fr);
   else siegeFrame(ctx, S, fr);
 }
 
@@ -361,6 +364,8 @@ function shadowOf(S, fr) {
     rx = m.w + 2;
     ry = 5.5;
     a = 0.32;
+  } else if (EXT_KINDS[S.kind] && EXT_KINDS[S.kind].shadow) {
+    return EXT_KINDS[S.kind].shadow(S, fr, m);
   } else if (S.kind === 'ram' || S.kind === 'catapult') {
     rx = 33;
     ry = 11;

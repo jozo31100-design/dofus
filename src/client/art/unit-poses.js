@@ -190,6 +190,7 @@ export const WORK = {
   hunt: { T: 1.0, tool: 'spear' },
   butcher: { T: 1.2, tool: 'knife' },
   fish: { T: 1.9, tool: null },
+  climb: { T: 1.0, tool: null },
 };
 
 const CHOP = [
@@ -241,6 +242,13 @@ const CUT = [
   [0.75, { ...KNEEL, nU: 0.85, nF: 0.6, wA: 1.05, lean: 0.46, head: 0.18, fU: 0.9, fF: 0.8 }],
 ];
 
+// Escalade d'une échelle : bras et jambes en alternance (pose de base, à peaufiner)
+const CLIMB = [
+  [0.0, { nT: 0.7, nS: -0.35, fT: 0.05, fS: -0.05, nU: 3.25, nF: 3.45, fU: 2.3, fF: 2.5, lean: 0.12, head: -0.15 }],
+  [0.5, { nT: 0.05, nS: -0.05, fT: 0.7, fS: -0.35, nU: 2.3, nF: 2.5, fU: 3.25, fF: 3.45, lean: 0.12, head: -0.15 }],
+  [1.0, { nT: 0.7, nS: -0.35, fT: 0.05, fS: -0.05, nU: 3.25, nF: 3.45, fU: 2.3, fF: 2.5, lean: 0.12, head: -0.15 }],
+];
+
 /** Pose de travail d'un villageois : renvoie [pose, options]. */
 export function workPose(work, p) {
   let keys;
@@ -270,6 +278,9 @@ export function workPose(work, p) {
       break;
     case 'butcher':
       keys = CUT;
+      break;
+    case 'climb':
+      keys = CLIMB;
       break;
     default:
       keys = HAMMER;
