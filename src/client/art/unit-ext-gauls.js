@@ -173,8 +173,10 @@ function human(type, tm) {
     case 'frondeur': {
       // tunique simple, fronde de cuir, gibecière de galets, bandeau
       sp = base('gauls', tm, 1.07);
-      sp.hair = '#c8672c';
+      sp.hair = '#e6d9a8';
+      sp.hairStyle = 'swept';
       sp.moustache = '#c8672c';
+      sp.moustacheLong = true;
       sp.sleeves = 'short';
       sp.belt = '#5a3920';
       sp.weapon = 'sling';

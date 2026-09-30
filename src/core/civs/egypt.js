@@ -105,7 +105,7 @@ export default {
     },
     {
       id: 'eg_scarabee', name: 'Scarabée-catapulte', age: 4, from: 'siege', cost: { wood: 160, gold: 110 }, time: 42, choice: true,
-      hp: 125, speed: 0.85, los: 8, radius: 0.5, atk: { pierce: 24 }, range: 10, minRange: 2, rof: 4.2, armor: { melee: 0, pierce: 4 }, bonus: { building: 12 },
+      hp: 125, speed: 0.85, los: 8, radius: 0.5, atk: { pierce: 24 }, range: 10, minRange: 2, rof: 4.2, armor: { melee: 0, pierce: 4 }, bonus: { building: 150 },
       tags: ['siege', 'ranged', 'special'], projectile: 'bolt', projSpeed: 18,
       desc: 'Baliste sacrée ornée d\'un scarabée : longs carreaux qui transpercent fantassins et murailles.',
     },

@@ -140,6 +140,20 @@ export function drawHorse(ctx, H, P, mid) {
   bg.addColorStop(1, 'rgba(0,0,0,0.3)');
   ctx.fillStyle = bg;
   ctx.fill();
+  // Musculature : reflets doux sur l'épaule, la croupe et le dos, creux sombre derrière le coude
+  for (const [mx, my, mrx, mry, ma] of [[6.0, -2.4, 3.6, 4.6, 0.17], [-9.6, -2.2, 4.4, 5.0, 0.15], [-2.0, -6.0, 6.0, 1.3, 0.13]]) {
+    const mg = ctx.createRadialGradient((mx - 1.0) * z, (my - 1.2) * z, 0.2 * z, mx * z, my * z, Math.max(mrx, mry) * z);
+    mg.addColorStop(0, `rgba(255,248,225,${ma})`);
+    mg.addColorStop(1, 'rgba(255,248,225,0)');
+    ctx.fillStyle = mg;
+    ctx.beginPath();
+    ell(ctx, mx * z, my * z, mrx * z, mry * z);
+    ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(20,14,40,0.14)';
+  ctx.beginPath();
+  ell(ctx, 3.4 * z, 3.4 * z, 2.4 * z, 1.9 * z, 0.3);
+  ctx.fill();
   if (H.dapple) {
     ctx.fillStyle = rgba('#ffffff', 0.2);
     for (const [dx, dy] of [[-9, -3], [-6, -1], [-10, 0.5], [-3, -3.5], [2, -2], [-7, -4.5], [5, -3]]) {
@@ -221,6 +235,29 @@ export function drawHorse(ctx, H, P, mid) {
     ctx.quadraticCurveTo(3.4 * z, -9.2 * z, 3.4 * z, -6.9 * z);
     ctx.closePath();
     paint(ctx, sideGrad(ctx, -6 * z, 3.4 * z, '#6a4226', 0.25, -0.2), edge('#6a4226', 0.85), 0.6);
+  }
+  if (H.horns) {
+    // Selle celtique à quatre cornes (bronze aux pointes) : deux à l'arçon, deux au troussequin
+    const horn = (hx, hy, dx, dy, far) => {
+      const tx = hx + dx * z;
+      const ty = hy + dy * z;
+      ctx.beginPath();
+      ctx.moveTo((hx - 0.75) * z, hy * z);
+      ctx.quadraticCurveTo((hx - 0.5) * z, (hy + dy * 0.55) * z, tx - 0.4 * z, ty);
+      ctx.lineTo(tx + 0.4 * z, ty);
+      ctx.quadraticCurveTo((hx + 0.5) * z, (hy + dy * 0.55) * z, (hx + 0.75) * z, hy * z);
+      ctx.closePath();
+      const wc = tone('#6a4226', far ? -0.25 : 0);
+      paint(ctx, wc, edge(wc, 0.8), 0.5);
+      ctx.beginPath();
+      ell(ctx, tx, ty - 0.1 * z, 0.62 * z, 0.62 * z);
+      const bc = tone('#c28f3e', far ? -0.25 : 0);
+      paint(ctx, bc, edge(bc, 0.85), 0.45);
+    };
+    horn(-4.9, -7.6, -0.3, -3.3, true);
+    horn(2.6, -7.9, 0.5, -3.1, true);
+    horn(-6.3, -7.3, -0.5, -3.6, false);
+    horn(3.9, -7.6, 0.7, -3.3, false);
   }
   // Sangle
   if (!H.caparison) line(ctx, 1.4 * z, -6.8 * z, 1.0 * z, 5.6 * z, 'rgba(60,36,18,0.85)', 1.0 * z);

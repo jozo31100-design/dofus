@@ -440,14 +440,14 @@ function frankMounted(type, tm) {
     sp.gloves = '#6a4428';
     sp.trim = GOLD;
     sp.helmet = { kind: 'conical', c: '#b4bcc4', band: GOLD };
-    sp.shield = { kind: 'almond', face: tm.main, s: 0.78 };
+    sp.shield = { kind: 'almond', face: tm.main, s: 0.95 };
     sp.aventail = FRANK.mail;
     mantle(sp, tm.main, { len: 10.5, trim: GOLD });
     sp.fur = FRANK.furLight;
     sp.weapon = 'lance';
     sp.pennant = tm.main;
     hold = 'lance';
-    horse = { hz: 1.12, coat: '#2e2622', mane: '#161210', caparison: tm.main, capTrim: GOLD, capPattern: 'plain', armor: '#b8c0c8' };
+    horse = { hz: 1.12, coat: '#3b2d26', mane: '#1b1512', caparison: tm.main, capTrim: GOLD, capPattern: 'plain', armor: '#b8c0c8' };
   }
   return { kind: 'mounted', sp, hold, horse, box: type === 'knight' ? BOX.knight : BOX.mounted, type };
 }

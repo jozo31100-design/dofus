@@ -202,7 +202,7 @@ export function generateMap(seed = DEFAULT_SEED) {
   cluster('berries', ...loc(67, 27), 6, { jitter: 1.3 });
   // Or et pierre
   cluster('gold', ...loc(82, 31), 9, { jitter: 1.4 });
-  cluster('stone', ...loc(65, 11), 7, { jitter: 1.4 });
+  cluster('stone', ...loc(65, 11), 9, { jitter: 1.4 });
 
   // Ressources d'expansion et du milieu (posées avant les arbres pour rester dégagées)
   cluster('gold', ...mid(55, 38), 6, { jitter: 1.2 });
@@ -219,6 +219,11 @@ export function generateMap(seed = DEFAULT_SEED) {
   cluster('gold', ...mid(32, 24), 5, { jitter: 1.2 });
   cluster('stone', ...mid(38, 8), 5, { jitter: 1.2 });
   cluster('gold', ...mid(76, 34), 5, { jitter: 1.2 });
+  // davantage de carrières : la pierre manquait
+  cluster('stone', ...mid(62, 22), 6, { jitter: 1.2 });
+  cluster('stone', ...mid(34, 36), 6, { jitter: 1.2 });
+  cluster('stone', ...loc(78, 14), 6, { jitter: 1.2 });
+  cluster('stone', ...mid(44, 30), 5, { jitter: 1.2 });
   cluster('stone', ...mid(24, 28), 6, { jitter: 1.2 });
 
   // Halo : aucune forêt ne doit enfermer une mine ou des baies (deux cases de dégagement)

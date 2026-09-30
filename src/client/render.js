@@ -252,34 +252,34 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 
-  /** Atmosphère : voile chaud venant du soleil (haut-gauche) et vignette froide violacée dans les coins. */
+  /** Atmosphère : vignette froide violacée sur les bords (dégradés linéaires, bandes étroites : très peu de remplissage). */
   drawAtmosphere() {
     const W = this.W;
     const H = this.H;
-    const d = this.dpr;
-    const key = W + 'x' + H + 'x' + d;
+    const key = W + 'x' + H;
     if (this._atmKey !== key) {
       this._atmKey = key;
-      const c = document.createElement('canvas');
-      c.width = Math.max(1, Math.round(W * d * 0.5));
-      c.height = Math.max(1, Math.round(H * d * 0.5));
-      const g = c.getContext('2d');
-      const cw = c.width;
-      const ch = c.height;
-      const v = g.createRadialGradient(cw * 0.5, ch * 0.5, Math.min(cw, ch) * 0.42, cw * 0.5, ch * 0.5, Math.hypot(cw, ch) * 0.6);
-      v.addColorStop(0, 'rgba(40,24,80,0)');
-      v.addColorStop(1, 'rgba(34,18,70,0.34)');
-      g.fillStyle = v;
-      g.fillRect(0, 0, cw, ch);
-      const sun = g.createRadialGradient(0, 0, 0, 0, 0, Math.hypot(cw, ch) * 0.7);
-      sun.addColorStop(0, 'rgba(255,214,130,0.16)');
-      sun.addColorStop(1, 'rgba(255,214,130,0)');
-      g.fillStyle = sun;
-      g.fillRect(0, 0, cw, ch);
-      this._atm = c;
+      const ctx = this.ctx;
+      const bw = Math.round(W * 0.09);
+      const bh = Math.round(H * 0.12);
+      const mk = (x0, y0, x1, y1) => {
+        const g = ctx.createLinearGradient(x0, y0, x1, y1);
+        g.addColorStop(0, 'rgba(34,18,70,0.34)');
+        g.addColorStop(1, 'rgba(34,18,70,0)');
+        return g;
+      };
+      this._atm = { bw, bh, t: mk(0, 0, 0, bh), b: mk(0, H, 0, H - bh), l: mk(0, 0, bw, 0), r: mk(W, 0, W - bw, 0) };
     }
-    this.ctx.imageSmoothingEnabled = true;
-    this.ctx.drawImage(this._atm, 0, 0, W, H);
+    const ctx = this.ctx;
+    const a = this._atm;
+    ctx.fillStyle = a.t;
+    ctx.fillRect(0, 0, W, a.bh);
+    ctx.fillStyle = a.b;
+    ctx.fillRect(0, H - a.bh, W, a.bh);
+    ctx.fillStyle = a.l;
+    ctx.fillRect(0, a.bh, a.bw, H - 2 * a.bh);
+    ctx.fillStyle = a.r;
+    ctx.fillRect(W - a.bw, a.bh, a.bw, H - 2 * a.bh);
   }
 
   /** Rassemble les entités visibles à l'écran, en séparant les objets plats des objets qui se dressent. */

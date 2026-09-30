@@ -32,7 +32,7 @@ export const AGE_SHORT = ['', 'I', 'II', 'III', 'IV'];
 export const MAX_AGE = 4;
 
 // Vitesse de récolte de base (par seconde et par villageois), avant technologies.
-export const GATHER_BASE = { wood: 0.55, berries: 0.65, farm: 0.45, meat: 1.0, gold: 0.5, stone: 0.5, fish: 0.8 };
+export const GATHER_BASE = { wood: 0.55, berries: 0.65, farm: 0.45, meat: 1.0, gold: 0.6, stone: 0.65, fish: 0.8 };
 export const CARRY_BASE = 10;
 export const BUILD_EXPONENT = 0.7; // n bâtisseurs => n^0.7 fois plus vite
 export const FARM_RESEED_COST = 60; // bois pour semer de nouveau une ferme épuisée
@@ -49,7 +49,7 @@ export const CLIMB_TIME = { wood: 4, stone: 7, great: 10, towerAssist: 1.6 };
 export const CLIMB_VULN = 1.6; // dégâts subis en plein escalade
 
 export const START_RESOURCES = {
-  standard: { food: 200, wood: 200, gold: 100, stone: 100, label: 'Standard' },
+  standard: { food: 200, wood: 200, gold: 150, stone: 200, label: 'Standard' },
   riche: { food: 800, wood: 800, gold: 500, stone: 300, label: 'Abondantes' },
 };
 
@@ -173,13 +173,13 @@ const UNIT_LIST = [
   {
     id: 'ram', name: 'Bélier', age: 3, from: 'siege', cost: { wood: 160, gold: 75 }, time: 36,
     hp: 200, speed: 0.9, los: 5, radius: 0.5, atk: { melee: 3 }, rof: 3, armor: { melee: 0, pierce: 20 },
-    bonus: { building: 80 }, tags: ['siege', 'melee', 'ram'], onlyTargets: ['building'],
-    desc: 'Détruit les bâtiments à toute vitesse. Insensible aux flèches, sans défense face aux épéistes.',
+    bonus: { building: 260 }, tags: ['siege', 'melee', 'ram'], onlyTargets: ['building'],
+    desc: 'Détruit les bâtiments à toute vitesse (un mur de pierre en une demi-minute, une salle principale en moins d\'une minute avec quelques béliers). Insensible aux flèches, sans défense face aux épéistes.',
   },
   {
     id: 'catapult', name: 'Catapulte', age: 3, from: 'siege', cost: { wood: 180, gold: 120 }, time: 45,
-    hp: 110, speed: 0.75, los: 8, radius: 0.5, atk: { pierce: 35 }, range: 9, minRange: 3, rof: 6, splash: 1.4,
-    armor: { melee: 0, pierce: 5 }, bonus: { building: 55 }, tags: ['siege', 'ranged', 'catapult'],
+    hp: 110, speed: 0.75, los: 8, radius: 0.5, atk: { pierce: 35 }, range: 9, minRange: 3, rof: 5, splash: 1.4,
+    armor: { melee: 0, pierce: 5 }, bonus: { building: 190 }, tags: ['siege', 'ranged', 'catapult'],
     projectile: 'stone', projSpeed: 8,
     desc: 'Lance des rochers à longue portée : ravage les bâtiments et les groupes. Fragile de près.',
   },
@@ -307,7 +307,7 @@ const UNIT_LIST = [
   },
   {
     id: 'baliste', name: 'Baliste', civ: 'gauls', age: 4, from: 'siege', cost: { wood: 150, gold: 100 }, time: 40, choice: true,
-    hp: 120, speed: 0.9, los: 8, radius: 0.5, atk: { pierce: 22 }, range: 9, minRange: 2, rof: 4, armor: { melee: 0, pierce: 4 }, bonus: { infantry: 4 },
+    hp: 120, speed: 0.9, los: 8, radius: 0.5, atk: { pierce: 22 }, range: 9, minRange: 2, rof: 4, armor: { melee: 0, pierce: 4 }, bonus: { infantry: 4, building: 40 },
     tags: ['siege', 'ranged', 'special'], projectile: 'bolt', projSpeed: 18,
     desc: 'Lance de gros carreaux à longue portée : transperce les fantassins.',
   },
@@ -383,8 +383,8 @@ const ANIMAL_LIST = [
 const NODE_LIST = [
   { id: 'tree', name: 'Arbre', cls: 'node', res: 'wood', kind: 'wood', amount: 100, size: 1 },
   { id: 'berries', name: 'Buisson de baies', cls: 'node', res: 'food', kind: 'berries', amount: 200, size: 1 },
-  { id: 'gold', name: "Filon d'or", cls: 'node', res: 'gold', kind: 'gold', amount: 1000, size: 1 },
-  { id: 'stone', name: 'Carrière de pierre', cls: 'node', res: 'stone', kind: 'stone', amount: 600, size: 1 },
+  { id: 'gold', name: "Filon d'or", cls: 'node', res: 'gold', kind: 'gold', amount: 1400, size: 1 },
+  { id: 'stone', name: 'Carrière de pierre', cls: 'node', res: 'stone', kind: 'stone', amount: 1100, size: 1 },
   { id: 'carcass', name: 'Carcasse', cls: 'node', res: 'food', kind: 'meat', amount: 100, size: 0 },
   { id: 'fish', name: 'Banc de poissons', cls: 'node', res: 'food', kind: 'fish', amount: 300, size: 1, water: true },
 ];

@@ -106,7 +106,7 @@ export default {
     },
     {
       id: 'vk_siegeship', name: 'Drakkar-catapulte', age: 4, from: 'dock', cost: { wood: 200, gold: 140 }, time: 42, naval: true, choice: true,
-      hp: 170, speed: 1.3, los: 8, radius: 0.55, atk: { pierce: 24 }, range: 10, minRange: 3, rof: 5, splash: 1.2, armor: { melee: 1, pierce: 4 }, bonus: { building: 45, ship: 4 },
+      hp: 170, speed: 1.3, los: 8, radius: 0.55, atk: { pierce: 24 }, range: 10, minRange: 3, rof: 5, splash: 1.2, armor: { melee: 1, pierce: 4 }, bonus: { building: 170, ship: 4 },
       tags: ['ship', 'ranged', 'special'], projectile: 'stone', projSpeed: 9,
       desc: 'Long navire portant une catapulte à la proue : bombarde les rivages et les flottes de loin.',
     },

@@ -49,7 +49,8 @@ export function franksSpec(type, teamIdx) {
       // Roi salien, père de Clovis : cheval blanc, casque à nasal ceint d'un cercle d'or, abeilles d'or, lance à fanion
       sp = base('franks', tm, 1.14);
       sp.hair = '#8a5a32';
-      sp.beard = '#8a5a32';
+      sp.beard = null;
+      sp.moustache = '#8a5a32';
       sp.hairStyle = 'long';
       sp.mail = { c: '#a9b1b9', hem: 3.2 };
       sp.sleeves = 'mail';
@@ -100,7 +101,8 @@ export function franksSpec(type, teamIdx) {
       // Maire du palais : colosse en cotte de mailles, casque rond, col de loup, énorme maillet de guerre
       sp = base('franks', tm, 1.44);
       sp.hair = '#3b2b20';
-      sp.beard = '#3b2b20';
+      sp.beard = null;
+      sp.moustache = '#3b2b20';
       sp.hairStyle = 'long';
       sp.mail = { c: '#7f878f', hem: 7.6 };
       sp.sleeves = 'mail';
@@ -171,7 +173,7 @@ export function franksSpec(type, teamIdx) {
       sp.capeTrim = tm.main;
       sp.bracelet = GOLD;
       sp.shield = { kind: 'round', face: tm.main };
-      sp.xshield = { kind: 'heater', s: 0.98 };
+      sp.xshield = { kind: 'kite', s: 1.0 };
       sp.weapon = 'durandal';
       sp.xtorso = ['olifant'];
       const horse = {
@@ -184,7 +186,8 @@ export function franksSpec(type, teamIdx) {
       // Garde du roi : cotte, casque conique doré à joues, rond bouclier à bordure d'or, cape d'équipe, seax et épée
       sp = base('franks', tm, 1.2);
       sp.hair = '#6a4a2a';
-      sp.beard = '#5a3a22';
+      sp.beard = null;
+      sp.moustache = '#5a3a22';
       sp.hairStyle = 'long';
       sp.mail = { c: '#a4acb4', hem: 5.8 };
       sp.sleeves = 'mail';
@@ -214,8 +217,9 @@ export function franksSpec(type, teamIdx) {
       // Cavalier léger du roi : alezan à liste, cape flottante, petit rond bouclier, longue lance à fanion
       sp = base('franks', tm, 1.06);
       sp.hair = '#7a4a28';
-      sp.beard = '#7a4a28';
-      sp.hairStyle = 'long';
+      sp.beard = null;
+      sp.moustache = '#7a4a28';
+      sp.hairStyle = 'bowl';
       sp.mail = { c: '#a4acb4', hem: 3.0 };
       sp.sleeves = 'long';
       sp.tabard = tm.main;
@@ -235,14 +239,16 @@ export function franksSpec(type, teamIdx) {
       // Sergent d'armes : fantassin lourd, cotte longue et coiffe de mailles, salade de fer, écu en amande, masse d'armes
       sp = base('franks', tm, 1.22);
       sp.hair = '#4a3422';
-      sp.beard = '#4a3422';
+      sp.beard = null;
+      sp.moustache = '#4a3422';
       sp.mail = { c: '#8f979f', hem: 7.0 };
       sp.sleeves = 'mail';
       sp.gloves = '#5a3a22';
       sp.tabard = tm.main;
       sp.trim = '#e8dcc0';
       sp.emblem = '#f2ead0';
-      sp.helmet = { kind: 'kettle', c: '#7f8790' };
+      sp.helmet = HELM_FLAG;
+      sp.xhelm = { kind: 'spang', c: '#7f8790' };
       sp.aventail = '#8f979f';
       sp.belt = '#3a2618';
       sp.buckle = '#b98a38';
@@ -260,7 +266,7 @@ export function franksSpec(type, teamIdx) {
       sp.hem = 10.2;
       sp.hairStyle = 'tonsure';
       sp.hair = '#5a3a22';
-      sp.beard = '#5a3a22';
+      sp.beard = null;
       sp.gloves = '#6a7078';
       sp.belt = '#d8c48e';
       sp.buckle = '#b89a5a';
@@ -280,7 +286,7 @@ export function franksSpec(type, teamIdx) {
       sp.tabard = tm.main;
       sp.trim = GOLD;
       sp.helmet = HELM_FLAG;
-      sp.xhelm = { kind: 'great', c: '#bcc4cc', band: GOLD, plume: tm.main };
+      sp.xhelm = { kind: 'spang', c: '#bcc4cc', band: GOLD, plume: tm.main };
       sp.cape = '#ece6d6';
       sp.capeLen = 10.5;
       sp.capeTrim = GOLD;
@@ -300,13 +306,14 @@ export function franksSpec(type, teamIdx) {
       // Arbalétrier impérial : brigandine d'équipe rivetée, salade de fer, grande arbalète à cranequin
       sp = base('franks', tm, 1.15);
       sp.hair = '#5a3a22';
-      sp.beard = '#5a3a22';
+      sp.beard = null;
+      sp.moustache = '#5a3a22';
       sp.mail = { c: '#9aa2aa', hem: 5.2 };
       sp.sleeves = 'mail';
       sp.gloves = '#5a3a22';
       sp.brigandine = tm.main;
       sp.helmet = HELM_FLAG;
-      sp.xhelm = { kind: 'sallet', c: '#9aa3ac', wrap: tm.dark };
+      sp.xhelm = { kind: 'spang', c: '#9aa3ac' };
       sp.aventail = '#9aa2aa';
       sp.belt = '#4a3020';
       sp.buckle = GOLD;

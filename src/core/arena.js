@@ -136,7 +136,8 @@ export function generateArena(seed = DEFAULT_SEED, n = 4) {
     for (const [u, v] of [[-5, -4], [-7, -2], [-4, -7], [-7, -6]]) animal('sheep', ...at(u, v));
     cluster('berries', ...at(3, -10), 6);
     cluster('gold', ...at(-9, 10), 9);
-    cluster('stone', ...at(-9, -10), 7);
+    cluster('stone', ...at(-9, -10), 9);
+    cluster('stone', ...at(0, -16), 6);
     cluster('berries', ...at(6, 12), 5);
     cluster('gold', ...at(13, 13), 6);
     cluster('stone', ...at(13, -13), 6);
@@ -149,7 +150,7 @@ export function generateArena(seed = DEFAULT_SEED, n = 4) {
     const mx = C + r * Math.cos(a);
     const my = C + r * Math.sin(a);
     cluster('gold', mx, my, 6);
-    cluster('stone', mx + Math.cos(a + 1.5) * 6, my + Math.sin(a + 1.5) * 6, 5);
+    cluster('stone', mx + Math.cos(a + 1.5) * 6, my + Math.sin(a + 1.5) * 6, 7);
     for (let k = 0; k < 4; k++) animal('deer', mx + (rng() - 0.5) * 4, my + (rng() - 0.5) * 4);
   }
   cluster('gold', C + 9, C - 4, 5);

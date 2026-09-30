@@ -297,7 +297,7 @@ function sallet(ctx, r, lw, o) {
 
 const HELMS = {
   circlet: (ctx, r, lw, h) => cone(ctx, r, lw, { c: '#b2bac2', circlet: true }),
-  spang: (ctx, r, lw, h) => cone(ctx, r, lw, { c: '#a6afb8', cheek: true, finial: true, nasal: '#d9b44c' }),
+  spang: (ctx, r, lw, h) => cone(ctx, r, lw, { c: h.c || '#a6afb8', cheek: true, finial: true, nasal: '#d9b44c', plume: h.plume, band: h.band }),
   round: (ctx, r, lw, h) => roundCap(ctx, r, lw, h),
   crown: (ctx, r, lw) => imperialCrown(ctx, r, lw),
   great: (ctx, r, lw, h) => greatHelm(ctx, r, lw, h),

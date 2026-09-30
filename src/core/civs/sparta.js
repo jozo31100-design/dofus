@@ -105,7 +105,7 @@ export default {
     },
     {
       id: 'sp_oxybele', name: 'Oxybèle', age: 4, from: 'siege', cost: { wood: 150, gold: 100 }, time: 40, choice: true,
-      hp: 120, speed: 0.9, los: 8, radius: 0.5, atk: { pierce: 22 }, range: 9, minRange: 2, rof: 4, armor: { melee: 0, pierce: 4 }, bonus: { infantry: 4 },
+      hp: 120, speed: 0.9, los: 8, radius: 0.5, atk: { pierce: 22 }, range: 9, minRange: 2, rof: 4, armor: { melee: 0, pierce: 4 }, bonus: { infantry: 4, building: 40 },
       tags: ['siege', 'ranged', 'special'], projectile: 'bolt', projSpeed: 18,
       desc: 'Baliste à carreaux grecque : transperce les fantassins à longue portée.',
     },
