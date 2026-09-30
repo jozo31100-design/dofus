@@ -72,6 +72,20 @@ scramasaxe (`sp.sax`), moustache courte (`sp.moustacheShort`). Outil de contrôl
   murs de pierre sèche à parapet de bois, portes à tours couvertes, rempart aux boucliers alignés, bastion rond de rondins. Même peintre « Age of Mythology » que Francs et Gaulois (`finishing` dans `buildings.js`).
 - Personnages : cottes de mailles, casques coniques à nasal ou « à lunettes » (jamais de cornes), boucliers ronds peints, hache danoise, barbes tressées, ulfhednar et berserkers ; drakkars à proue de dragon et voile rayée.
 
+### Spartiates (`civ === 'sparta'`, Sparte classique, Ve-IVe s. av. J.-C.)
+- Palette : calcaire clair et marbre, tuiles rouges, bronze poli, écarlate (phoinikis), vert argenté des oliviers.
+- Bâtiments (`building-sparta.js`, `building-sparta-more.js`, pièces communes `building-sparta-parts.js`) : ordre **dorique** (stylobate à degrés,
+  colonnes cannelées, architrave à triglyphes dont les métopes portent la couleur d'équipe, frontons au lambda, palmette d'acrotère), trépieds de
+  bronze, statues d'hoplites, **hoplons suspendus** au mur du syssition, oliviers, bannières au **lambda**. Pas de remparts en ville : murs, portes,
+  grand rempart, grande porte, bastion et poste de guet sont en assises de calcaire clair sous des toits de tuiles (réemploi de `wallPiece` /
+  `gatePiece` avec des configurations `SP_*`). Mégaron sur terrasse, syssition à murs pleins, temple d'Arès périptère avec autel, stoas (champ des archers,
+  haras, atelier des machines), forge d'Héphaïstos, pyrgos, port de Gythion avec cale à trière (`dockDeck` exporté par `building-dock.js`).
+  Le calque de finition commun (contour teinté, liseré, dégradé chaud/froid) s'applique aussi aux Spartiates (`finishing` de `buildings.js`).
+- Personnages : hoplon de bronze à lambda (champ d'équipe), casque corinthien à crinière rouge (transversale pour les officiers), **cnémides** de bronze
+  (`sp.xgreaves`, crochet `front`), cuirasse de bronze ou linothorax, phoinikis écarlate, xiphos et dory, pilos pour les périèques, hilotes et skiritès.
+- Navires : **trière** (`unit-sparta-ship.js` : éperon de bronze, œil peint, acrotère d'étrave, aphlaston, hoplons au plat-bord, voile claire bordée d'équipe ;
+  coques `war/sparta` et `fish/sparta` dans `unit-naval.js`). Planche de contrôle : `tools/artboard-sparta.js` (sections `review big loupe base crowd bld ships`).
+
 ## 3. API (à respecter à l'identique)
 
 Tous les modules sont des modules ES sans dépendance, **Canvas 2D uniquement** (pas d'API Node, pas d'image externe,
