@@ -5,6 +5,8 @@ import CIV_MODULES from './civs/index.js';
 
 export const TICK_RATE = 20; // pas de simulation par seconde de jeu
 export const DT = 1 / TICK_RATE;
+/** Hauteur (px) du chemin de ronde des murs, pour dessiner les soldats qui s'y trouvent. */
+export const DECK_TOP = { palisade: 30, palisade_gate: 34, wall: 58, gate: 58, rampart: 94, great_gate: 94 };
 export const MAP_SIZE = 140; // la carte est un carré de 140 x 140 cases
 export const MAX_POP = 150;
 
@@ -520,35 +522,35 @@ const BUILDING_LIST = [
   // ---------------------------------- Défenses : palissades, murailles, portes, bastions ---------------------------
   {
     id: 'palisade', names: { franks: 'Palissade', gauls: 'Palissade' }, page: 'def', size: 1, hp: 450,
-    armor: { melee: 2, pierce: 10 }, cost: { wood: 8 }, time: 6, age: 1, los: 2, wall: true, garrison: 2, walk: true, tags: ['building', 'wall', 'wood'],
+    armor: { melee: 2, pierce: 10 }, cost: { wood: 8 }, time: 6, age: 1, los: 2, wall: true, deckCap: 3, tags: ['building', 'wall', 'wood'],
     desc: 'Enceinte de troncs pointus : pas chère, vite montée, mais elle brûle. Se trace en ligne.',
   },
   {
     id: 'palisade_gate', names: { franks: 'Porte de palissade', gauls: 'Porte de palissade' }, page: 'def', size: 1, hp: 800,
-    armor: { melee: 3, pierce: 12 }, cost: { wood: 35 }, time: 12, age: 1, los: 3, gate: true, tags: ['building', 'gate', 'wall', 'wood'],
+    armor: { melee: 3, pierce: 12 }, cost: { wood: 35 }, time: 12, age: 1, los: 3, gate: true, deckCap: 3, tags: ['building', 'gate', 'wall', 'wood'],
     desc: 'Laisse passer vos unités, pas celles de l\'ennemi. Les béliers l\'enfoncent vite.',
   },
   {
     id: 'wall', names: { franks: 'Mur de pierre', gauls: 'Murus gallicus' }, page: 'def', size: 1, hp: 2200,
-    armor: { melee: 6, pierce: 18 }, cost: { stone: 28 }, time: 12, age: 2, los: 3, wall: true, garrison: 4, walk: true,
+    armor: { melee: 6, pierce: 18 }, cost: { stone: 28 }, time: 12, age: 2, los: 3, wall: true, deckCap: 4,
     atk: { pierce: 9 }, range: 7, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 14, tags: ['building', 'wall', 'stone'],
     desc: 'Muraille de pierre : difficile à détruire. Deux soldats peuvent y prendre position et tirer depuis le chemin de ronde.',
   },
   {
     id: 'gate', names: { franks: 'Porte fortifiée', gauls: 'Porte fortifiée' }, page: 'def', size: 1, hp: 1800,
-    armor: { melee: 6, pierce: 18 }, cost: { stone: 45, wood: 25 }, time: 18, age: 2, los: 4, gate: true, garrison: 4, walk: true,
+    armor: { melee: 6, pierce: 18 }, cost: { stone: 45, wood: 25 }, time: 18, age: 2, los: 4, gate: true, deckCap: 4,
     atk: { pierce: 9 }, range: 7, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 14, tags: ['building', 'gate', 'wall', 'stone'],
     desc: 'Porte de pierre : vos unités passent, celles de l\'ennemi doivent la détruire ou escalader la muraille.',
   },
   {
     id: 'rampart', names: { franks: 'Grande muraille', gauls: 'Grand rempart' }, page: 'def', size: 2, hp: 6500,
-    armor: { melee: 10, pierce: 25 }, cost: { stone: 110, gold: 20 }, time: 30, age: 3, los: 4, wall: true, garrison: 10, walk: true,
+    armor: { melee: 10, pierce: 25 }, cost: { stone: 110, gold: 20 }, time: 30, age: 3, los: 4, wall: true, deckCap: 10,
     atk: { pierce: 12 }, range: 8, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 15, tags: ['building', 'wall', 'stone', 'great'],
     desc: 'Immense muraille : très chère, presque indestructible sans machines de siège. Quatre soldats y tirent du haut du chemin de ronde.',
   },
   {
     id: 'great_gate', names: { franks: 'Grande porte', gauls: 'Grande porte' }, page: 'def', size: 2, hp: 4500,
-    armor: { melee: 10, pierce: 25 }, cost: { stone: 140, wood: 60, gold: 30 }, time: 40, age: 3, los: 5, gate: true, garrison: 6, walk: true,
+    armor: { melee: 10, pierce: 25 }, cost: { stone: 140, wood: 60, gold: 30 }, time: 40, age: 3, los: 5, gate: true, deckCap: 6,
     atk: { pierce: 12 }, range: 8, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 15, tags: ['building', 'gate', 'wall', 'stone', 'great'],
     desc: 'Porte monumentale de la Grande muraille : passage large pour vos armées.',
   },

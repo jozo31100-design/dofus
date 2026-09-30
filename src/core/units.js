@@ -22,10 +22,12 @@ export function updateUnit(world, u) {
   if (u.cd > 0) u.cd--;
   const st = world.stat(u.owner, u.type);
   const o = u.order;
-  if (u.climbing && !(o && o.t === 'climb' && o.phase === 'up')) u.climbing = false;
+  if (u.onWall) { updateWallUnit(world, u, st); trackStuck(world, u); return; }
+  if (u.climbing && !(o && o.t === 'climb' && (o.phase === 'up' || o.phase === 'post'))) u.climbing = false;
   if (o) {
     switch (o.t) {
       case 'climb': doClimb(world, u, o, st); break;
+      case 'wall': doWallPost(world, u, o, st); break;
       case 'board': doBoard(world, u, o, st); break;
       case 'deploy': doDeploy(world, u, o, st); break;
       case 'move': doMove(world, u, o, st); break;
@@ -157,7 +159,10 @@ function approach(world, u, st, target, reach) {
     if (mobile && d < 2.5) {
       // tout près d'une cible mobile : on la rejoint en ligne droite
       u.path = null;
-      steer(world, u, st, target.x, target.y);
+      // on se répartit autour de la cible (chacun son angle) au lieu de s'empiler sur elle
+      const ang = ((u.id * 2.399963) % (Math.PI * 2));
+      const rr = (target.radius || 0.3) + u.radius + 0.12;
+      steer(world, u, st, target.x + Math.cos(ang) * rr, target.y + Math.sin(ang) * rr);
       return 'moving';
     }
     if (world.tick < u.repathAt && !u.path) return 'moving';
@@ -263,6 +268,8 @@ function doAttack(world, u, o, st) {
     u.anim = ANIM.fight;
     const sui = DEFS[u.type].suicide;
     if (sui) { sapperBlast(world, u, sui); return; }
+    if (t._attTick !== world.tick) { t._attTick = world.tick; t._attN = 0; }
+    t._attN++;
     if (u.cd <= 0) performAttack(world, u, t);
     return;
   }
@@ -304,6 +311,182 @@ function tryClimbFallback(world, u, o) {
   u.path = null;
   u.pathGoal = null;
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Chemin de ronde : les soldats montent sur leurs murs, s'y déplacent et y restent (les archers tirent d'en haut)
+// ---------------------------------------------------------------------------
+
+/** Tronçons de muraille voisins (même propriétaire, achevés) d'un tronçon. */
+function deckNeighbors(world, b) {
+  const S = world.S;
+  const out = new Set();
+  const look = (x, y) => {
+    if (x < 0 || y < 0 || x >= S || y >= S) return;
+    const o = world.get(world.occ[y * S + x]);
+    if (o && o !== b && !o.dead && o.cls === 'building' && o.owner === b.owner && o.done && DEFS[o.type].deckCap) out.add(o);
+  };
+  for (let k = 0; k < b.w; k++) { look(b.tx + k, b.ty - 1); look(b.tx + k, b.ty + b.h); }
+  for (let k = 0; k < b.h; k++) { look(b.tx - 1, b.ty + k); look(b.tx + b.w, b.ty + k); }
+  return [...out];
+}
+
+/** Itinéraire de tronçon en tronçon (largeur d'abord) : liste de bâtiments de `from` à `to`, ou null. */
+function deckRoute(world, from, to) {
+  if (from === to) return [from];
+  const prev = new Map([[from.id, null]]);
+  const q = [from];
+  for (let i = 0; i < q.length && i < 400; i++) {
+    for (const n of deckNeighbors(world, q[i])) {
+      if (prev.has(n.id)) continue;
+      prev.set(n.id, q[i]);
+      if (n === to) {
+        const path = [n];
+        let c = q[i];
+        while (c) { path.unshift(c); c = prev.get(c.id); }
+        return path;
+      }
+      q.push(n);
+    }
+  }
+  return null;
+}
+
+/** Nombre de soldats déjà postés sur un tronçon. */
+export function deckCount(world, b) {
+  let n = 0;
+  for (const v of world.units) if (!v.dead && v.onWall === b.id) n++;
+  return n;
+}
+
+/** Position d'un soldat sur son tronçon (légèrement décalée selon son numéro pour ne pas se superposer). */
+function deckSpot(u, b) {
+  const k = ((u.id * 37) % 7) - 3;
+  return { x: b.x + k * 0.11 * Math.max(1, b.w * 0.6), y: b.y + (((u.id * 17) % 5) - 2) * 0.09 };
+}
+
+/** Le soldat redescend au pied de son mur, du côté du point visé (ou le plus proche). */
+export function dropFromWall(world, u, tx, ty, hurt = 0) {
+  const b = world.get(u.onWall);
+  u.onWall = 0;
+  u.climbing = false;
+  if (b) {
+    const blocked = world.blockedOf(u);
+    const S = world.S;
+    let best = null;
+    let bd = Infinity;
+    for (let r = 0.7; r <= 2.7 && !best; r += 1) {
+      for (let a = 0; a < 16; a++) {
+        const ang = (a / 16) * Math.PI * 2;
+        const px = b.x + Math.cos(ang) * (b.w / 2 + r);
+        const py = b.y + Math.sin(ang) * (b.h / 2 + r);
+        const cx = Math.floor(px);
+        const cy = Math.floor(py);
+        if (cx < 0 || cy < 0 || cx >= S || cy >= S || blocked[cy * S + cx]) continue;
+        const d = tx === undefined ? 0 : Math.hypot(px - tx, py - ty);
+        if (d < bd) { bd = d; best = { x: px, y: py }; }
+      }
+    }
+    if (best) { u.x = best.x; u.y = best.y; }
+  }
+  if (hurt) u.hp = Math.max(1, u.hp - hurt * u.maxHp);
+  u.path = null;
+  world.emit({ k: 'hit', x: u.x, y: u.y, big: false });
+}
+
+/** Ordre « monter sur le mur » : on rejoint le pied du mur, on grimpe, puis on marche sur le chemin de ronde jusqu'au tronçon visé. */
+function doWallPost(world, u, o, st) {
+  const t = world.get(o.target);
+  if (!t || t.dead || t.owner !== u.owner || !DEFS[t.type].deckCap || !t.done) { finishOrder(u); return; }
+  if (o.phase === 'up') {
+    u.climbing = true;
+    u.anim = ANIM.work;
+    u.work = WORK.climb;
+    o.left -= DT;
+    if (o.left > 0) return;
+    const b = world.get(o.via);
+    if (!b || b.dead) { u.climbing = false; finishOrder(u); return; }
+    u.climbing = false;
+    u.onWall = b.id;
+    const sp = deckSpot(u, b);
+    u.x = sp.x;
+    u.y = sp.y;
+    u.path = null;
+    u.moving = false;
+    o.phase = 'walk'; // la suite (marcher jusqu'au tronçon visé) est gérée par updateWallUnit avec le même ordre
+    return;
+  }
+  if (deckCount(world, t) >= DEFS[t.type].deckCap) {
+    world.say(u.owner, 'Ce tronçon de mur est plein.', 'warn');
+    finishOrder(u);
+    return;
+  }
+  const r = approach(world, u, st, t, REACH.climb);
+  if (r === 'failed') { finishOrder(u); return; }
+  if (r !== 'reached') return;
+  o.phase = 'up';
+  o.left = 1.1;
+  o.via = t.id;
+  u.path = null;
+}
+
+/** Comportement d'un soldat qui se trouve sur un mur. */
+function updateWallUnit(world, u, st) {
+  const b = world.get(u.onWall);
+  if (!b || b.dead) { dropFromWall(world, u, undefined, undefined, 0.3); return; }
+  const o = u.order;
+  u.anim = ANIM.idle;
+  u.moving = false;
+  if (o && o.t === 'wall') {
+    const t = world.get(o.target);
+    if (!t || t.dead || t.owner !== u.owner) { finishOrder(u); return; }
+    if (t.id === b.id) { finishOrder(u); return; }
+    if (!o.route || o.routeFrom !== b.id) {
+      o.route = deckRoute(world, b, t);
+      o.routeFrom = b.id;
+      if (!o.route) { finishOrder(u); return; }
+    }
+    const next = o.route[1];
+    if (!next || next.dead) { o.route = null; return; }
+    let speed = st.speed * (1 + world.auraOf(u, 'speed'));
+    if (u.speedCap && u.speedCap < speed) speed = u.speedCap;
+    const sp = deckSpot(u, next);
+    const dx = sp.x - u.x;
+    const dy = sp.y - u.y;
+    const d = Math.hypot(dx, dy);
+    if (d <= speed * DT) {
+      u.x = sp.x;
+      u.y = sp.y;
+      u.onWall = next.id;
+      o.route = null;
+    } else {
+      u.x += (dx / d) * speed * DT;
+      u.y += (dy / d) * speed * DT;
+      u.face = Math.atan2(dy, dx);
+      u.moving = true;
+      u.anim = ANIM.walk;
+    }
+    return;
+  }
+  if (o && o.t === 'attack') {
+    const t = world.get(o.target);
+    const reach = st.range > 0 ? st.range + 1 : 0;
+    if (!t || t.dead || !canTarget(u, t) || reach <= 0 || distEdge(u.x, u.y, t) > reach) { finishOrder(u); return; }
+    u.face = Math.atan2(t.y - u.y, t.x - u.x);
+    u.anim = ANIM.fight;
+    if (u.cd <= 0) performAttack(world, u, t);
+    return;
+  }
+  if (o) {
+    // tout autre ordre (marcher, récolter, construire…) : on redescend d'abord, du côté du but
+    dropFromWall(world, u, o.x, o.y);
+    return;
+  }
+  // au repos : les tireurs postés visent les ennemis à portée (plus loin depuis le haut du mur)
+  if (st.range > 0 && isMilitary(DEFS[u.type]) && (world.tick + u.id) % 4 === 0) {
+    const t = findTarget(world, u, st.range + 1);
+    if (t && canTarget(u, t)) setOrder(u, { t: 'attack', target: t.id, auto: true });
+  }
 }
 
 /**
@@ -727,10 +910,10 @@ export function separateUnits(world) {
   const units = world.units;
   for (let iter = 0; iter < 2; iter++) {
     for (const u of units) {
-      if (u.dead || u.inside) continue;
+      if (u.dead || u.inside || u.onWall) continue;
       const wu = pushWeight(u);
       world.forUnitsNear(u.x, u.y, u.radius + 0.75, (v) => {
-        if (v.id <= u.id || v.dead) return;
+        if (v.id <= u.id || v.dead || v.onWall) return;
         const dx = v.x - u.x;
         const dy = v.y - u.y;
         const minD = u.radius + v.radius;
@@ -758,7 +941,7 @@ export function separateUnits(world) {
       });
     }
   }
-  for (const u of units) if (!u.dead && !u.inside) resolveStatic(world, u);
+  for (const u of units) if (!u.dead && !u.inside && !u.onWall) resolveStatic(world, u);
 }
 
 /** Repousse une unité hors des cases infranchissables (cercle contre carré). */

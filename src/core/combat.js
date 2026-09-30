@@ -30,6 +30,7 @@ export function canTarget(att, t) {
   if (t.cls === 'node') return false;
   if (t.cls === 'animal') return def.worker === true; // seuls les villageois chassent
   if (t.owner === att.owner) return false;
+  if (t.onWall && !(def.range > 0)) return false; // un soldat posté sur un mur n'est atteignable que par des tireurs
   if (t.cls === 'building' && DEFS[t.type].capture) return false; // les points stratégiques ne se détruisent pas
   // les navires ne sont touchés que par des tireurs (ou d'autres navires)
   if (t.naval && !(def.range > 0)) return false;
@@ -86,8 +87,18 @@ export function applyDamage(world, t, dmg, att) {
     const ar = world.auraOf(t, 'armor');
     if (ar) dmg = Math.max(1, dmg - ar);
     if (t.climbing) dmg *= CLIMB_VULN;
+    if (t.onWall) dmg *= 0.75; // à l'abri des créneaux
   }
   t.hp -= dmg;
+  if (t.cls === 'unit' || t.cls === 'building') {
+    // chiffres de dégâts cumulés (au plus 4 par seconde et par cible) pour que les combats se lisent
+    t._dmgAcc = (t._dmgAcc || 0) + dmg;
+    if (world.tick - (t._dmgT || -99) >= 5 && t._dmgAcc >= 2) {
+      world.emit({ k: 'dmg', x: t.x, y: t.y, d: Math.round(t._dmgAcc), o: t.owner, id: t.id, b: t.cls === 'building' ? 1 : 0 });
+      t._dmgAcc = 0;
+      t._dmgT = world.tick;
+    }
+  }
   onDamaged(world, t, att);
   if (t.hp <= 0) killEntity(world, t, att);
 }
@@ -133,6 +144,7 @@ export function killEntity(world, e, killer) {
     world.emit({ k: 'dest', id: e.id, type: e.type, owner: e.owner, tx: e.tx, ty: e.ty, x: e.x, y: e.y });
     if (pl) pl.lostBuildings++;
     if (kpl) kpl.razed++;
+    world.dropWallUnits(e);
     // les unités réfugiées à l'intérieur ressortent
     for (const id of e.garrison) {
       const u = world.get(id);
@@ -215,6 +227,8 @@ export function findTarget(world, u, radius) {
       let score = d;
       if (vd.worker) score += 4;
       else if (!isMilitary(vd)) score += 6;
+      // répartition : on évite d'empiler tout le monde sur la même cible quand d'autres ennemis sont tout proches
+      if (v._attTick === world.tick || v._attTick === world.tick - 1) score += Math.min(6, (v._attN || 0) * 0.9);
       if (score < bestScore) { bestScore = score; best = v; }
     });
   }

@@ -426,6 +426,15 @@ export class GameUI {
         fx.marker(target.x, target.y, 'gather', now);
         return;
       }
+      if (BUILDINGS[target.type].deckCap) {
+        // chemin de ronde : les soldats montent sur le mur et peuvent ensuite y marcher (clic droit sur un autre tronçon)
+        const ids = units.filter((u) => !DEFS[u.type].tags.includes('siege') && !DEFS[u.type].worker).map((u) => u.id);
+        if (ids.length) this.cmd({ c: 'garrison', ids, tid: target.id, q });
+        const rest = units.filter((u) => !ids.includes(u.id)).map((u) => u.id);
+        if (rest.length) this.cmd({ c: 'move', ids: rest, x: target.x, y: target.y, q });
+        fx.marker(target.x, target.y, 'rally', now);
+        return;
+      }
       if (BUILDINGS[target.type].garrison) {
         const ids = units.filter((u) => !DEFS[u.type].tags.includes('siege')).map((u) => u.id);
         if (ids.length) this.cmd({ c: 'garrison', ids, tid: target.id, q });
@@ -643,6 +652,7 @@ export class GameUI {
     if (e.code === 'F1') { this.showHelp(); e.preventDefault(); return; }
     if (this.menuOpen || this.state.over) return;
     if (e.code === 'KeyK' && !e.ctrlKey) { this.showChoices(); return; }
+    if (e.code === 'F4') { const fx = this.renderer.fx; fx.showDamage = fx.showDamage === false; this.toast(fx.showDamage === false ? 'Chiffres de dégâts masqués (F4).' : 'Chiffres de dégâts affichés (F4).', 'info'); e.preventDefault(); return; }
     if (e.code === 'F3') { this.showFps = !this.showFps; this.fpsEl.style.display = this.showFps ? '' : 'none'; return; }
     const digit = /^(Digit|Numpad)(\d)$/.exec(e.code);
     if (digit) {
@@ -1305,6 +1315,7 @@ export class GameUI {
       ['H', 'Aller à la salle principale'],
       ['Espace', 'Aller à la dernière attaque'],
       ['Suppr', 'Détruire la sélection (à confirmer)'],
+      ['F4', 'Afficher/masquer les chiffres de dégâts (jaune : subis par l\'ennemi, rouge : subis par vous)'],
       ['P', 'Pause'],
       ['F10 / Échap', 'Menu'],
       ['F11', 'Plein écran'],

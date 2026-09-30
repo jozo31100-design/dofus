@@ -4,7 +4,7 @@ import { World } from '../src/core/world.js';
 import { DT, CHOICES, computeStats } from '../src/core/defs.js';
 import { applyCommand } from '../src/core/commands.js';
 import { applyChoice, queueUnit, placementError } from '../src/core/econ.js';
-import { killEntity } from '../src/core/combat.js';
+import { killEntity, canTarget } from '../src/core/combat.js';
 
 const two = () => new World({ seed: 3, players: [{ name: 'A', civ: 'franks' }, { name: 'B', civ: 'gauls' }], startRes: 'riche', revealMap: true });
 const run = (w, s) => { for (let i = 0; i < s / DT; i++) w.step(); };
@@ -258,19 +258,33 @@ test('une porte se pose à la place d\'un mur existant (60 % rendus, garnison li
   assert.equal(pl.res.stone, s0 - c + Math.floor(w.stat(0, 'wall').cost.stone * 0.6));
 });
 
-test('des archers postés sur un rempart tirent avec leurs propres caractéristiques', () => {
+test('chemin de ronde : des archers montent sur un rempart, y marchent d\'un tronçon à l\'autre et tirent d\'en haut', () => {
   const w = two();
   w.players[0].age = 3;
   const hall = w.playerBuildings(0, 'hall')[0];
-  const wall = w.addBuilding('rampart', 0, hall.tx + 9, hall.ty + 5, true);
-  const archers = [0, 1, 2].map((i) => w.addUnit('archer', 0, wall.x + 1 + i * 0.4, wall.y + 1.5));
-  applyCommand(w, 0, { c: 'garrison', ids: archers.map((a) => a.id), tid: wall.id });
-  run(w, 15);
-  assert.equal(wall.garrison.length, 3, 'trois archers sur le rempart');
-  const foe = w.addUnit('swordsman', 1, wall.x + 7, wall.y);
+  const a = w.addBuilding('rampart', 0, hall.tx + 9, hall.ty + 5, true);
+  const b = w.addBuilding('rampart', 0, hall.tx + 11, hall.ty + 5, true); // tronçon voisin
+  const archers = [0, 1, 2].map((i) => w.addUnit('archer', 0, a.x + 0.3 * i, a.y + 2.4));
+  applyCommand(w, 0, { c: 'garrison', ids: archers.map((u) => u.id), tid: a.id });
+  run(w, 14);
+  assert.ok(archers.every((u) => u.onWall === a.id), 'trois archers sur le rempart');
+  assert.ok(archers.every((u) => !u.dead));
+  // on les envoie sur le tronçon voisin : ils marchent sur le mur (sans redescendre)
+  applyCommand(w, 0, { c: 'garrison', ids: archers.map((u) => u.id), tid: b.id });
+  run(w, 8);
+  assert.ok(archers.every((u) => u.onWall === b.id), 'passés sur l\'autre tronçon');
+  const foe = w.addUnit('swordsman', 1, b.x + 2, b.y + 6);
   const hp = foe.hp;
-  run(w, 6);
-  assert.ok(foe.hp < hp, 'les archers postés tirent à longue portée');
+  run(w, 8);
+  assert.ok(foe.hp < hp, 'les archers postés tirent d\'en haut');
+  // un fantassin ennemi au sol ne peut pas les attaquer au corps à corps
+  const canHit = w.units.find((u) => u.owner === 1);
+  assert.ok(canHit);
+  assert.equal(canTarget(foe, archers[0]), false, 'la mêlée n\'atteint pas le chemin de ronde');
+  // un autre ordre les fait redescendre
+  applyCommand(w, 0, { c: 'move', ids: archers.map((u) => u.id), x: b.x - 3, y: b.y + 6 });
+  run(w, 3);
+  assert.ok(archers.every((u) => !u.onWall));
 });
 
 test('cible prioritaire : une tour tire sur l\'ennemi désigné et non sur le plus proche', () => {

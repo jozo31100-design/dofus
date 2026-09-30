@@ -5,7 +5,7 @@ import { UNITS, BUILDINGS, DEFS, RESOURCES } from './defs.js';
 import { setOrder, resetMove, freeSpotAround, isMilitary, wallLine } from './common.js';
 import { queueUnit, queueTech, cancelQueue, startBuilding, findFarmSlot, trade, applyChoice, placementError } from './econ.js';
 import { killEntity, canTarget } from './combat.js';
-import { unloadCargo } from './units.js';
+import { unloadCargo, dropFromWall } from './units.js';
 
 const num = (v, d = 0) => (Number.isFinite(v) ? v : d);
 
@@ -315,6 +315,15 @@ function cmdRally(world, pi, cmd) {
 
 function cmdGarrison(world, pi, cmd) {
   const b = ownBuilding(world, pi, cmd.tid);
+  if (b && b.done && DEFS[b.type].deckCap) {
+    // murs : les soldats montent sur le chemin de ronde (ils y restent visibles, marchent d'un tronçon à l'autre, les archers tirent)
+    for (const u of ownUnits(world, pi, cmd.ids)) {
+      const d = DEFS[u.type];
+      if (d.worker || d.tags.includes('siege') || !isMilitary(d)) setOrder(u, { t: 'move', x: b.x, y: b.y }, !!cmd.q);
+      else setOrder(u, { t: 'wall', target: b.id, phase: 'go' }, !!cmd.q);
+    }
+    return;
+  }
   if (!b || !b.done || !BUILDINGS[b.type].garrison) return;
   for (const u of ownUnits(world, pi, cmd.ids)) setOrder(u, { t: 'garrison', target: b.id }, !!cmd.q);
 }
@@ -322,6 +331,10 @@ function cmdGarrison(world, pi, cmd) {
 function cmdUngarrison(world, pi, cmd) {
   const b = ownBuilding(world, pi, cmd.bid);
   if (!b) return;
+  if (DEFS[b.type].deckCap) {
+    for (const u of world.units) if (!u.dead && u.onWall === b.id) { dropFromWall(world, u, b.rally ? b.rally.x : undefined, b.rally ? b.rally.y : undefined); u.order = null; }
+    return;
+  }
   const ids = b.garrison.slice();
   b.garrison.length = 0;
   for (const id of ids) {

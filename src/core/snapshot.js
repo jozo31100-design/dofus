@@ -11,7 +11,7 @@
 //   animal     [id, 3, type, x32, y32, pv, anim, face64]
 // Les positions « x32 » sont des entiers en 1/32 de case.
 
-import { DEFS, DEF_IDS, DEF_INDEX, TECH_IDS, RESOURCES } from './defs.js';
+import { DECK_TOP, DEFS, DEF_IDS, DEF_INDEX, TECH_IDS, RESOURCES } from './defs.js';
 import { CARRY_CODE } from './common.js';
 
 export const K_UNIT = 0;
@@ -39,6 +39,7 @@ function encodeEvent(ev) {
     case 'dest': return ['vis', ['D', ev.id, DEF_INDEX[ev.type], ev.owner, ev.tx, ev.ty]];
     case 'dep': return [ev.owner, ['$', q32(ev.x), q32(ev.y), RESOURCES.indexOf(ev.res), ev.n]];
     case 'heal': return ['vis', ['+', q32(ev.x), q32(ev.y)]];
+    case 'dmg': return ['vis', ['~', q32(ev.x), q32(ev.y), Math.min(999, ev.d), ev.o, ev.id, ev.b]];
     case 'depleted': return ['vis', ['x', DEF_INDEX[ev.type], q32(ev.x), q32(ev.y)]];
     case 'built': return [ev.owner, ['b', ev.id, DEF_INDEX[ev.type], q32(ev.x), q32(ev.y)]];
     case 'trained': return [ev.owner, ['t', ev.id, DEF_INDEX[ev.type], q32(ev.x), q32(ev.y)]];
@@ -63,6 +64,7 @@ export function decodeEvent(a) {
     case 'D': return { k: 'dest', id: a[1], type: DEF_IDS[a[2]], owner: a[3], tx: a[4], ty: a[5] };
     case '$': return { k: 'dep', x: a[1] / 32, y: a[2] / 32, res: RESOURCES[a[3]], n: a[4] };
     case '+': return { k: 'heal', x: a[1] / 32, y: a[2] / 32 };
+    case '~': return { k: 'dmg', x: a[1] / 32, y: a[2] / 32, d: a[3], o: a[4], id: a[5], b: a[6] };
     case 'x': return { k: 'depleted', type: DEF_IDS[a[1]], x: a[2] / 32, y: a[3] / 32 };
     case 'b': return { k: 'built', id: a[1], type: DEF_IDS[a[2]], x: a[3] / 32, y: a[4] / 32 };
     case 't': return { k: 'trained', id: a[1], type: DEF_IDS[a[2]], x: a[3] / 32, y: a[4] / 32 };
@@ -86,7 +88,7 @@ export function decodeRecord(r) {
   if (kind === K_UNIT) {
     return {
       id: r[0], cls: 'unit', type: DEF_IDS[r[2]], owner: r[3], x: r[4] / 32, y: r[5] / 32, hp: r[6], maxHp: r[7],
-      anim: r[8], face: faceFrom64(r[9]), carry: Math.floor(r[10] / 100), carryAmt: r[10] % 100, work: r[11], cargo: r[12] || 0,
+      anim: r[8], face: faceFrom64(r[9]), carry: Math.floor(r[10] / 100), carryAmt: r[10] % 100, work: r[11], cargo: r[12] || 0, elev: r[13] || 0,
     };
   }
   if (kind === K_BUILDING) {
@@ -171,11 +173,13 @@ export class SnapshotBuilder {
       }
     };
 
+    const deckN = new Map();
+    for (const u of w.units) if (!u.dead && u.onWall) deckN.set(u.onWall, (deckN.get(u.onWall) || 0) + 1);
     for (const u of w.units) {
       if (u.dead || u.inside) continue;
       if (u.owner !== idx && !w.visibleTo(idx, u.x, u.y)) continue;
       const carry = u.carryAmt > 0 && u.carryRes ? CARRY_CODE[u.carryRes] * 100 + Math.min(99, u.carryAmt) : 0;
-      push(u.id, [u.id, K_UNIT, DEF_INDEX[u.type], u.owner, q32(u.x), q32(u.y), Math.ceil(u.hp), Math.round(u.maxHp), u.anim, face64(u.face), carry, u.work, u.cargo ? u.cargo.length : 0]);
+      push(u.id, [u.id, K_UNIT, DEF_INDEX[u.type], u.owner, q32(u.x), q32(u.y), Math.ceil(u.hp), Math.round(u.maxHp), u.anim, face64(u.face), carry, u.work, u.cargo ? u.cargo.length : 0, u.onWall ? (DECK_TOP[(w.get(u.onWall) || {}).type] || 50) : 0]);
     }
     for (const b of w.buildings) {
       if (b.dead) continue;
@@ -198,7 +202,7 @@ export class SnapshotBuilder {
         extra.g = types.slice(0, 10);
       }
       const prog = b.done ? 100 : Math.floor(b.progress * 100);
-      push(b.id, [b.id, K_BUILDING, DEF_INDEX[b.type], b.owner, b.tx, b.ty, Math.ceil(b.hp), Math.round(b.maxHp), prog, b.garrison.length, extra]);
+      push(b.id, [b.id, K_BUILDING, DEF_INDEX[b.type], b.owner, b.tx, b.ty, Math.ceil(b.hp), Math.round(b.maxHp), prog, deckN.get(b.id) || b.garrison.length, extra]);
     }
     for (const a of w.animals) {
       if (a.dead || !w.visibleTo(idx, a.x, a.y)) continue;

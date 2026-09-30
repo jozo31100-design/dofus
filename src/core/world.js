@@ -12,7 +12,7 @@ import { generateMap, WATER, FORD, DEFAULT_SEED } from './mapgen.js';
 import { generateArena } from './arena.js';
 import { PathGrid } from './path.js';
 import { mulberry32 } from './util.js';
-import { updateUnit, separateUnits, updateAnimal } from './units.js';
+import { updateUnit, separateUnits, updateAnimal, dropFromWall } from './units.js';
 import { updateBuildings } from './econ.js';
 import { recalcPop } from './common.js';
 import { updateProjectiles, applyDamage } from './combat.js';
@@ -215,6 +215,7 @@ export class World {
       lastAtk: -100,
       moving: false,
       cargo: def.cargo ? [] : null,
+      onWall: 0,
     };
     this.entities.set(u.id, u);
     this.units.push(u);
@@ -616,6 +617,11 @@ export class World {
       if (Math.hypot(x - c.x, y - c.y) <= d.r + c.w / 2) m = Math.min(m, d.mul);
     }
     return m;
+  }
+
+  /** Un mur tombe : les soldats postés dessus tombent au pied (et se font mal). */
+  dropWallUnits(b) {
+    for (const u of this.units) if (!u.dead && u.onWall === b.id) dropFromWall(this, u, undefined, undefined, 0.3);
   }
 
   /** La tour de siège est détruite : ses passagers sortent, éprouvés. */

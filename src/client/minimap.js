@@ -128,6 +128,23 @@ export class Minimap {
         ctx.strokeRect(x - s / 2 + 0.5, y - s / 2 + 0.5, s - 1, s - 1);
       }
     }
+    // combats récents : cercles rouges pulsants (un par zone) pour voir où ça se bat
+    const nowF = performance.now();
+    const zones = [];
+    for (const f of st.fights) {
+      if (nowF - f.t > 2500) continue;
+      if (zones.some((z) => Math.hypot(z.x - f.x, z.y - f.y) < 6)) continue;
+      zones.push(f);
+    }
+    for (const f of zones) {
+      const [x, y] = this.toMini(f.x, f.y);
+      const k = (nowF - f.t) / 2500;
+      ctx.strokeStyle = `rgba(255,70,50,${0.9 - k * 0.7})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 5 + k * 7, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     for (const e of st.ents.values()) {
       if (e.cls === 'unit') {
         const [x, y] = this.toMini(e.x, e.y);

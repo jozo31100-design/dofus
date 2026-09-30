@@ -113,6 +113,20 @@ export class Fx {
       case 'depleted':
         if (ev.type === 'tree') this.dust(ev.x, ev.y, now, 4, 12, 8, '#7d9a55', 0.9);
         break;
+      case 'dmg': {
+        // chiffres de dégâts (jaune : subis par l'ennemi, rouge : subis par vous) et carte des combats pour la minimap
+        state.fights.push({ x: ev.x, y: ev.y, t: now });
+        if (state.fights.length > 60) state.fights.shift();
+        if (this.showDamage === false || (ev.b && ev.d < 25)) break;
+        const mine = ev.o === state.myIdx;
+        if (this.parts.length < 360) {
+          this.particle({
+            k: 'text', x: ev.x + (ev.id % 5 - 2) * 0.12, y: ev.y, z: 34, vx: 0, vy: 0, vz: 26, g: 0, t0: now, life: 0.9,
+            size: ev.d >= 30 ? 15 : ev.d >= 12 ? 13 : 11, color: mine ? '#ff6b5e' : '#ffe27a', txt: String(ev.d),
+          });
+        }
+        break;
+      }
       case 'heal':
         this.particle({ k: 'heal', x: ev.x, y: ev.y, z: 8, vx: 0, vy: 0, vz: 26, g: 0, t0: now, life: 0.9, size: 9, color: '#7dffa0' });
         break;

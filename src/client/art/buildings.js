@@ -28,10 +28,11 @@ import { EGYPT } from './building-egypt.js';
 import { POINTS } from './building-points.js';
 import { COUNTERSIEGE } from './building-countersiege.js';
 import { SLINGTOWER } from './building-slingtower.js';
+import { castleFranks, castleGauls } from './building-castle.js';
 
 const DESIGNS = {
-  gauls: { ...GAULS, farm, dock: DOCK.gauls, market: MARKET.gauls, academy: ACADEMY.gauls, wonder: WONDER.gauls, ...WALLS.gauls, ...DEFENSE.gauls, ...CITY.gauls, ...POINTS, ...COUNTERSIEGE.gauls, ...SLINGTOWER.gauls },
-  franks: { ...FRANKS, farm, dock: DOCK.franks, market: MARKET.franks, academy: ACADEMY.franks, wonder: WONDER.franks, ...WALLS.franks, ...DEFENSE.franks, ...CITY.franks, ...POINTS, ...COUNTERSIEGE.franks, ...SLINGTOWER.franks },
+  gauls: { ...GAULS, farm, dock: DOCK.gauls, market: MARKET.gauls, academy: ACADEMY.gauls, wonder: WONDER.gauls, ...WALLS.gauls, ...DEFENSE.gauls, ...CITY.gauls, ...POINTS, ...COUNTERSIEGE.gauls, ...SLINGTOWER.gauls, castle: castleGauls },
+  franks: { ...FRANKS, farm, dock: DOCK.franks, market: MARKET.franks, academy: ACADEMY.franks, wonder: WONDER.franks, ...WALLS.franks, ...DEFENSE.franks, ...CITY.franks, ...POINTS, ...COUNTERSIEGE.franks, ...SLINGTOWER.franks, castle: castleFranks },
   sparta: SPARTA,
   vikings: VIKINGS,
   egypt: EGYPT,
@@ -212,7 +213,7 @@ export function getBuildingSprite(typeId, civ, teamIdx, stage = 3, mask = 0) {
   const design = (DESIGNS[cv] && DESIGNS[cv][typeId]) || DESIGNS[base][typeId];
   const W = workCanvas(n, (HEIGHT[typeId] || 100) + 30);
   const g = new Gfx(W.ctx, W.ax, W.ay, { stage: st, civ: base, team: tm, size: n, seed: hash(typeId, cv, mk) });
-  const finishing = st >= 1 && (cv === 'gauls' || cv === 'franks');
+  const finishing = st >= 1 && (cv === 'gauls' || cv === 'franks' || cv === 'vikings');
   g.civId = cv;
   g.mask = mk;
   if (!design) {

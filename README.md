@@ -16,6 +16,8 @@ Jeu de stratégie en temps réel façon *Age of Empires*, **Francs contre Gauloi
 - **Tour lance-pierres** (très coûteuse, tir de zone), **infirmerie** qui soigne les unités proches et celles qui s'y abritent ; tout coûte 40 % plus cher qu'avant (hors villageois, fermes et maisons)
 - **Jusqu'à 8 joueurs** : 1 à 7 ordinateurs en solo (chacun pour soi, carte « Grande arène » avec les camps en cercle), ordinateurs supplémentaires aussi dans les parties en réseau
 - **Murailles praticables** : les soldats postés sur un mur ou un rempart y sont visibles, les archers tirent avec leur propre portée (+ bonus de hauteur) ; une porte se pose à la place d'un mur ; tours et remparts tirent sur la **cible prioritaire** désignée par clic droit
+- **Chemin de ronde** : les soldats montent sur leurs murs (clic droit sur le mur), marchent d'un tronçon à l'autre, restent visibles en hauteur ; les archers tirent d'en haut, la mêlée ne peut pas les atteindre
+- **Combats lisibles** : anneau de couleur d'équipe sous chaque unité, chiffres de dégâts (F4 pour les masquer), barres de vie des blessés, cercles rouges sur la minimap aux endroits où l'on se bat, soldats qui se répartissent autour de leur cible au lieu de s'empiler
 - Environ 35 unités, 28 bâtiments, 60 technologies : villageois, récolte (bois, nourriture, or, pierre), fermes, chasse, pêche,
   construction, armées, béliers et catapultes, tours et château, brouillard de guerre
 - Le **port** et les **bateaux** (barques de pêche, drakkars et navires vénètes qui se battent sur la rivière), le **marché**

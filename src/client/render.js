@@ -511,8 +511,26 @@ export class Renderer {
     } else if (e.anim === 2) {
       anim = 'work';
     }
+    const lift = (e.elev || 0) * z; // soldat posté sur un chemin de ronde
+    if (e.cls === 'unit' && e.owner >= 0 && !e.elev && this.teamRings !== false) {
+      // anneau de couleur d'équipe sous chaque unité : on voit qui est qui dans la mêlée
+      const tc = TEAM_COLORS[e.owner];
+      if (tc) {
+        const rr = ((def.radius || 0.3) + 0.12) * Math.SQRT2;
+        ctx.beginPath();
+        ctx.ellipse(d.sx, d.sy, rr * TW2 * z, rr * TH2 * z, 0, 0, Math.PI * 2);
+        ctx.fillStyle = tc.main;
+        ctx.globalAlpha = 0.16;
+        ctx.fill();
+        ctx.globalAlpha = 0.85;
+        ctx.strokeStyle = tc.main;
+        ctx.lineWidth = Math.max(1, 1.6 * z);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
     ctx.save();
-    ctx.translate(d.sx, d.sy);
+    ctx.translate(d.sx, d.sy - lift);
     ctx.scale(z, z);
     if (e.cls === 'animal') {
       let a = anim;
@@ -531,7 +549,7 @@ export class Renderer {
     }
     ctx.restore();
     const m = e.cls === 'animal' ? { h: 26, w: 12 } : art.unitMetrics(e.type);
-    this.hits.push({ e, kind: 'u', sx: d.sx, sy: d.sy - (m.h * z) / 2, r: Math.max(m.w, m.h * 0.42) * z + 3, h: m.h });
+    this.hits.push({ e, kind: 'u', sx: d.sx, sy: d.sy - lift - (m.h * z) / 2, r: Math.max(m.w, m.h * 0.42) * z + 3, h: m.h });
   }
 
   drawTall(list, now) {

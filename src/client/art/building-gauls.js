@@ -732,7 +732,7 @@ function castle(g) {
 castle.found = { stone: true };
 
 /** Donjon rond gaulois : pierre sèche à poutres, galerie de bois, grand toit de chaume. */
-function keep(g, x, y) {
+export function keep(g, x, y) {
   const st = g.stage;
   const r = 0.92;
   const hs = 84;
@@ -799,7 +799,7 @@ function keep(g, x, y) {
 }
 
 /** Tour de guet de bois sur le rempart. */
-function watchTower(g, x, y) {
+export function watchTower(g, x, y) {
   const st = g.stage;
   const s = 0.3;
   const zd = 70;

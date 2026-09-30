@@ -73,6 +73,32 @@ export function drawDeer(ctx, P) {
   ctx.beginPath();
   ell(ctx, -9.0, -1.4, 1.6, 2.4, 0.2);
   ctx.fill();
+  // dos plus sombre (raie dorsale), cuisse et épaule modelées par un reflet chaud et un creux froid
+  ctx.fillStyle = rgba(C.dark, 0.55);
+  ctx.beginPath();
+  ctx.moveTo(7.2, -4.2);
+  ctx.bezierCurveTo(3, -4.9, -4, -4.7, -9, -4.0);
+  ctx.bezierCurveTo(-4, -3.0, 3, -3.0, 7.2, -3.4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,226,170,0.26)';
+  ctx.beginPath();
+  ell(ctx, -6.4, -1.4, 3.0, 2.0, -0.3);
+  ell(ctx, 4.8, -1.6, 2.4, 1.8, 0.2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(60,30,60,0.2)';
+  ctx.beginPath();
+  ell(ctx, -1.4, 0.4, 1.6, 2.4, 0.1);
+  ctx.fill();
+  // poils du poitrail
+  ctx.strokeStyle = rgba(C.belly, 0.7);
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  for (let i = 0; i < 4; i++) {
+    ctx.moveTo(7.4, -0.4 + i * 0.9);
+    ctx.lineTo(8.6, 0.3 + i * 0.9);
+  }
+  ctx.stroke();
   ctx.restore();
 
   // Encolure et tête (pivot à la base du cou)
@@ -83,6 +109,17 @@ export function drawDeer(ctx, P) {
   ctx.beginPath();
   capsule(ctx, 0, 0, 2.8, 0, -8.2, 1.7);
   paint(ctx, sideGrad(ctx, -3, 3, C.coat, 0.2, -0.25), edge(C.coat), 0.6);
+  ctx.fillStyle = rgba(C.dark, 0.6);
+  ctx.beginPath();
+  ctx.moveTo(-1.2, 0.4);
+  ctx.quadraticCurveTo(-3.6, -4, -1.6, -8.4);
+  ctx.quadraticCurveTo(-1.6, -4, 0.2, 0.2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = rgba(C.belly, 0.75);
+  ctx.beginPath();
+  ell(ctx, 1.4, -3.6, 0.9, 3.2, 0.05);
+  ctx.fill();
   // Tête
   ctx.save();
   ctx.translate(0.4, -8.6);
@@ -90,6 +127,10 @@ export function drawDeer(ctx, P) {
   ctx.beginPath();
   capsule(ctx, 0, 0, 2.1, 5.2, 0.6, 1.2);
   paint(ctx, ballGrad(ctx, 1.5, -1, 4, C.coat, 0.25, -0.2), edge(C.coat), 0.6);
+  ctx.fillStyle = rgba(C.belly, 0.8);
+  ctx.beginPath();
+  ell(ctx, 4.9, 0.9, 1.5, 1.0, 0.25);
+  ctx.fill();
   ctx.fillStyle = '#1a120c';
   ctx.beginPath();
   ell(ctx, 1.6, -0.6, 0.55, 0.5);
@@ -152,6 +193,16 @@ function woolBody(ctx, C, cx, cy) {
     ctx.beginPath();
     ell(ctx, cx + x, cy + y, r, r * 0.9);
     paint(ctx, ballGrad(ctx, cx + x, cy + y, r, C.wool, 0.3, -0.22), rgba('#8a8274', 0.45), 0.5);
+  }
+  ctx.fillStyle = 'rgba(90,80,110,0.22)';
+  ctx.beginPath();
+  ell(ctx, cx + 0.4, cy + 3.4, 6.8, 1.5);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,250,228,0.5)';
+  for (const [x, y] of [[-3.6, -4.2], [0.6, -5.0], [3.6, -4.0]]) {
+    ctx.beginPath();
+    ell(ctx, cx + x, cy + y, 1.3, 0.7);
+    ctx.fill();
   }
 }
 

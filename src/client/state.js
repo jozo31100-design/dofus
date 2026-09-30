@@ -16,6 +16,7 @@ export class ClientState {
     this.terrain = map.terrain;
     this.ents = new Map();
     this.ghosts = new Map();
+    this.fights = []; // [{ x, y, t }] derniers échanges de coups (pour la minimap)
     this.me = { res: [0, 0, 0, 0], pop: 0, cap: 0, age: 1, techs: new Set(), queued: new Set(), prices: [1, 1, 1], chosen: {} };
     this.players = [];
     this.vis = new Uint8Array(this.S * this.S);
