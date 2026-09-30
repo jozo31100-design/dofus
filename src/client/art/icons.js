@@ -11,6 +11,7 @@ import * as J from './icon-glyphs2.js';
 import * as K from './icon-glyphs3.js';
 import { SPARTA_TECH_ART } from './icon-glyphs-sparta.js';
 import { VIKINGS_TECH_ART } from './icon-glyphs-vikings.js';
+import { EGYPT_TECH_ART } from './icon-glyphs-egypt.js';
 
 const INK = '#23170e';
 const iconCache = new Map();
@@ -502,6 +503,7 @@ const TECH_ART = {
 
 Object.assign(TECH_ART, SPARTA_TECH_ART);
 Object.assign(TECH_ART, VIKINGS_TECH_ART);
+Object.assign(TECH_ART, EGYPT_TECH_ART);
 
 const FRAME = {
   eco: { bg: '#4a6a2e', rim: '#c8a060' },

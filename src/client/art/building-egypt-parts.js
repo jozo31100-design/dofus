@@ -5,10 +5,10 @@ import { MAT, tone, rgba, ink, texStone, ctexStone, K_LEFT, K_RIGHT, HX, HY } fr
 
 const PI = Math.PI;
 
-export const SAND = { col: '#dcc088', tex: texStone, ctex: ctexStone, rh: 6, sw: 15, tile: true, rows: true };
-export const SAND_L = { col: '#ecd9a8', tex: texStone, ctex: ctexStone, rh: 6, sw: 16, tile: true, rows: true };
-export const SAND_D = { col: '#c6a46a', tex: texStone, ctex: ctexStone, rh: 5, sw: 12, tile: true, rows: true };
-export const BRICK = { col: '#c29563', tex: texStone, ctex: ctexStone, rh: 4, sw: 9, tile: true, rows: true };
+export const SAND = { col: '#e4c07a', tex: texStone, ctex: ctexStone, rh: 6, sw: 15, tile: true, rows: true };
+export const SAND_L = { col: '#f0d797', tex: texStone, ctex: ctexStone, rh: 6, sw: 16, tile: true, rows: true };
+export const SAND_D = { col: '#d0a864', tex: texStone, ctex: ctexStone, rh: 5, sw: 12, tile: true, rows: true };
+export const BRICK = { col: '#c8955a', tex: texStone, ctex: ctexStone, rh: 4, sw: 9, tile: true, rows: true };
 export const PLASTER = { col: '#efe3c4', tex: MAT.plaster.tex, tile: true, dirt: true };
 export const FLOOR = { col: '#cbb07a' };
 export const DARK = { col: '#2b1d13' };
@@ -590,11 +590,6 @@ export function pool(g, x0, y0, x1, y1, z = 0) {
     c.ellipse(p[0], p[1] - 1.2, 1.1, 1.6, 0, 0, 2 * PI);
     c.fill();
   }
-}
-
-/** Fanion d'équipe en long flamme sur une perche dorée (peint sous forme de pennant). */
-export function tallPole(g, x, y, z0, h, len = 18) {
-  return { x, y, z0, h, len };
 }
 
 export { K_LEFT, K_RIGHT, HX, HY };
