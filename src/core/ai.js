@@ -58,6 +58,7 @@ class Bot {
     this.trading(world, pl, S);
     this.produce(world, pl, S);
     this.research(world, pl, S);
+    this.holdPoints(world, pl, S);
     this.attack(world, pl, S);
   }
 
@@ -80,6 +81,7 @@ class Bot {
         S.jobs[j] = (S.jobs[j] || 0) + 1;
         if (j === 'idle' && !u.inside) S.idle.push(u);
       } else if (isMilitary(def) && !def.naval) {
+        if (this.squad && this.squad.ids.includes(u.id)) continue; // détachement qui tient un point stratégique
         S.army.push(u);
       }
     }
@@ -118,6 +120,36 @@ class Bot {
     const f = world.pf.nearestFree(Math.floor(x), Math.floor(y));
     if (f) { x = f[0] + 0.5; y = f[1] + 0.5; }
     return { x, y };
+  }
+
+  // ------------------------------------------------------------------------------------
+  // Points stratégiques : un petit détachement va capturer le plus proche et le tient
+  // ------------------------------------------------------------------------------------
+
+  holdPoints(world, pl, S) {
+    const sq = this.squad || (this.squad = { ids: [], pt: 0, until: 0 });
+    const live = sq.ids.map((id) => world.get(id)).filter((u) => u && !u.dead);
+    sq.ids = live.map((u) => u.id);
+    const pt = sq.pt ? world.get(sq.pt) : null;
+    if (sq.pt && (!pt || pt.owner === this.idx || world.tick > sq.until || !live.length)) { sq.ids = []; sq.pt = 0; }
+    if (sq.pt) {
+      for (const u of live) if (!u.order) this.cmd(world, { c: 'amove', ids: [u.id], x: pt.x, y: pt.y });
+      return;
+    }
+    if (this.levelName === 'facile' || S.army.length < 10 || !S.hall) return;
+    let best = null;
+    let bd = Infinity;
+    for (const b of world.buildings) {
+      if (b.dead || !DEFS[b.type].capture || b.owner === this.idx) continue;
+      const d = Math.hypot(b.x - S.hall.x, b.y - S.hall.y);
+      if (d < bd) { bd = d; best = b; }
+    }
+    if (!best) return;
+    const pick = S.army.slice().sort((a, c) => Math.hypot(a.x - best.x, a.y - best.y) - Math.hypot(c.x - best.x, c.y - best.y)).slice(0, 5);
+    sq.ids = pick.map((u) => u.id);
+    sq.pt = best.id;
+    sq.until = world.tick + 20 * 150;
+    this.cmd(world, { c: 'amove', ids: sq.ids, x: best.x, y: best.y });
   }
 
   // ------------------------------------------------------------------------------------
@@ -538,6 +570,11 @@ class Bot {
     // les niveaux difficiles finissent par bâtir une merveille : il faut alors la détruire !
     if (pl.age >= 3 && this.levelName === 'difficile' && nv >= 40 && !have('wonder') && world.tick > 20 * 60 * 16 && this.canSpend(pl, { wood: 550, stone: 600, gold: 600 })) {
       this.buildNear(world, pl, S, 'wonder', hall.x - 4 * sg, hall.y + 4 * sg, 6, 20, false);
+    }
+    if (pl.age >= 3 && this.levelName !== 'facile' && nv >= 40 && !have('countersiege')) {
+      let foeSiege = 0;
+      for (const u of world.units) if (u.owner !== this.idx && u.owner >= 0 && !u.dead && DEFS[u.type].tags.includes('siege')) foeSiege++;
+      if (foeSiege >= 2 && this.canSpend(pl, BUILDINGS.countersiege.cost)) this.buildNear(world, pl, S, 'countersiege', hall.x - 3 * sg, hall.y + 3 * sg, 4, 14, true);
     }
     if (pl.age >= 3) {
       mil('siege', nv >= 30);

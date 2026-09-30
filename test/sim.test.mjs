@@ -14,7 +14,7 @@ test('la carte est valide, symétrique et accessible', () => {
   assert.deepEqual(checkMap(map), []);
   assert.equal(map.starts.length, 2);
   const ntrees = map.nodes.filter((n) => n.type === 'tree').length;
-  assert.ok(ntrees > 1200 && ntrees < 3500, `nombre d'arbres surprenant : ${ntrees}`);
+  assert.ok(ntrees > 1200 && ntrees < 5200, `nombre d'arbres surprenant : ${ntrees}`);
   // même carte à chaque fois
   const again = generateMap();
   assert.deepEqual([...again.terrain], [...map.terrain]);

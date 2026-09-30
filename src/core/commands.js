@@ -256,6 +256,7 @@ function cmdDelete(world, pi, cmd) {
     const e = world.get(id);
     if (!e || e.dead || e.owner !== pi) continue;
     if (e.cls === 'building') {
+      if (DEFS[e.type].capture) continue;
       if (e.type === 'hall' && world.playerBuildings(pi, 'hall').length <= 1 && false) continue;
       if (!e.done) {
         const st = world.stat(pi, e.type);

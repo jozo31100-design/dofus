@@ -14,7 +14,7 @@ import { mulberry32 } from './util.js';
 import { updateUnit, separateUnits, updateAnimal } from './units.js';
 import { updateBuildings } from './econ.js';
 import { recalcPop } from './common.js';
-import { updateProjectiles } from './combat.js';
+import { updateProjectiles, applyDamage } from './combat.js';
 import { computeVision } from './vision.js';
 import { applyCommand } from './commands.js';
 import { createBot } from './ai.js';
@@ -125,6 +125,10 @@ export class World {
   _populate() {
     for (const n of this.map.nodes) this.addNode(n.type, n.x, n.y, n.amount);
     for (const a of this.map.animals) this.addAnimal(a.type, a.x, a.y);
+    for (const pt of this.map.points || []) {
+      const b = this.addBuilding(pt.type, -1, pt.tx, pt.ty, true);
+      b.cap = { p: -1, v: 0 };
+    }
     this.players.forEach((pl, i) => {
       const st = this.map.starts[i];
       this.addBuilding('hall', i, st.hall.x, st.hall.y, true);
@@ -250,8 +254,8 @@ export class World {
     this.buildings.push(b);
     this._occupy(b, def.walkable ? 0 : 1);
     if (!def.walkable) this.blockVersion++;
-    if (done && def.gate) this.openGate(b);
-    if (done) recalcPop(this, this.players[owner]);
+    if (done && def.gate && owner >= 0) this.openGate(b);
+    if (done && owner >= 0) recalcPop(this, this.players[owner]);
     return b;
   }
 
@@ -505,6 +509,7 @@ export class World {
     if (this.tick % 4 === 0) for (const pl of this.players) if (!pl.ai) computeVision(this, pl);
     if (this.tick % 10 === 0) this.updateAuras();
     if (this.tick % 20 === 0) {
+      this.updatePoints();
       for (const pl of this.players) for (const r of TRADE_RES) pl.prices[r] += (1 - pl.prices[r]) * 0.01; // les prix reviennent vers 1
       this.checkWonders();
       this.checkVictory();
@@ -527,6 +532,74 @@ export class World {
     };
     for (const h of this.units) if (!h.dead && !h.inside && DEFS[h.type].aura) apply(h);
     for (const b of this.buildings) if (!b.dead && b.done && DEFS[b.type].aura) apply(b);
+  }
+
+  /**
+   * Points stratégiques (une fois par seconde) : celui qui y tient seul des soldats le capture (plus il y en a, plus c'est rapide) ;
+   * un camp qui le possède en tire des ressources ; si deux camps s'y trouvent, rien ne bouge.
+   */
+  updatePoints() {
+    this.counters = this.buildings.filter((b) => !b.dead && b.done && DEFS[b.type].counter);
+    for (const b of this.buildings) {
+      const cap = DEFS[b.type].capture;
+      if (!cap || b.dead) continue;
+      const near = {};
+      this.forUnitsNear(b.x, b.y, cap.r + 1, (u) => {
+        if (u.dead || u.inside || u.owner < 0 || u.naval) return;
+        const d = DEFS[u.type];
+        if (d.worker || !d.atk || !(d.atk.melee > 0 || d.atk.pierce > 0)) return;
+        if (Math.hypot(u.x - b.x, u.y - b.y) > cap.r) return;
+        near[u.owner] = (near[u.owner] || 0) + 1;
+      });
+      const who = Object.keys(near).map(Number);
+      if (who.length === 1) {
+        const p = who[0];
+        if (p === b.owner) b.cap = { p, v: 0 };
+        else {
+          if (!b.cap || b.cap.p !== p) b.cap = { p, v: 0 };
+          b.cap.v += 0.03 + 0.012 * Math.min(near[p], 8);
+          if (b.cap.v >= 1) {
+            const prev = b.owner;
+            b.owner = p;
+            b.cap = { p, v: 0 };
+            this.blockVersion++;
+            const pl = this.players[p];
+            this.emit({ k: 'msg', to: -1, kind: 'warn', text: `${pl.name} a capturé : ${DEFS[b.type].name}.` });
+            if (prev >= 0) this.say(prev, `Vous avez perdu : ${DEFS[b.type].name}.`, 'warn');
+          }
+        }
+      } else if (who.length === 0 && b.cap && b.cap.v > 0) {
+        b.cap.v = Math.max(0, b.cap.v - 0.02); // sans personne, la prise de contrôle retombe
+      }
+      if (b.owner >= 0) {
+        const pl = this.players[b.owner];
+        for (const r of Object.keys(cap.income)) {
+          pl.res[r] += cap.income[r];
+          if (pl.gathered) pl.gathered[r] += cap.income[r];
+        }
+      }
+    }
+    // contre-siège : les machines ennemies à portée brûlent
+    for (const c of this.counters) {
+      const d = DEFS[c.type].counter;
+      this.forUnitsNear(c.x, c.y, d.r + c.w / 2, (u) => {
+        if (u.dead || u.owner === c.owner || u.owner < 0 || !DEFS[u.type].tags.includes('siege')) return;
+        if (Math.hypot(u.x - c.x, u.y - c.y) > d.r + c.w / 2) return;
+        applyDamage(this, u, d.fire, c);
+      });
+    }
+  }
+
+  /** Multiplicateur de dégâts de siège sur un bâtiment de ce joueur, selon les contre-sièges qui le couvrent. */
+  counterMul(owner, x, y) {
+    let m = 1;
+    if (!this.counters) return m;
+    for (const c of this.counters) {
+      if (c.dead || c.owner !== owner) continue;
+      const d = DEFS[c.type].counter;
+      if (Math.hypot(x - c.x, y - c.y) <= d.r + c.w / 2) m = Math.min(m, d.mul);
+    }
+    return m;
   }
 
   /** Valeur courante d'une aura sur une unité (0 si aucune). */
@@ -563,7 +636,7 @@ export class World {
       for (const b of this.buildings) {
         if (b.owner !== pl.idx || b.dead) continue;
         const d = DEFS[b.type];
-        if (d.wall || d.gate || b.type === 'outpost') continue;
+        if (d.wall || d.gate || d.capture || b.type === 'outpost') continue;
         hasBuilding = true;
         break;
       }

@@ -1,7 +1,7 @@
 # Terres de Gaule
 
 Jeu de stratégie en temps réel façon *Age of Empires*, **Francs contre Gaulois**, à jouer **à deux en réseau local**
-(deux PC sur la même box ou le même Wi-Fi) ou seul contre l'ordinateur. Une seule carte (120 x 120 cases) : *La Rivière des Carnutes*.
+(deux PC sur la même box ou le même Wi-Fi) ou seul contre l'ordinateur. Une seule carte (140 x 140 cases) : *La Rivière des Carnutes*.
 
 - 2 peuples aux bonus et unités uniques différents (Francs : cavalerie lourde et francisque ; Gaulois : bûcherons, hordes de fantassins et gésates)
 - **4 âges** avec des **choix à la Age of Mythology** : à chaque âge (II, III, IV) on choisit 1 héros, 1 unité spéciale et 1 bonus parmi deux
@@ -10,6 +10,8 @@ Jeu de stratégie en temps réel façon *Age of Empires*, **Francs contre Gauloi
   infirmerie, grande maison, monument. Les murs sont chers et très solides ; on les franchit avec des **échelles d'assaut** (lent et exposé),
   des **tours de siège**, on les mine avec des **sapeurs** ou on les abat avec béliers et catapultes. Les **portes** ne s'ouvrent que pour leur propriétaire,
   et les soldats postés dans un rempart tirent sur les assaillants
+- **3 points stratégiques** posés sur la carte (le Trésor des Anciens au milieu du gué, deux Collines sacrées sur les flancs) : on les capture en y tenant des soldats,
+  ils rapportent des ressources ou un bonus tant qu'on les garde (indestructibles, mais on peut les reprendre). Le **contre-siège**, très coûteux, protège les bâtiments voisins des machines de siège (−40 % de dégâts) et brûle celles qui approchent
 - Environ 35 unités, 28 bâtiments, 60 technologies : villageois, récolte (bois, nourriture, or, pierre), fermes, chasse, pêche,
   construction, armées, béliers et catapultes, tours et château, brouillard de guerre
 - Le **port** et les **bateaux** (barques de pêche, drakkars et navires vénètes qui se battent sur la rivière), le **marché**

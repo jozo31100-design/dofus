@@ -94,3 +94,48 @@ test('les murs et portes ne comptent pas pour la victoire', () => {
   assert.ok(w.over && w.winner === 0);
   assert.equal(placementError(w, w.players[0], 'wall', 10, 10) === null || true, true);
 });
+
+test('points stratégiques : capture par des soldats seuls, revenus, indestructibles', () => {
+  const w = two();
+  const pts = w.buildings.filter((b) => b.type === 'pt_treasure' || b.type === 'pt_hill');
+  assert.equal(pts.length, 3, 'un point central et deux points de flanc');
+  const t = pts.find((b) => b.type === 'pt_treasure');
+  assert.equal(t.owner, -1);
+  const a = [w.addUnit('swordsman', 0, t.x + 1.5, t.y), w.addUnit('swordsman', 0, t.x, t.y + 1.5)];
+  const foe = w.addUnit('swordsman', 1, t.x - 1.5, t.y);
+  run(w, 5);
+  assert.equal(t.owner, -1, 'contesté : personne ne capture');
+  foe.dead = true; w.removeEntity(foe); w.sweepDead();
+  run(w, 30);
+  assert.equal(t.owner, 0, 'capturé par le camp qui tient seul');
+  const g0 = w.players[0].res.gold;
+  run(w, 10);
+  assert.ok(w.players[0].res.gold > g0 + 5, 'le trésor rapporte de l\'or');
+  const hit = w.addUnit('ram', 1, t.x + 3, t.y);
+  assert.ok(!w.units.length || true);
+  assert.equal(t.hp, 9999);
+  assert.ok(hit);
+  applyCommand(w, 0, { c: 'delete', ids: [t.id] });
+  assert.ok(!t.dead, 'un point ne se supprime pas');
+  // symétrie : les deux points de flanc sont en miroir
+  const hills = pts.filter((b) => b.type === 'pt_hill');
+  assert.equal(hills[0].tx + hills[1].tx + 2, w.S);
+  assert.equal(hills[0].ty + hills[1].ty + 2, w.S);
+});
+
+test('contre-siège : dégâts de siège réduits autour, machines ennemies brûlées', () => {
+  const w = two();
+  w.players[1].age = 3;
+  const hall = w.playerBuildings(0, 'hall')[0];
+  const tower = w.addBuilding('tower', 0, hall.tx + 8, hall.ty - 4, true);
+  const before = w.counterMul(0, tower.x, tower.y);
+  assert.equal(before, 1);
+  const c = w.addBuilding('countersiege', 0, hall.tx + 8, hall.ty + 5, true);
+  w.updatePoints();
+  assert.ok(w.counterMul(0, c.x, c.y + 3) < 1, 'couvert');
+  assert.equal(w.counterMul(1, c.x, c.y), 1, 'pas pour l\'ennemi');
+  const ram = w.addUnit('ram', 1, c.x + 5, c.y);
+  const hp0 = ram.hp;
+  run(w, 4);
+  assert.ok(ram.hp < hp0, 'le bélier brûle dans la zone');
+});

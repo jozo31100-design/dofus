@@ -11,7 +11,7 @@
 //   animal     [id, 3, type, x32, y32, pv, anim, face64]
 // Les positions « x32 » sont des entiers en 1/32 de case.
 
-import { DEF_IDS, DEF_INDEX, TECH_IDS, RESOURCES } from './defs.js';
+import { DEFS, DEF_IDS, DEF_INDEX, TECH_IDS, RESOURCES } from './defs.js';
 import { CARRY_CODE } from './common.js';
 
 export const K_UNIT = 0;
@@ -93,7 +93,7 @@ export function decodeRecord(r) {
     const x = r[10] || null;
     return {
       id: r[0], cls: 'building', type: DEF_IDS[r[2]], owner: r[3], tx: r[4], ty: r[5], hp: r[6], maxHp: r[7],
-      prog: r[8], garr: r[9], q: x ? x.q : null, rally: x && x.r ? x.r : null, food: x ? x.f : undefined,
+      prog: r[8], garr: r[9], cap: x && x.c ? x.c : null, q: x ? x.q : null, rally: x && x.r ? x.r : null, food: x ? x.f : undefined,
     };
   }
   if (kind === K_NODE) {
@@ -183,7 +183,8 @@ export class SnapshotBuilder {
       const own = b.owner === idx;
       if (!own && !this.buildingVisible(b, pl)) continue;
       let extra = 0;
-      if (own) {
+      if (DEFS[b.type].capture) extra = { c: b.cap && b.cap.v > 0 ? [b.cap.p, Math.round(b.cap.v * 100)] : 0 };
+      else if (own) {
         extra = {};
         if (b.queue.length) extra.q = b.queue.map((it) => [it.kind === 'unit' ? 0 : 1, it.kind === 'unit' ? DEF_INDEX[it.id] : TECH_INDEX[it.id], Math.round((1 - it.left / it.total) * 100)]);
         if (b.rally) extra.r = [q32(b.rally.x), q32(b.rally.y)];

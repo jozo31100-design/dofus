@@ -99,8 +99,9 @@ test('la catapulte fait des dégâts de zone mais rate une cible qui bouge', () 
 test('les unités réfugiées ressortent avec la commande de sortie et quand le bâtiment est détruit', () => {
   const w = two();
   w.players[0].age = 2;
-  const tower = w.addBuilding('tower', 0, 40, 40, true);
-  const guards = [w.addUnit('militia', 0, 43, 41), w.addUnit('militia', 0, 43, 42)];
+  const h0 = w.playerBuildings(0, 'hall')[0];
+  const tower = w.addBuilding('tower', 0, h0.tx + 8, h0.ty - 1, true);
+  const guards = [w.addUnit('militia', 0, h0.tx + 11, h0.ty), w.addUnit('militia', 0, h0.tx + 11, h0.ty + 1)];
   w.enqueue(0, { c: 'garrison', ids: guards.map((g) => g.id), tid: tower.id });
   run(w, 5);
   assert.equal(tower.garrison.length, 2);

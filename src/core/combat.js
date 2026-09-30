@@ -30,6 +30,7 @@ export function canTarget(att, t) {
   if (t.cls === 'node') return false;
   if (t.cls === 'animal') return def.worker === true; // seuls les villageois chassent
   if (t.owner === att.owner) return false;
+  if (t.cls === 'building' && DEFS[t.type].capture) return false; // les points stratégiques ne se détruisent pas
   // les navires ne sont touchés que par des tireurs (ou d'autres navires)
   if (t.naval && !(def.range > 0)) return false;
   return true;
@@ -80,6 +81,7 @@ export function performAttack(world, att, t) {
 
 export function applyDamage(world, t, dmg, att) {
   if (t.dead || t.hp <= 0) return;
+  if (t.cls === 'building' && att && att.cls === 'unit' && att.type && DEFS[att.type].tags.includes('siege')) dmg *= world.counterMul(t.owner, t.x, t.y);
   if (t.cls === 'unit') {
     const ar = world.auraOf(t, 'armor');
     if (ar) dmg = Math.max(1, dmg - ar);
@@ -173,7 +175,7 @@ export function updateProjectiles(world) {
       world.emit({ k: 'hit', x: p.x1, y: p.y1, big: true });
       const victims = [];
       world.forUnitsNear(p.x1, p.y1, p.splash + 1, (v) => { if (v.owner !== p.owner && v.owner >= 0) victims.push(v); });
-      for (const b of world.buildings) if (b.owner !== p.owner && b.owner >= 0) victims.push(b);
+      for (const b of world.buildings) if (b.owner !== p.owner && b.owner >= 0 && !DEFS[b.type].capture) victims.push(b);
       for (const v of victims) {
         if (v.dead) continue;
         const d = distEdge(p.x1, p.y1, v);

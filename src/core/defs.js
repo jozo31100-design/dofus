@@ -5,7 +5,7 @@ import CIV_MODULES from './civs/index.js';
 
 export const TICK_RATE = 20; // pas de simulation par seconde de jeu
 export const DT = 1 / TICK_RATE;
-export const MAP_SIZE = 120; // la carte est un carré de 120 x 120 cases
+export const MAP_SIZE = 140; // la carte est un carré de 140 x 140 cases
 export const MAX_POP = 150;
 
 export const RESOURCES = ['food', 'wood', 'gold', 'stone'];
@@ -14,7 +14,10 @@ export const RES_LABEL = { food: 'Nourriture', wood: 'Bois', gold: 'Or', stone: 
 export const TEAM_COLORS = [
   { name: 'Bleu', main: '#3b72e8', dark: '#1c3f9a', light: '#adc8ff' },
   { name: 'Rouge', main: '#dc4538', dark: '#8a1f19', light: '#ffb3a9' },
+  { name: 'Neutre', main: '#a8a08a', dark: '#5e584a', light: '#e4ddc8' }, // points stratégiques non capturés
 ];
+/** Couleur d'équipe d'un propriétaire (les bâtiments neutres, propriétaire −1, prennent la couleur neutre). */
+export const teamOf = (owner) => (owner >= 0 ? owner : 2);
 
 export const AGE_NAMES = ['', 'Âge du Village', 'Âge du Bourg', 'Âge de la Forteresse', 'Âge Impérial'];
 export const AGE_SHORT = ['', 'I', 'II', 'III', 'IV'];
@@ -364,8 +367,8 @@ const ANIMAL_LIST = [
 const NODE_LIST = [
   { id: 'tree', name: 'Arbre', cls: 'node', res: 'wood', kind: 'wood', amount: 100, size: 1 },
   { id: 'berries', name: 'Buisson de baies', cls: 'node', res: 'food', kind: 'berries', amount: 200, size: 1 },
-  { id: 'gold', name: "Filon d'or", cls: 'node', res: 'gold', kind: 'gold', amount: 800, size: 1 },
-  { id: 'stone', name: 'Carrière de pierre', cls: 'node', res: 'stone', kind: 'stone', amount: 400, size: 1 },
+  { id: 'gold', name: "Filon d'or", cls: 'node', res: 'gold', kind: 'gold', amount: 1000, size: 1 },
+  { id: 'stone', name: 'Carrière de pierre', cls: 'node', res: 'stone', kind: 'stone', amount: 600, size: 1 },
   { id: 'carcass', name: 'Carcasse', cls: 'node', res: 'food', kind: 'meat', amount: 100, size: 0 },
   { id: 'fish', name: 'Banc de poissons', cls: 'node', res: 'food', kind: 'fish', amount: 300, size: 1, water: true },
 ];
@@ -533,6 +536,23 @@ const BUILDING_LIST = [
     id: 'outpost', names: { franks: 'Poste de guet', gauls: 'Poste de guet' }, page: 'def', size: 1, hp: 500,
     armor: { melee: 1, pierce: 8 }, cost: { wood: 35 }, time: 12, age: 1, los: 14, tags: ['building', 'wood'],
     desc: 'Simple mirador qui voit très loin : pour surveiller les gués et l\'orée des forêts.',
+  },
+  // --- Points stratégiques (posés par la carte, neutres au départ : on les capture en y tenant des soldats) ---
+  {
+    id: 'pt_treasure', name: 'Trésor des Anciens', page: null, size: 2, hp: 9999, armor: { melee: 99, pierce: 99 }, cost: {}, time: 1, age: 1, los: 12,
+    capture: { r: 4.5, income: { gold: 1.5, stone: 0.7 } }, tag: 'Or et pierre', tags: ['building', 'point'],
+    desc: 'Ruines d\'un ancien trésor au milieu du gué. Tenez-le avec des soldats (sans ennemi à proximité) pour le capturer : il rapporte de l\'or et de la pierre en continu.',
+  },
+  {
+    id: 'pt_hill', name: 'Colline sacrée', page: null, size: 2, hp: 9999, armor: { melee: 99, pierce: 99 }, cost: {}, time: 1, age: 1, los: 15,
+    capture: { r: 4.5, income: { food: 0.8, wood: 0.6 } }, aura: { kind: 'atk', v: 0.1, r: 9 }, tag: 'Vue et attaque', tags: ['building', 'point'],
+    desc: 'Haut lieu qui domine la région. Capturé, il offre une vue lointaine, un peu de nourriture et de bois, et +10 % d\'attaque à vos soldats proches.',
+  },
+  {
+    id: 'countersiege', names: { franks: 'Chevalet de contre-siège', gauls: 'Murs de contre-siège' }, page: 'def', size: 3, hp: 2600,
+    armor: { melee: 6, pierce: 14 }, cost: { stone: 450, wood: 250, gold: 350 }, time: 75, age: 3, los: 8, tags: ['building', 'stone'],
+    counter: { r: 9, mul: 0.6, fire: 6 },
+    desc: 'Très coûteux. Pots de poix, herses et contre-machines : les bâtiments proches subissent 40 % de dégâts de siège en moins, et les machines ennemies à portée brûlent.',
   },
 ];
 

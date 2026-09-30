@@ -1,6 +1,6 @@
 // Minimap en losange : terrain, ressources, unités, bâtiments, brouillard, champ de vision de la caméra, alertes.
 
-import { TEAM_COLORS, BUILDINGS } from '../core/defs.js';
+import { TEAM_COLORS, BUILDINGS, DEFS, teamOf } from '../core/defs.js';
 
 export const MINI_W = 276;
 export const MINI_H = 138;
@@ -112,10 +112,11 @@ export class Minimap {
     for (const e of st.ents.values()) {
       if (e.cls === 'building') {
         const [x, y] = this.toMini(e.x, e.y);
-        const s = Math.max(5, e.w * 2.2);
-        ctx.fillStyle = TEAM_COLORS[e.owner] ? TEAM_COLORS[e.owner].main : '#ddd';
+        const pt = DEFS[e.type] && DEFS[e.type].capture;
+        const s = pt ? 9 : Math.max(5, e.w * 2.2);
+        ctx.fillStyle = TEAM_COLORS[teamOf(e.owner)].main;
         ctx.fillRect(x - s / 2, y - s / 2, s, s);
-        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.strokeStyle = pt ? '#ffd66b' : 'rgba(0,0,0,0.8)';
         ctx.lineWidth = 1;
         ctx.strokeRect(x - s / 2 + 0.5, y - s / 2 + 0.5, s - 1, s - 1);
       }

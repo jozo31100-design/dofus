@@ -941,7 +941,7 @@ export class GameUI {
     const portrait = h('img', { class: 'portrait', src: iconURL('portrait', e.type, civ, Math.max(0, e.owner), 64), alt: '' });
     const head = h('div', { class: 'info-head' }, portrait, h('div', { class: 'info-title' },
       h('div', { class: 'name', text: title }),
-      e.owner >= 0 && st.players[e.owner] ? h('div', { class: 'owner', style: `color:${TEAM_COLORS[e.owner].light}`, text: own ? 'Vous' : st.players[e.owner].name }) : h('div', { class: 'owner', text: 'Nature' })));
+      e.owner >= 0 && st.players[e.owner] ? h('div', { class: 'owner', style: `color:${TEAM_COLORS[e.owner].light}`, text: own ? 'Vous' : st.players[e.owner].name }) : h('div', { class: 'owner', text: def.capture ? 'Neutre' : 'Nature' })));
     const body = h('div', { class: 'info-body' });
     if (e.cls === 'node') {
       const label = { tree: 'Bois', gold: 'Or', stone: 'Pierre', berries: 'Nourriture', carcass: 'Nourriture', fish: 'Nourriture' }[e.type];
@@ -958,6 +958,11 @@ export class GameUI {
       }
       if (own && e.carryAmt > 0) body.append(this.statRow('Transporte', `${e.carryAmt} ${CARRY_TEXT[e.carry]}`));
       if (own && WORK_TEXT[e.work] && e.anim >= 2) body.append(h('div', { class: 'work', text: WORK_TEXT[e.work] }));
+      body.append(h('div', { class: 'desc', text: def.desc || '' }));
+    } else if (def.capture) {
+      const inc = Object.entries(def.capture.income).map(([r, v]) => `${v} ${RES_LABEL[r].toLowerCase()}/s`).join(', ');
+      body.append(this.statRow('Revenu', inc), this.statRow('Contrôle', e.owner >= 0 ? (own ? 'Vous' : st.players[e.owner].name) : 'personne'));
+      if (e.cap) body.append(this.statRow('Capture', `${e.cap[1]} % (${st.players[e.cap[0]] ? st.players[e.cap[0]].name : ''})`));
       body.append(h('div', { class: 'desc', text: def.desc || '' }));
     } else {
       body.append(this.hpBar(e));
@@ -1242,6 +1247,8 @@ export class GameUI {
       ['Marché', 'Vendre ou acheter 100 ressources contre de l\'or ; les cours suivent l\'offre et la demande (Maj + clic : ×5)'],
       ['Merveille', 'Bâtiment de l\'Âge de la Forteresse : si elle tient 10 minutes après son achèvement, son propriétaire gagne'],
       ['Choix d\'âge (K)', 'À chaque âge : 1 héros, 1 unité spéciale et 1 bonus parmi deux (comme Age of Mythology)'],
+      ['Points stratégiques', 'Trésor (or et pierre) et deux collines (vue, nourriture, bois, +10 % d\'attaque) : tenez-les avec des soldats, sans ennemi à côté, pour les capturer'],
+      ['Contre-siège', 'Bâtiment très coûteux (Murailles et défenses) : −40 % de dégâts de siège aux bâtiments voisins, les machines ennemies proches brûlent'],
       ['Murailles', 'Menu « Murailles et défenses » : glissez pour tracer un mur ; portes pour laisser passer vos troupes ; échelles d\'assaut (maison des guerriers) puis clic droit sur un mur ennemi pour l\'escalader ; sapeurs et tours de siège pour les briser'],
       ['Héros', 'Un seul à la fois (choisi à l\'âge II, III ou IV) : son aura profite aux alliés proches'],
       ['A Z E R / Q S D F / W X C V*', 'Commandes du panneau en bas à droite (selon la disposition de votre clavier)'],

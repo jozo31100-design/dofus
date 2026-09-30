@@ -172,25 +172,54 @@ export function generateMap(seed = DEFAULT_SEED) {
     protect(c, c, 6);
   }
 
+  // --- Points stratégiques : un au milieu du gué central, deux symétriques sur les flancs (à égale distance des deux camps) ---
+  const points = [{ type: 'pt_treasure', tx: S / 2 - 1, ty: S / 2 - 1 }];
+  {
+    const [ax, ay] = mid(21, 21);
+    let best = null;
+    let bd = Infinity;
+    for (let ty = 2; ty < HALF - 2; ty++) {
+      for (let tx = 2; tx < S - 2; tx++) {
+        const d = Math.hypot(tx + 1 - ax, ty + 1 - ay);
+        if (d >= bd) continue;
+        let ok = true;
+        for (let dy = -1; dy <= 2 && ok; dy++) for (let dx = -1; dx <= 2 && ok; dx++) if (!isGrass(tx + dx, ty + dy) || used[(ty + dy) * S + tx + dx]) ok = false;
+        if (ok) { bd = d; best = [tx, ty]; }
+      }
+    }
+    if (best) {
+      points.push({ type: 'pt_hill', tx: best[0], ty: best[1] });
+      points.push({ type: 'pt_hill', tx: S - best[0] - 2, ty: S - best[1] - 2 });
+      protect(best[0] + 1, best[1] + 1, 5);
+    }
+  }
+  protect(S / 2, S / 2, 5);
+
   // --- Ressources de départ (moitié haute, miroir automatique) ---------------------------
   // Moutons près de la salle
   for (const [ox, oy] of [[-5.5, -4.5], [-7, -2.5], [-4, -7], [-7.5, -6]]) addAnimal('sheep', hallCx + ox, hallCy + oy);
   // Baies : à gauche/bas de la salle
   cluster('berries', ...loc(67, 27), 6, { jitter: 1.3 });
   // Or et pierre
-  cluster('gold', ...loc(82, 31), 7, { jitter: 1.4 });
-  cluster('stone', ...loc(65, 11), 5, { jitter: 1.4 });
+  cluster('gold', ...loc(82, 31), 9, { jitter: 1.4 });
+  cluster('stone', ...loc(65, 11), 7, { jitter: 1.4 });
 
   // Ressources d'expansion et du milieu (posées avant les arbres pour rester dégagées)
-  cluster('gold', ...mid(55, 38), 4, { jitter: 1.2 });
+  cluster('gold', ...mid(55, 38), 6, { jitter: 1.2 });
   cluster('berries', ...loc(88, 24), 5, { jitter: 1.2 });
-  cluster('stone', ...mid(50, 17), 4, { jitter: 1.2 });
-  cluster('gold', ...mid(42, 13), 4, { jitter: 1.2 });
+  cluster('stone', ...mid(50, 17), 6, { jitter: 1.2 });
+  cluster('gold', ...mid(42, 13), 6, { jitter: 1.2 });
   // la carte agrandie offre aussi des gisements au large : ils valent le déplacement
-  cluster('gold', ...mid(66, 24), 5, { jitter: 1.3 });
-  cluster('stone', ...mid(70, 40), 4, { jitter: 1.2 });
+  cluster('gold', ...mid(66, 24), 7, { jitter: 1.3 });
+  cluster('stone', ...mid(70, 40), 6, { jitter: 1.2 });
   cluster('berries', ...mid(30, 14), 5, { jitter: 1.2 });
-  cluster('stone', ...mid(24, 28), 4, { jitter: 1.2 });
+  // gisements supplémentaires : l'or et la pierre étaient trop rares
+  cluster('gold', ...mid(58, 12), 5, { jitter: 1.2 });
+  cluster('stone', ...mid(58, 30), 5, { jitter: 1.2 });
+  cluster('gold', ...mid(32, 24), 5, { jitter: 1.2 });
+  cluster('stone', ...mid(38, 8), 5, { jitter: 1.2 });
+  cluster('gold', ...mid(76, 34), 5, { jitter: 1.2 });
+  cluster('stone', ...mid(24, 28), 6, { jitter: 1.2 });
 
   // Halo : aucune forêt ne doit enfermer une mine ou des baies (deux cases de dégagement)
   const halo = new Uint8Array(S * S);
@@ -307,7 +336,7 @@ export function generateMap(seed = DEFAULT_SEED) {
   starts[0] = p0;
   starts[1] = p1;
 
-  return { size: S, seed, terrain, nodes, animals, starts };
+  return { size: S, seed, terrain, nodes, animals, starts, points };
 }
 
 /** Cases atteignables à pied depuis un point (l'eau et les arbres bloquent ; les mines et baies s'épuiseront). */

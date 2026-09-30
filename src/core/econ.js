@@ -288,6 +288,7 @@ export function cancelQueue(world, pl, b, idx) {
 export function placementError(world, pl, type, tx, ty) {
   const def = BUILDINGS[type];
   if (!def) return 'Bâtiment inconnu.';
+  if (def.capture) return 'Se capture, ne se construit pas.';
   if (def.civ && def.civ !== pl.civ) return 'Indisponible pour votre peuple.';
   if (pl.age < def.age) return `Requiert l'${AGE_NAMES[def.age]}.`;
   const n = def.size;

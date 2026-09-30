@@ -5,7 +5,7 @@
 // (placement d'un bâtiment, cadre de sélection).
 
 import * as art from './art/index.js';
-import { BUILDINGS, DEFS, UNITS, ANIMALS, MAP_SIZE } from '../core/defs.js';
+import { BUILDINGS, DEFS, UNITS, ANIMALS, MAP_SIZE, TEAM_COLORS, teamOf } from '../core/defs.js';
 import { Fx } from './fx.js';
 
 const TW2 = art.TILE_W / 2; // 32 px par unité de (x - y)
@@ -263,7 +263,7 @@ export class Renderer {
     const key = `${e.type}|${civ}|${e.owner}|${stage}|${mask}`;
     let g = this.ghostCache.get(key);
     if (!g) {
-      const s = art.getBuildingSprite(e.type, civ, e.owner, stage, mask);
+      const s = art.getBuildingSprite(e.type, civ, teamOf(e.owner), stage, mask);
       const c = document.createElement('canvas');
       c.width = s.canvas.width;
       c.height = s.canvas.height;
@@ -310,8 +310,18 @@ export class Renderer {
     const stage = this.buildingStage(e);
     const bd = BUILDINGS[e.type];
     const mask = bd && (bd.wall || bd.gate) ? this.wallMask(e) : 0;
-    const s = d.ghost ? this.ghostSprite(e, stage, mask) : art.getBuildingSprite(e.type, this.civOf(e.owner), e.owner, stage, mask);
+    const s = d.ghost ? this.ghostSprite(e, stage, mask) : art.getBuildingSprite(e.type, this.civOf(e.owner), teamOf(e.owner), stage, mask);
     ctx.drawImage(s.canvas, d.sx - s.ax * z, d.sy - s.ay * z, s.canvas.width * z, s.canvas.height * z);
+    if (e.cap && !d.ghost) {
+      // prise de contrôle d'un point stratégique : barre aux couleurs du camp qui le capture
+      const bw = 46 * z;
+      const bx = d.sx - bw / 2;
+      const by = d.sy - s.h * z - 10 * z;
+      ctx.fillStyle = 'rgba(0,0,0,.7)';
+      ctx.fillRect(bx - 1, by - 1, bw + 2, 7 * z + 2);
+      ctx.fillStyle = TEAM_COLORS[e.cap[0]] ? TEAM_COLORS[e.cap[0]].main : '#ddd';
+      ctx.fillRect(bx, by, (bw * e.cap[1]) / 100, 7 * z);
+    }
     if (!d.ghost) this.fx.damageSmoke(e, now, s.h);
     return s;
   }

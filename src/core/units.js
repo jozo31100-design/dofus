@@ -274,7 +274,7 @@ function doAttack(world, u, o, st) {
 /** Le sapeur se fait sauter contre un bâtiment : gros dégâts de zone aux bâtiments, peu aux unités. */
 function sapperBlast(world, u, sui) {
   const victims = [];
-  for (const b of world.buildings) if (!b.dead && b.owner !== u.owner && b.owner >= 0 && distEdge(u.x, u.y, b) <= sui.r) victims.push(b);
+  for (const b of world.buildings) if (!b.dead && b.owner !== u.owner && b.owner >= 0 && !DEFS[b.type].capture && distEdge(u.x, u.y, b) <= sui.r) victims.push(b);
   world.forUnitsNear(u.x, u.y, sui.r, (v) => { if (v.owner !== u.owner && v.owner >= 0 && !v.dead) victims.push(v); });
   world.emit({ k: 'hit', x: u.x, y: u.y, big: true });
   world.emit({ k: 'hit', x: u.x + 0.4, y: u.y - 0.3, big: true });

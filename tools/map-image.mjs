@@ -25,6 +25,7 @@ for (let ty = 0; ty < S; ty++) for (let tx = 0; tx < S; tx++) {
 const col = { tree: [30, 90, 40], berries: [200, 40, 90], gold: [240, 200, 40], stone: [150, 150, 150], fish: [200, 240, 255] };
 for (const n of map.nodes) fill(n.x, n.y, col[n.type], n.type === 'tree' ? 0 : 1);
 for (const a of map.animals) fill(Math.floor(a.x), Math.floor(a.y), a.type === 'deer' ? [180, 120, 60] : [255, 255, 255], 2);
+for (const pt of map.points || []) for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) fill(pt.tx + x, pt.ty + y, [255, 0, 255]);
 map.starts.forEach((s, i) => {
   for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) fill(s.hall.x + x, s.hall.y + y, i ? [220, 60, 50] : [60, 110, 230]);
   for (const u of s.units) fill(Math.floor(u.x), Math.floor(u.y), [255, 255, 0], 2);
