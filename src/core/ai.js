@@ -4,7 +4,7 @@
 import { DEFS, UNITS, BUILDINGS, TECHS, CIVS, MAX_POP, FARM_MAX_WORKERS, RESOURCES, trainableAt, techsAt } from './defs.js';
 import { applyCommand } from './commands.js';
 import { placementError, findNodeNear, findFarmSlot, techBlocker } from './econ.js';
-import { isMilitary } from './common.js';
+import { isMilitary, wallLine } from './common.js';
 
 const LEVELS = {
   facile: { think: 40, villagers: 24, ageVill: [18, 30], waveSize: 14, waveGap: 200, econ: 0.85 },
@@ -17,7 +17,7 @@ const COMP = {
   barracks: [['militia', 1, 1], ['spearman', 3, 2], ['swordsman', 2, 2], ['champion', 5, 3]],
   archery: [['archer', 4, 2], ['crossbow', 5, 3]],
   stable: [['cavalry', 3, 2], ['knight', 5, 3]],
-  siege: [['ram', 2, 3], ['catapult', 1, 3], ['sapper', 2, 3]],
+  siege: [['ram', 2, 3], ['catapult', 1, 3], ['sapper', 2, 3], ['siegetower', 1, 3]],
   castle: [['francisque', 4, 3], ['gesate', 4, 3]],
   temple: [['healer', 1, 2]],
 };
@@ -50,6 +50,8 @@ class Bot {
     const S = this.survey(world, pl);
     if (!S.hall) return;
     this.reserve = { food: 0, wood: 0, gold: 0, stone: 0 };
+    // atelier de siège : on met du bois de côté pour pouvoir le bâtir (les machines ouvrent les villes murées)
+    if (pl.age >= 3 && S.vills.length >= 30 && !(S.done.siege || S.building.siege)) this.reserve.wood += 320;
     this.defend(world, pl, S);
     this.ageUp(world, pl, S);
     this.economy(world, pl, S);
@@ -58,6 +60,8 @@ class Bot {
     this.trading(world, pl, S);
     this.produce(world, pl, S);
     this.research(world, pl, S);
+    this.fortify(world, pl, S);
+    this.manDeck(world, pl, S);
     this.holdPoints(world, pl, S);
     this.attack(world, pl, S);
   }
@@ -82,6 +86,7 @@ class Bot {
         if (j === 'idle' && !u.inside) S.idle.push(u);
       } else if (isMilitary(def) && !def.naval) {
         if (this.squad && this.squad.ids.includes(u.id)) continue; // détachement qui tient un point stratégique
+        if (u.onWall) continue; // défenseurs postés sur le chemin de ronde
         S.army.push(u);
       }
     }
@@ -265,8 +270,8 @@ class Bot {
 
   desiredShares(pl) {
     const base = pl.age === 1 ? { food: 0.52, wood: 0.40, gold: 0.05, stone: 0.03 }
-      : pl.age === 2 ? { food: 0.46, wood: 0.30, gold: 0.17, stone: 0.07 }
-        : { food: 0.42, wood: 0.25, gold: 0.25, stone: 0.08 };
+      : pl.age === 2 ? { food: 0.42, wood: 0.34, gold: 0.17, stone: 0.07 }
+        : { food: 0.36, wood: 0.32, gold: 0.26, stone: 0.06 };
     // selon les stocks : on lève des villageois d'une ressource qui s'accumule, on en met sur celle qui manque
     let sum = 0;
     const out = {};
@@ -437,19 +442,23 @@ class Bot {
     let bd = Infinity;
     const cx = Math.floor(ax - n / 2);
     const cy = Math.floor(ay - n / 2);
-    for (let dy = -maxR; dy <= maxR; dy++) {
-      for (let dx = -maxR; dx <= maxR; dx++) {
-        const r = Math.max(Math.abs(dx), Math.abs(dy));
-        if (r < minR) continue;
-        const tx = cx + dx;
-        const ty = cy + dy;
-        const d = Math.hypot(dx, dy);
-        if (d >= bd) continue;
-        if (placementError(world, pl, type, tx, ty)) continue;
-        if (!this.hasGap(world, tx, ty, n, keepGap ? 1 : 0)) continue;
-        if (def.shore && !this.clearOfMines(world, tx, ty, n, 3)) continue; // le port ne doit pas boucher les baies ni les mines
-        bd = d;
-        best = [tx, ty];
+    // si l'endroit voulu est encombré (forêts, mines, murs), on élargit la recherche par paliers
+    for (let attempt = 0; attempt < 3 && !best; attempt++) {
+      const R = maxR + attempt * 9;
+      for (let dy = -R; dy <= R; dy++) {
+        for (let dx = -R; dx <= R; dx++) {
+          const r = Math.max(Math.abs(dx), Math.abs(dy));
+          if (r < minR) continue;
+          const tx = cx + dx;
+          const ty = cy + dy;
+          const d = Math.hypot(dx, dy);
+          if (d >= bd) continue;
+          if (placementError(world, pl, type, tx, ty)) continue;
+          if (!this.hasGap(world, tx, ty, n, keepGap ? 1 : 0)) continue;
+          if (def.shore && !this.clearOfMines(world, tx, ty, n, 3)) continue; // le port ne doit pas boucher les baies ni les mines
+          bd = d;
+          best = [tx, ty];
+        }
       }
     }
     if (!best) return false;
@@ -581,7 +590,7 @@ class Bot {
       this.buildNear(world, pl, S, 'slingtower', front.x, front.y, 2, 10, true);
     }
     // marché : sert à convertir les surplus (souvent la nourriture) en or et en bois
-    if (pl.age >= 2 && nv >= 28 && !have('market') && pl.res.wood >= 200) this.buildNear(world, pl, S, 'market', hall.x - 5 * sg, hall.y + 5 * sg, 4, 18, true);
+    if (pl.age >= 2 && nv >= 26 && !have('market') && pl.res.wood >= 130) this.buildNear(world, pl, S, 'market', hall.x - 5 * sg, hall.y + 5 * sg, 4, 18, true);
     // pêche : un port au bord d'un banc de poissons proche
     if (nv >= 12 && !have('dock') && pl.res.wood >= 220) {
       const fish = this.nearestFish(world, S.hall, 34);
@@ -592,7 +601,12 @@ class Bot {
       for (const u of world.units) if (u.owner !== this.idx && u.owner >= 0 && !u.dead && DEFS[u.type].tags.includes('siege')) foeSiege++;
       if (foeSiege >= 2 && this.canSpend(pl, BUILDINGS.countersiege.cost)) this.buildNear(world, pl, S, 'countersiege', hall.x - 3 * sg, hall.y + 3 * sg, 4, 14, true);
     }
+    // surplus de pierre : bastions sur l'avant (défense solide qui consomme la pierre qui s'accumule)
+    if (pl.age >= 3 && pl.res.stone > 1100 && have('bastion') < 2 && this.levelName !== 'facile' && this.canSpend(pl, BUILDINGS.bastion.cost)) {
+      this.buildNear(world, pl, S, 'bastion', front.x, front.y, 2, 12, true);
+    }
     if (pl.age >= 3) {
+      if (!have('siege')) this.reserve.wood = Math.max(0, this.reserve.wood - 320); // la mise de côté sert justement à le bâtir
       mil('siege', nv >= 30);
       if (nv >= 34 && !have('castle')) this.buildNear(world, pl, S, 'castle', front.x - 2 * sg, front.y + 2 * sg, 4, 16, true);
       if (nv >= 44 && have('archery') < 2) mil2(this, world, pl, S, 'archery', front);
@@ -641,6 +655,7 @@ class Bot {
         for (const [type, weight, minAge] of comp[bType]) {
           if (!trainable.includes(type) || pl.age < minAge) continue;
           if (type === 'sapper' && (enemyWalls < 3 || (counts.sapper || 0) >= 4)) continue;
+          if (type === 'siegetower' && (enemyWalls < 5 || (counts.siegetower || 0) >= 2)) continue;
           if (bType === 'barracks' && type === 'militia' && (pl.age >= 2 || armyPop >= 6)) continue;
           if (type === 'ram' && (counts.ram || 0) >= Math.max(2, Math.floor(S.army.length / 8))) continue;
           if (type === 'catapult' && (counts.catapult || 0) >= Math.max(1, Math.floor(S.army.length / 12))) continue;
@@ -746,15 +761,169 @@ class Bot {
     let tgt = enemyHall;
     let bd = Infinity;
     for (const b of enemyBuildings) {
+      if (DEFS[b.type].wall || DEFS[b.type].gate) continue; // les murs sont traités comme des obstacles (siège), pas comme des buts
       const d = Math.hypot(b.x - cx, b.y - cy) - (b.type === 'hall' ? 8 : 0);
       if (d < bd) { bd = d; tgt = b; }
     }
+    if (this.siegeBarrier(world, pl, S, army, enemyBuildings, cx, cy, tgt)) return;
     const ids = [];
     for (const u of army) {
       const idle = !u.order || (u.order.t === 'move' && !u.order.aggressive && Math.hypot(u.x - u.order.x, u.y - u.order.y) < 2);
       if (idle) ids.push(u.id);
     }
     if (ids.length) this.cmd(world, { c: 'amove', ids, x: tgt.x, y: tgt.y });
+  }
+
+  /**
+   * Siège d'une ville murée : le premier tronçon de muraille (de préférence une porte) sur la route vers le but devient la cible
+   * des béliers, catapultes et sapeurs ; les tours de siège embarquent des fantassins et les déposent de l'autre côté ;
+   * sans machines, les fantassins dotés d'échelles escaladent. Renvoie true si des ordres de siège ont été donnés.
+   */
+  siegeBarrier(world, pl, S, army, enemyBuildings, cx, cy, tgt) {
+    const walls = enemyBuildings.filter((b) => b.done && (DEFS[b.type].wall || DEFS[b.type].gate));
+    if (walls.length < 3) return false;
+    // tronçon le plus proche de la droite armée → but, et situé entre les deux
+    const dx = tgt.x - cx;
+    const dy = tgt.y - cy;
+    const len = Math.hypot(dx, dy) || 1;
+    let barrier = null;
+    let score = Infinity;
+    for (const w of walls) {
+      const t = ((w.x - cx) * dx + (w.y - cy) * dy) / (len * len);
+      if (t < 0 || t > 1) continue;
+      const perp = Math.abs((w.x - cx) * dy - (w.y - cy) * dx) / len;
+      if (perp > 4.5) continue;
+      const sc = t * len + perp * 2 - (DEFS[w.type].gate ? 5 : 0);
+      if (sc < score) { score = sc; barrier = w; }
+    }
+    if (!barrier) return false;
+    const dist = Math.hypot(barrier.x - cx, barrier.y - cy);
+    if (dist > 26) return false; // encore loin : marche normale
+    const machines = army.filter((u) => { const t = DEFS[u.type].tags; return t.includes('siege') && !t.includes('tower'); });
+    const towers = world.units.filter((u) => u.owner === this.idx && !u.dead && u.type === 'siegetower');
+    const foot = army.filter((u) => DEFS[u.type].tags.includes('infantry') && !DEFS[u.type].tags.includes('siege'));
+    const ux = (barrier.x - cx) / (dist || 1);
+    const uy = (barrier.y - cy) / (dist || 1);
+    // les machines attaquent le tronçon
+    if (machines.length) this.cmd(world, { c: 'attack', ids: machines.map((u) => u.id), tid: barrier.id });
+    // tours de siège : embarquement puis pont
+    for (const tw of towers) {
+      if (!tw.cargo) continue;
+      if (tw.cargo.length < 5 && !tw.order) {
+        const boarders = foot.filter((u) => !u.order || u.order.t === 'move').sort((a, b) => Math.hypot(a.x - tw.x, a.y - tw.y) - Math.hypot(b.x - tw.x, b.y - tw.y)).slice(0, 8 - tw.cargo.length);
+        if (boarders.length) this.cmd(world, { c: 'board', ids: boarders.map((u) => u.id), tid: tw.id });
+        tw.boardSince = tw.boardSince || world.tick;
+      }
+      if (tw.cargo.length >= 5 || (tw.cargo.length >= 2 && world.tick - (tw.boardSince || world.tick) > 20 * 25)) {
+        if (!tw.order || tw.order.t !== 'deploy') this.cmd(world, { c: 'deploy', ids: [tw.id], tid: barrier.id });
+      }
+    }
+    // fantassins : échelles si disponibles et pas de machine pour ouvrir la voie ; sinon ils attendent à distance du mur
+    const idleFoot = foot.filter((u) => !u.order || (u.order.t === 'move' && !u.order.aggressive));
+    if (idleFoot.length) {
+      if (!machines.length && !towers.length && pl.techs.has('ladders') && idleFoot.length >= 8) {
+        this.cmd(world, { c: 'climb', ids: idleFoot.map((u) => u.id), tid: barrier.id });
+      } else {
+        const sx = barrier.x - ux * 7;
+        const sy = barrier.y - uy * 7;
+        this.cmd(world, { c: 'amove', ids: idleFoot.map((u) => u.id), x: sx, y: sy });
+      }
+    }
+    const others = army.filter((u) => !foot.includes(u) && !machines.includes(u) && (!u.order || (u.order.t === 'move' && !u.order.aggressive)));
+    if (others.length) this.cmd(world, { c: 'amove', ids: others.map((u) => u.id), x: barrier.x - ux * 8, y: barrier.y - uy * 8 });
+    return machines.length > 0 || towers.length > 0 || idleFoot.length > 0;
+  }
+
+  /**
+   * Fortification : une ligne de murs (palissade, puis pierre) en arc devant la base, face à l'ennemi, avec une porte au milieu
+   * (qui ne s'ouvre que pour nous) et des tours aux extrémités. Les murs ne ferment pas tout : l'ennemi peut les contourner.
+   */
+  fortify(world, pl, S) {
+    if (this.levelName === 'facile' || !S.hall || pl.age < 2) return;
+    const f = this.fort || (this.fort = { stage: 0, cells: null, type: null, at: 0 });
+    if (f.stage >= 3) return;
+    const nv = S.vills.length;
+    const foe = this.pickEnemy(world, S.hall);
+    if (!foe) return;
+    if (f.stage === 0) {
+      if (nv < (this.levelName === 'difficile' ? 26 : 32) || S.army.length < 6 || world.tick < 20 * 60 * 6) return;
+      const eh = world.buildings.find((b) => b.owner === foe.idx && b.type === 'hall' && !b.dead);
+      if (!eh) return;
+      const dx0 = eh.x - S.hall.x;
+      const dy0 = eh.y - S.hall.y;
+      const m = Math.hypot(dx0, dy0) || 1;
+      const dx = dx0 / m;
+      const dy = dy0 / m;
+      const cxw = S.hall.x + dx * 15;
+      const cyw = S.hall.y + dy * 15;
+      const L = this.levelName === 'difficile' ? 9 : 7;
+      const cells = wallLine(1, Math.round(cxw + dy * L), Math.round(cyw - dx * L), Math.round(cxw - dy * L), Math.round(cyw + dx * L));
+      const useStone = BUILDINGS.wall.cost.stone * cells.length + 150 <= pl.res.stone && pl.age >= 2;
+      const type = useStone ? 'wall' : 'palisade';
+      const unit = BUILDINGS[type].cost;
+      const need = { wood: (unit.wood || 0) * cells.length, stone: (unit.stone || 0) * cells.length };
+      if (pl.res.wood < need.wood + 150 || pl.res.stone < need.stone + 50 || pl.res.food < 250) return;
+      const builders = S.vills.filter((v) => !v.inside).sort((a, b) => Math.hypot(a.x - cxw, a.y - cyw) - Math.hypot(b.x - cxw, b.y - cyw)).slice(0, 4).map((v) => v.id);
+      if (!builders.length) return;
+      const a = cells[0];
+      const b = cells[cells.length - 1];
+      this.cmd(world, { c: 'buildline', type, x0: a[0], y0: a[1], x1: b[0], y1: b[1], ids: builders });
+      f.cells = cells;
+      f.type = type;
+      f.at = world.tick;
+      f.stage = 1;
+      return;
+    }
+    if (f.stage === 1) {
+      // la porte remplace le tronçon central dès qu'il est achevé
+      // tronçon achevé le plus proche du milieu de la ligne (certaines cases peuvent être restées vides : arbres, eau)
+      const midIdx = Math.floor(f.cells.length / 2);
+      let mid = null;
+      let wallB = null;
+      for (let k = 0; k < f.cells.length && !wallB; k++) {
+        for (const idx of k === 0 ? [midIdx] : [midIdx - k, midIdx + k]) {
+          const c = f.cells[idx];
+          if (!c) continue;
+          const o = world.get(world.occ[c[1] * world.S + c[0]]);
+          if (o && o.owner === this.idx && o.done && !DEFS[o.type].gate && DEFS[o.type].wall) { mid = c; wallB = o; break; }
+        }
+      }
+      if (wallB) {
+        const gateType = f.type === 'wall' ? 'gate' : 'palisade_gate';
+        if (pl.age >= BUILDINGS[gateType].age && this.canSpend(pl, BUILDINGS[gateType].cost)) {
+          const builder = S.vills.slice().sort((p, q) => Math.hypot(p.x - mid[0], p.y - mid[1]) - Math.hypot(q.x - mid[0], q.y - mid[1]))[0];
+          if (builder) { this.cmd(world, { c: 'build', type: gateType, tx: mid[0], ty: mid[1], ids: [builder.id] }); f.stage = 2; f.at = world.tick; }
+        }
+      } else if (world.tick - f.at > 20 * 240) f.stage = 3; // trop long (obstacles…) : on abandonne
+      return;
+    }
+    if (f.stage === 2) {
+      // tours d'extrémité (si l'âge et les moyens le permettent)
+      if (pl.age >= 2 && world.tick - f.at > 20 * 20) {
+        const ends = [f.cells[0], f.cells[f.cells.length - 1]];
+        for (const e of ends) {
+          if (this.canSpend(pl, BUILDINGS.tower.cost) && !this._tow) { this._tow = 1; this.buildNear(world, pl, S, 'tower', e[0] + 0.5, e[1] + 0.5, 1, 4, false); }
+        }
+        f.stage = 3;
+      }
+    }
+  }
+
+  /** Quand la base est attaquée : les archers disponibles montent sur le mur le plus proche de l'attaque. */
+  manDeck(world, pl, S) {
+    if (world.tick - (pl.lastHitTick || -99999) > 20 * 20) return;
+    const hx = pl.lastHitX;
+    const hy = pl.lastHitY;
+    let seg = null;
+    let bd = 14;
+    for (const b of world.buildings) {
+      if (b.owner !== this.idx || b.dead || !b.done || !DEFS[b.type].deckCap) continue;
+      const d = Math.hypot(b.x - hx, b.y - hy);
+      if (d < bd && world.units.filter((u) => u.onWall === b.id).length < DEFS[b.type].deckCap) { bd = d; seg = b; }
+    }
+    if (!seg) return;
+    const archers = S.army.filter((u) => !u.onWall && !u.order && UNITS[u.type] && world.stat(this.idx, u.type).range > 0 && Math.hypot(u.x - seg.x, u.y - seg.y) < 25).slice(0, 4);
+    if (archers.length) this.cmd(world, { c: 'garrison', ids: archers.map((u) => u.id), tid: seg.id });
   }
 }
 

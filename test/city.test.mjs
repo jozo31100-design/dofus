@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { World } from '../src/core/world.js';
-import { DT, CHOICES, computeStats } from '../src/core/defs.js';
+import { DT, DEFS, CHOICES, computeStats } from '../src/core/defs.js';
 import { applyCommand } from '../src/core/commands.js';
 import { applyChoice, queueUnit, placementError } from '../src/core/econ.js';
 import { killEntity, canTarget } from '../src/core/combat.js';
@@ -302,4 +302,42 @@ test('cible prioritaire : une tour tire sur l\'ennemi désigné et non sur le pl
   applyCommand(w, 0, { c: 'focus', bids: [tower.id], tid: 0 });
   run(w, 5);
   assert.ok(near.hp < 1000, 'sans désignation la tour reprend le plus proche');
+});
+
+test('l\'ordinateur assiège une ville murée : béliers sur la muraille, le reste attend à distance', () => {
+  const w = new World({ seed: 5, players: [{ name: 'H', civ: 'franks' }, { name: 'B', civ: 'gauls', ai: 'difficile' }], startRes: 'riche' });
+  const hall = w.playerBuildings(0, 'hall')[0];
+  const bh = w.playerBuildings(1, 'hall')[0];
+  w.players[0].age = 3; w.players[1].age = 3;
+  const m = Math.hypot(bh.x - hall.x, bh.y - hall.y);
+  const ux = (bh.x - hall.x) / m;
+  const uy = (bh.y - hall.y) / m;
+  const hx = Math.floor(hall.x);
+  const hy = Math.floor(hall.y);
+  const R = 8;
+  for (const nd of w.nodes) if (!nd.dead && nd.type === 'tree' && Math.abs(nd.tx - hx) <= R + 2 && Math.abs(nd.ty - hy) <= R + 2) w.removeEntity(nd);
+  w.sweepDead();
+  let segs = 0;
+  for (let k = -R; k <= R; k++) {
+    for (const [x, y] of [[hx + k, hy - R], [hx + k, hy + R], [hx - R, hy + k], [hx + R, hy + k]]) {
+      if (!w.occ[y * w.S + x] && w.terrain[y * w.S + x] === 0) { w.addBuilding('wall', 0, x, y, true); segs++; }
+    }
+  }
+  const at = [hall.x + ux * 24, hall.y + uy * 24];
+  for (let i = 0; i < 28; i++) w.addUnit('swordsman', 1, at[0] + (i % 6) * 0.9 - uy * Math.floor(i / 6) * 0.9, at[1] + Math.floor(i / 6) * 0.9 * ux);
+  for (let i = 0; i < 4; i++) w.addUnit('ram', 1, at[0] - uy * 5 + i * 0.9, at[1] + 5 * ux);
+  w.bots[0].lastWave = -1e9;
+  w.players[1].res = { food: 900, wood: 900, gold: 900, stone: 900 };
+  const count = () => w.buildings.filter((b) => b.owner === 0 && !b.dead && b.type === 'wall').length;
+  assert.ok(segs > 40);
+  for (let i = 0; i < 20 * 150 && !w.over; i++) w.step();
+  assert.ok(count() < segs - 3, `la muraille est entamée (${count()}/${segs})`);
+});
+
+test('l\'ordinateur fortifie sa base : ligne de murs avec une porte', () => {
+  const w = new World({ seed: 3, players: [{ name: 'A', civ: 'franks', ai: 'difficile' }, { name: 'B', civ: 'gauls', ai: 'difficile' }] });
+  for (let i = 0; i < 20 * 60 * 22; i++) w.step();
+  const parts = (o, f) => w.buildings.filter((b) => b.owner === o && !b.dead && f(DEFS[b.type])).length;
+  const walled = [0, 1].filter((o) => parts(o, (d) => d.wall && !d.gate) >= 5 && parts(o, (d) => d.gate) >= 1);
+  assert.ok(walled.length >= 1, 'au moins un camp a bâti une ligne de murs avec une porte');
 });

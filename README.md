@@ -18,6 +18,7 @@ Jeu de stratégie en temps réel façon *Age of Empires*, **Francs contre Gauloi
 - **Murailles praticables** : les soldats postés sur un mur ou un rempart y sont visibles, les archers tirent avec leur propre portée (+ bonus de hauteur) ; une porte se pose à la place d'un mur ; tours et remparts tirent sur la **cible prioritaire** désignée par clic droit
 - **Chemin de ronde** : les soldats montent sur leurs murs (clic droit sur le mur), marchent d'un tronçon à l'autre, restent visibles en hauteur ; les archers tirent d'en haut, la mêlée ne peut pas les atteindre
 - **Combats lisibles** : anneau de couleur d'équipe sous chaque unité, chiffres de dégâts (F4 pour les masquer), barres de vie des blessés, cercles rouges sur la minimap aux endroits où l'on se bat, soldats qui se répartissent autour de leur cible au lieu de s'empiler
+- **L'ordinateur** fortifie sa base (ligne de murs avec porte et tours), poste ses archers sur les murs quand on l'attaque, construit des bastions avec sa pierre, et **assiège les villes murées** : béliers, catapultes et sapeurs sur la muraille (de préférence la porte), tours de siège chargées de fantassins, échelles en dernier recours
 - Environ 35 unités, 28 bâtiments, 60 technologies : villageois, récolte (bois, nourriture, or, pierre), fermes, chasse, pêche,
   construction, armées, béliers et catapultes, tours et château, brouillard de guerre
 - Le **port** et les **bateaux** (barques de pêche, drakkars et navires vénètes qui se battent sur la rivière), le **marché**
