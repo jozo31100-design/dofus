@@ -174,7 +174,7 @@ test('la recherche d\'un âge exige les bâtiments et les ressources, puis débl
   w.enqueue(0, { c: 'research', bid: hall.id, tech: 'age2' });
   run(w, 60);
   assert.equal(pl.age, 2);
-  assert.equal(pl.res.food, 2000 - 700); // âge II : 500 x 1,4
+  assert.equal(pl.res.food, 2000 - 910); // âge II : 500 x 1,82
   // une écurie devient constructible (on cherche un emplacement libre et exploré près de la salle)
   const ids = w.playerUnits(0, 'villager').map((u) => u.id);
   let spot = null;

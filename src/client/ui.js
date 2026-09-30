@@ -244,6 +244,10 @@ export class GameUI {
       this.doAmove(wx, wy);
       return;
     }
+    if (this.mode && this.mode.t === 'patrol') {
+      this.doPatrol(wx, wy);
+      return;
+    }
     this.mmDrag = true;
     this.renderer.centerOn(wx, wy);
   }
@@ -287,6 +291,7 @@ export class GameUI {
       if (this.mode.t === 'amove') { this.doAmove(wx, wy); return; }
       if (this.mode.t === 'rally') { this.doRally(x, y, wx, wy); return; }
       if (this.mode.t === 'climb') { this.doClimbMode(x, y); return; }
+      if (this.mode.t === 'patrol') { this.doPatrol(wx, wy); return; }
     }
     const e = this.renderer.pick(x, y);
     const now = performance.now();
@@ -475,6 +480,17 @@ export class GameUI {
     }
     this.renderer.fx.marker(t.x, t.y, 'attack', performance.now());
     audio.play('click', { gain: 0.4 });
+  }
+
+  /** Ronde : les soldats sélectionnés font des allers-retours entre leur position et le point cliqué. */
+  doPatrol(wx, wy) {
+    const ids = this.ents().filter((e) => this.isOwn(e) && e.cls === 'unit').map((e) => e.id);
+    if (ids.length) {
+      this.cmd({ c: 'patrol', ids, x: wx, y: wy });
+      this.renderer.fx.marker(wx, wy, 'attack', performance.now());
+      this.toast('Ronde en cours : ils vont et viennent et combattent ce qu\'ils croisent (Arrêter pour annuler).', 'info');
+    }
+    this.cancelModes();
   }
 
   doAmove(wx, wy) {
@@ -795,6 +811,9 @@ export class GameUI {
       put(8, { id: 'stop', icon: iconURL('ui', 'stop', civ, 0, 44), title: 'Arrêter', desc: 'Les unités cessent ce qu\'elles font.', enabled: true, onClick: () => this.cmd({ c: 'stop', ids: list.map((e) => e.id) }) });
       put(9, { id: 'delete', icon: iconURL('ui', 'delete', civ, 0, 44), title: 'Supprimer', desc: 'Détruit la sélection (Suppr, à confirmer).', enabled: true, onClick: () => this.deleteSelection() });
       if (withUnits && (me.techs.has('ladders') || list.some((e) => e.type === 'siegetower'))) put(7, { id: 'climb', icon: iconURL('ui', 'climb', civ, 0, 44), title: 'Escalader', desc: 'Cliquez ensuite sur un mur ou une porte ennemie : les fantassins l\'escaladent avec des échelles (lent, très exposé). Une tour de siège sélectionnée colle son pont au mur.', enabled: true, onClick: () => { this.mode = { t: 'climb' }; this.canvas.style.cursor = 'crosshair'; this.toast('Cliquez sur un mur ou une porte ennemie (clic droit : annuler).', 'info'); } });
+      if (withUnits) put(5, { id: 'patrol', icon: iconURL('ui', 'patrol', civ, 0, 44), title: 'Ronde', desc: 'Cliquez sur la carte : les soldats patrouillent entre leur position actuelle et ce point, en combattant ce qu\'ils rencontrent (Arrêter pour annuler).', enabled: true, onClick: () => { this.mode = { t: 'patrol' }; this.canvas.style.cursor = 'crosshair'; this.toast('Cliquez pour choisir l\'autre bout de la ronde (clic droit : annuler).', 'info'); } });
+      const scouts = list.filter((e) => e.cls === 'unit' && DEFS[e.type].tags.includes('scout'));
+      if (scouts.length) put(4, { id: 'explore', icon: iconURL('ui', 'explore', civ, 0, 44), title: 'Explorer', desc: 'Pilotage automatique : l\'éclaireur découvre seul la carte, fuit vers votre base dès qu\'un ennemi armé approche ou l\'attaque, et évite ensuite cette zone (Arrêter pour reprendre la main).', enabled: true, onClick: () => { this.cmd({ c: 'explore', ids: scouts.map((e) => e.id) }); this.toast('Exploration automatique lancée.', 'info'); } });
       const towers = list.filter((e) => e.cls === 'unit' && e.type === 'siegetower');
       if (towers.length) put(6, { id: 'unload', icon: iconURL('ui', 'ungarrison', civ, 0, 44), title: 'Faire descendre les soldats', desc: 'Les fantassins transportés sortent de la tour de siège sur place.', enabled: towers.some((t) => t.cargo > 0), onClick: () => this.cmd({ c: 'unload', ids: towers.map((t) => t.id) }) });
       if (withUnits) put(10, { id: 'amove', icon: iconURL('ui', 'attack', civ, 0, 44), title: 'Attaquer en marchant', desc: 'Les soldats avancent vers le point cliqué en attaquant tout ce qu\'ils croisent.', enabled: true, onClick: () => { this.mode = { t: 'amove' }; this.canvas.style.cursor = 'crosshair'; this.toast('Cliquez sur la carte pour attaquer en marchant (clic droit : annuler).', 'info'); } });
@@ -1316,6 +1335,7 @@ export class GameUI {
       ['Espace', 'Aller à la dernière attaque'],
       ['Suppr', 'Détruire la sélection (à confirmer)'],
       ['F4', 'Afficher/masquer les chiffres de dégâts (jaune : subis par l\'ennemi, rouge : subis par vous)'],
+      ['Explorer / Ronde', 'Éclaireur sélectionné : bouton Explorer (pilotage automatique, il fuit le danger). Soldats : bouton Ronde puis clic sur la carte (allers-retours en combattant)'],
       ['P', 'Pause'],
       ['F10 / Échap', 'Menu'],
       ['F11', 'Plein écran'],

@@ -28,6 +28,8 @@ export function updateUnit(world, u) {
     switch (o.t) {
       case 'climb': doClimb(world, u, o, st); break;
       case 'wall': doWallPost(world, u, o, st); break;
+      case 'patrol': doPatrol(world, u, o, st); break;
+      case 'explore': doExplore(world, u, o, st); break;
       case 'board': doBoard(world, u, o, st); break;
       case 'deploy': doDeploy(world, u, o, st); break;
       case 'move': doMove(world, u, o, st); break;
@@ -600,6 +602,124 @@ function doClimb(world, u, o, st) {
     world.emit({ k: 'hit', x: u.x, y: u.y, big: false });
     finishOrder(u);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Pilotage automatique : rondes des soldats, exploration des éclaireurs
+// ---------------------------------------------------------------------------
+
+/** Ronde : aller-retour entre deux points ; les ennemis rencontrés sont combattus puis la ronde reprend. */
+function doPatrol(world, u, o, st) {
+  const tgt = o.leg ? o.a : o.b;
+  if ((world.tick + u.id) % 4 === 0 && isMilitary(DEFS[u.type])) {
+    const radius = Math.max(st.range, 0) + 6;
+    const t = findTarget(world, u, radius);
+    if (t && canTarget(u, t)) {
+      const resume = { ...o };
+      const rest = u.queue.slice();
+      u.order = { t: 'attack', target: t.id, auto: true };
+      u.queue = [resume, ...rest];
+      u.leash = { x: u.x, y: u.y, r: radius + 10 };
+      u.path = null;
+      u.pathI = 0;
+      u.pathGoal = null;
+      return;
+    }
+  }
+  if (Math.hypot(tgt.x - u.x, tgt.y - u.y) < 1.3) { o.leg = !o.leg; u.path = null; return; }
+  if (!u.path && world.tick >= u.repathAt) {
+    const r = world.gridOf(u).find(u.x, u.y, { kind: 'point', x: tgt.x, y: tgt.y }, u.radius);
+    u.repathAt = world.tick + 20;
+    if (!r || r.path.length === 0) { o.leg = !o.leg; return; }
+    setPath(world, u, r, tgt.x, tgt.y);
+  }
+  const res = followPath(world, u, st);
+  if (res === 'arrived') { o.leg = !o.leg; u.path = null; } else if (u.stuck >= 6) { u.stuck = 0; o.leg = !o.leg; u.path = null; }
+}
+
+/** Zones à éviter : points où l'on s'est fait attaquer ou où se trouvent des ennemis armés. */
+function threatNear(world, u, radius) {
+  let best = null;
+  let bd = radius;
+  world.forUnitsNear(u.x, u.y, radius, (v) => {
+    if (v.owner === u.owner || v.owner < 0 || v.dead || v.inside || v.onWall) return;
+    if (!isMilitary(DEFS[v.type])) return;
+    const d = Math.hypot(v.x - u.x, v.y - u.y);
+    if (d < bd) { bd = d; best = v; }
+  });
+  for (const b of world.buildings) {
+    if (b.owner === u.owner || b.owner < 0 || b.dead || !b.done || !DEFS[b.type].atk || !(DEFS[b.type].arrows || b.garrison.length)) continue;
+    const r = (world.stat(b.owner, b.type).range || 7) + 3;
+    const d = Math.hypot(b.x - u.x, b.y - u.y);
+    if (d < r && d < bd + 5) { bd = d; best = b; }
+  }
+  return best;
+}
+
+/**
+ * Exploration automatique d'un éclaireur : il file vers la zone inexplorée la plus proche, seul,
+ * s'enfuit vers sa base dès qu'un ennemi armé approche ou qu'on l'attaque, puis évite cette zone quelque temps.
+ */
+function doExplore(world, u, o, st) {
+  const pl = world.players[u.owner];
+  const S = world.S;
+  if (!o.avoid) o.avoid = [];
+  o.avoid = o.avoid.filter((a) => a.until > world.tick);
+  const hit = u.hitAt !== undefined && world.tick - u.hitAt < 30;
+  if ((world.tick + u.id) % 5 === 0 || hit) {
+    const th = threatNear(world, u, 10);
+    if (th || hit) {
+      const hall = world.buildings.find((b) => b.owner === u.owner && b.type === 'hall' && !b.dead);
+      const tx = th ? th.x : u.lastX;
+      const ty = th ? th.y : u.lastY;
+      o.avoid.push({ x: tx, y: ty, until: world.tick + 20 * 75 });
+      // on s'éloigne du danger ; si la base est dans cette direction on s'y réfugie, sinon on fuit droit devant
+      const ax = u.x - tx;
+      const ay = u.y - ty;
+      const am = Math.hypot(ax, ay) || 1;
+      let fx = u.x + (ax / am) * 24;
+      let fy = u.y + (ay / am) * 24;
+      if (hall && ((hall.x - u.x) * ax + (hall.y - u.y) * ay) > 0) { fx = hall.x; fy = hall.y; }
+      if (!o.flee) { o.flee = { x: fx, y: fy, until: world.tick + 20 * 8 }; o.target = null; u.path = null; } else o.flee.until = world.tick + 20 * 8;
+    }
+  }
+  let goal = null;
+  if (o.flee) {
+    if (world.tick > o.flee.until && !threatNear(world, u, 14)) o.flee = null; else goal = o.flee;
+  }
+  if (!goal) {
+    if (!o.target || Math.hypot(o.target.x - u.x, o.target.y - u.y) < 3 || (pl.explored && pl.explored[Math.floor(o.target.y) * S + Math.floor(o.target.x)])) {
+      // prochaine cible : la case inexplorée la plus proche (échantillonnage tous les 5 cases), hors zones à éviter
+      let best = null;
+      let bd = Infinity;
+      for (let y = 2; y < S - 2; y += 5) {
+        for (let x = 2; x < S - 2; x += 5) {
+          if (pl.explored[y * S + x] || world.terrain[y * S + x] === 2) continue;
+          if (world.pfp[u.owner].isBlocked(x, y)) continue;
+          if (o.avoid.some((a) => Math.hypot(a.x - x, a.y - y) < 16)) continue;
+          const d = Math.hypot(x - u.x, y - u.y) + ((u.id * 31 + x * 7 + y * 13) % 9);
+          if (d < bd) { bd = d; best = { x: x + 0.5, y: y + 0.5 }; }
+        }
+      }
+      if (!best) { world.say(u.owner, 'Exploration terminée : tout ce qui est accessible a été vu.', 'info'); finishOrder(u); return; }
+      o.target = best;
+      u.path = null;
+    }
+    goal = o.target;
+  }
+  if (!u.path && world.tick >= u.repathAt) {
+    const r = world.gridOf(u).find(u.x, u.y, { kind: 'point', x: goal.x, y: goal.y }, u.radius);
+    u.repathAt = world.tick + 12;
+    if (!r || r.path.length === 0) {
+      if (o.flee) o.flee = null;
+      else { o.avoid.push({ x: goal.x, y: goal.y, until: world.tick + 20 * 120 }); o.target = null; }
+      return;
+    }
+    setPath(world, u, r, goal.x, goal.y);
+  }
+  const res = followPath(world, u, st);
+  if (res === 'arrived') { u.path = null; if (o.flee) o.flee = null; else o.target = null; }
+  else if (u.stuck >= 4) { u.stuck = 0; u.path = null; if (!o.flee && o.target) { o.avoid.push({ x: o.target.x, y: o.target.y, until: world.tick + 20 * 60 }); o.target = null; } }
 }
 
 function doIdle(world, u, st) {

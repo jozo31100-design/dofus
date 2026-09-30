@@ -341,3 +341,38 @@ test('l\'ordinateur fortifie sa base : ligne de murs avec une porte', () => {
   const walled = [0, 1].filter((o) => parts(o, (d) => d.wall && !d.gate) >= 5 && parts(o, (d) => d.gate) >= 1);
   assert.ok(walled.length >= 1, 'au moins un camp a bâti une ligne de murs avec une porte');
 });
+
+test('ronde : les soldats font des allers-retours et reprennent leur ronde après un combat', () => {
+  const w = two();
+  const hall = w.playerBuildings(0, 'hall')[0];
+  const a = [hall.x + 6, hall.y + 6];
+  const u = w.addUnit('swordsman', 0, a[0], a[1]);
+  applyCommand(w, 0, { c: 'patrol', ids: [u.id], x: a[0] - 14, y: a[1] });
+  let min = 99; let max = -99;
+  for (let i = 0; i < 20 * 50; i++) { w.step(); min = Math.min(min, u.x); max = Math.max(max, u.x); }
+  assert.ok(max - min > 10, `aller-retour (amplitude ${(max - min).toFixed(1)})`);
+  assert.equal(u.order && u.order.t, 'patrol');
+  // un ennemi passe : combat, puis reprise
+  const foe = w.addUnit('militia', 1, u.x - 3, u.y);
+  for (let i = 0; i < 20 * 25; i++) w.step();
+  assert.ok(foe.dead, 'l\'ennemi rencontré est tué');
+  for (let i = 0; i < 20 * 10; i++) w.step();
+  assert.equal(u.order && u.order.t, 'patrol', 'la ronde reprend');
+});
+
+test('éclaireur autonome : explore seul la carte et fuit un ennemi armé', () => {
+  const w = new World({ seed: 3, players: [{ name: 'A', civ: 'franks' }, { name: 'B', civ: 'gauls' }], startRes: 'riche' }); // brouillard actif
+  const scout = w.playerUnits(0, 'scout')[0];
+  const explored0 = w.players[0].explored.reduce((s, v) => s + v, 0);
+  applyCommand(w, 0, { c: 'explore', ids: [scout.id] });
+  for (let i = 0; i < 20 * 60; i++) { w.step(); }
+  const explored1 = w.players[0].explored.reduce((s, v) => s + v, 0);
+  assert.ok(explored1 > explored0 * 1.5, `beaucoup plus de carte explorée (${explored0} → ${explored1})`);
+  assert.equal(scout.order && scout.order.t, 'explore');
+  // un soldat ennemi surgit : l'éclaireur s'éloigne de lui
+  const foe = w.addUnit('swordsman', 1, scout.x + 4, scout.y);
+  const d0 = Math.hypot(scout.x - foe.x, scout.y - foe.y);
+  for (let i = 0; i < 20 * 4; i++) w.step();
+  const d1 = Math.hypot(scout.x - foe.x, scout.y - foe.y);
+  assert.ok(d1 > d0 + 2 && !scout.dead, `il fuit (${d0.toFixed(1)} → ${d1.toFixed(1)})`);
+});

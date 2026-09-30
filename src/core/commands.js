@@ -275,6 +275,28 @@ function cmdFocus(world, pi, cmd) {
   }
 }
 
+/** Ronde : les soldats vont et viennent entre leur position actuelle et le point cliqué, combattant ce qu'ils croisent. */
+function cmdPatrol(world, pi, cmd) {
+  const units = ownUnits(world, pi, cmd.ids).filter((u) => isMilitary(DEFS[u.type]) && !u.onWall);
+  if (!units.length) return;
+  const x = Math.max(0.5, Math.min(world.S - 0.5, num(cmd.x)));
+  const y = Math.max(0.5, Math.min(world.S - 0.5, num(cmd.y)));
+  let cap = 0;
+  if (units.length > 1) { cap = Infinity; for (const u of units) cap = Math.min(cap, world.stat(u.owner, u.type).speed); }
+  const slots = formationSlotsRanked(world, units, x, y);
+  for (const u of units) {
+    const s = slots.get(u.id) || [x, y];
+    setOrder(u, { t: 'patrol', a: { x: u.x, y: u.y }, b: { x: s[0], y: s[1] }, leg: false, speedCap: cap }, !!cmd.q);
+  }
+}
+
+/** Exploration automatique des éclaireurs (ils fuient le danger et évitent la zone ensuite). */
+function cmdExplore(world, pi, cmd) {
+  for (const u of ownUnits(world, pi, cmd.ids)) {
+    if (DEFS[u.type].tags.includes('scout')) setOrder(u, { t: 'explore', target: null, avoid: [], flee: null }, false);
+  }
+}
+
 function cmdRepair(world, pi, cmd) {
   const b = ownBuilding(world, pi, cmd.tid);
   if (!b) return;
@@ -403,6 +425,8 @@ export function applyCommand(world, pi, cmd) {
     case 'climb': cmdClimb(world, pi, cmd); break;
     case 'focus': cmdFocus(world, pi, cmd); break;
     case 'board': cmdBoard(world, pi, cmd); break;
+    case 'patrol': cmdPatrol(world, pi, cmd); break;
+    case 'explore': cmdExplore(world, pi, cmd); break;
     case 'deploy': cmdDeploy(world, pi, cmd); break;
     case 'unload': cmdUnload(world, pi, cmd); break;
     case 'train': cmdTrain(world, pi, cmd); break;

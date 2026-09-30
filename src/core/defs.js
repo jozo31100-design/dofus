@@ -63,8 +63,9 @@ export const START_RESOURCES = {
 
 const cost = (o) => ({ food: 0, wood: 0, gold: 0, stone: 0, ...o });
 
-// Tout coûte 40 % de plus (unités, bâtiments, technologies), sauf l'essentiel pour démarrer : villageois, ferme, maison.
-export const COST_MUL = 1.4;
+// Tout coûte bien plus cher qu'au départ (+40 % puis encore +30 %, soit ×1,82 : unités, bâtiments, technologies et changements d'âge),
+// sauf l'essentiel pour démarrer : villageois, ferme, maison.
+export const COST_MUL = 1.4 * 1.3;
 const COST_EXEMPT = new Set(['villager', 'farm', 'house']);
 const scaled = (id, o) => {
   const c = cost(o || {});

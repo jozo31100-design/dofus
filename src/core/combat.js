@@ -99,6 +99,7 @@ export function applyDamage(world, t, dmg, att) {
       t._dmgT = world.tick;
     }
   }
+  if (t.cls === 'unit') t.hitAt = world.tick;
   onDamaged(world, t, att);
   if (t.hp <= 0) killEntity(world, t, att);
 }

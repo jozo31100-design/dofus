@@ -133,6 +133,62 @@ const ICONS = {
     g.lineTo(30, 27);
     g.stroke();
   },
+  patrol(g) {
+    // deux flèches en boucle : aller-retour entre deux points
+    g.strokeStyle = '#f2e6c0';
+    g.lineWidth = 4;
+    g.lineCap = 'round';
+    g.beginPath();
+    g.arc(32, 32, 18, Math.PI * 0.15, Math.PI * 0.85);
+    g.stroke();
+    g.beginPath();
+    g.arc(32, 32, 18, Math.PI * 1.15, Math.PI * 1.85);
+    g.stroke();
+    g.fillStyle = '#e8b93a';
+    for (const [x, y, a] of [[14, 38, 2.4], [50, 26, -0.75]]) {
+      g.save();
+      g.translate(x, y);
+      g.rotate(a);
+      g.beginPath();
+      g.moveTo(9, 0);
+      g.lineTo(-5, -7);
+      g.lineTo(-5, 7);
+      g.closePath();
+      g.fill();
+      g.restore();
+    }
+    g.fillStyle = '#d9d2bd';
+    g.fillRect(29, 26, 6, 13);
+    g.fillRect(26, 37, 12, 3);
+  },
+  explore(g) {
+    // boussole : cercle, rose des vents et aiguille
+    g.strokeStyle = '#f2e6c0';
+    g.lineWidth = 3.5;
+    g.beginPath();
+    g.arc(32, 32, 21, 0, Math.PI * 2);
+    g.stroke();
+    g.fillStyle = '#e8b93a';
+    g.beginPath();
+    g.moveTo(32, 12);
+    g.lineTo(38, 32);
+    g.lineTo(32, 28);
+    g.lineTo(26, 32);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#d9d2bd';
+    g.beginPath();
+    g.moveTo(32, 52);
+    g.lineTo(38, 32);
+    g.lineTo(32, 36);
+    g.lineTo(26, 32);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#7a4a1e';
+    g.beginPath();
+    g.arc(32, 32, 3, 0, Math.PI * 2);
+    g.fill();
+  },
   rally(g) {
     g.setLineDash([4, 5]);
     g.strokeStyle = '#f2e6c0';
