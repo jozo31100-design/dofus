@@ -16,6 +16,9 @@ import { climbPose, drawLadder } from './unit-ladder.js';
 import { unitSpec, METRICS } from './unit-specs.js';
 import { drawBoat, drawWater, hullOf } from './unit-naval.js';
 import { EXT_TYPES, EXT_KINDS } from './unit-ext.js';
+import { CIV_IDS } from '../../core/defs.js';
+
+const CIV_IDX = Object.fromEntries(CIV_IDS.map((c, i) => [c, i]));
 
 const TYPES = [
   'villager', 'militia', 'spearman', 'swordsman', 'champion', 'archer', 'crossbow', 'scout', 'cavalry',
@@ -460,7 +463,7 @@ function bakeAllowed() {
  */
 export function drawUnit(ctx, o) {
   const type = TYPE_IDX[o.type] === undefined ? 'villager' : o.type;
-  const civ = o.civ === 'gauls' || o.civ === 'franks' ? o.civ : type === 'gesate' || type === 'vercingetorix' ? 'gauls' : 'franks';
+  const civ = CIV_IDX[o.civ] !== undefined ? o.civ : type === 'gesate' || type === 'vercingetorix' ? 'gauls' : 'franks';
   const team = (o.team | 0) & 7;
   const S = specOf(type, civ, team);
   if (!S.type) S.type = type;
@@ -470,7 +473,7 @@ export function drawUnit(ctx, o) {
   const s = o.scale || 1;
   const k = Math.hypot(m.a, m.b) * s;
   const b = picker.pick(k);
-  const unitKey = (TYPE_IDX[type] * 2 + (civ === 'gauls' ? 1 : 0)) * 8 + team;
+  const unitKey = (TYPE_IDX[type] * CIV_IDS.length + CIV_IDX[civ]) * 8 + team;
   const animKey = (((unitKey * 5 + fr.anim) * 10 + fr.work) * 5 + fr.carry) * 2 + (fr.dir > 0 ? 0 : 1);
   const frameKey = (animKey * 16 + fr.f) * 13 + fr.aim;
   const key = frameKey * 65536 + Math.round(b * 4096);

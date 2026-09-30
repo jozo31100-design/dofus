@@ -7,7 +7,7 @@
 //   3. peinture.
 // Le résultat est recadré au plus juste et mis en cache par (type, civilisation, équipe, stade).
 
-import { BUILDINGS } from '../../core/defs.js';
+import { BUILDINGS, CIVS } from '../../core/defs.js';
 import { TILE_W, TILE_H } from './constants.js';
 import { makeCanvas } from './palette.js';
 import { Gfx, hash, SH_X, SH_Y } from './building-gfx.js';
@@ -137,7 +137,9 @@ function workCanvas(n, hMax) {
  */
 export function getBuildingSprite(typeId, civ, teamIdx, stage = 3, mask = 0) {
   const st = Number.isFinite(stage) ? Math.max(0, Math.min(3, Math.round(stage))) : 3;
-  const cv = civ === 'franks' ? 'franks' : 'gauls';
+  // style de base (franks | gauls) du peuple ; un peuple peut surcharger des bâtiments dans DESIGNS[idDuPeuple]
+  const base = (CIVS[civ] && CIVS[civ].art) || (civ === 'gauls' ? 'gauls' : 'franks');
+  const cv = DESIGNS[civ] ? civ : base;
   const tm = teamIdx | 0;
   // le masque de voisinage (bits 1 = +x, 2 = +y, 4 = −x, 8 = −y) ne concerne que les murs et les portes
   const mk = CONNECTED.has(typeId) ? (mask | 0) & 15 : 0;
@@ -146,9 +148,10 @@ export function getBuildingSprite(typeId, civ, teamIdx, stage = 3, mask = 0) {
   if (s) return s;
   const def = BUILDINGS[typeId];
   const n = def ? def.size : 2;
-  const design = DESIGNS[cv][typeId];
+  const design = (DESIGNS[cv] && DESIGNS[cv][typeId]) || DESIGNS[base][typeId];
   const W = workCanvas(n, (HEIGHT[typeId] || 100) + 30);
-  const g = new Gfx(W.ctx, W.ax, W.ay, { stage: st, civ: cv, team: tm, size: n, seed: hash(typeId, cv, mk) });
+  const g = new Gfx(W.ctx, W.ax, W.ay, { stage: st, civ: base, team: tm, size: n, seed: hash(typeId, cv, mk) });
+  g.civId = cv;
   g.mask = mk;
   if (!design) {
     // type inconnu : simple tas de caisses pour ne jamais échouer

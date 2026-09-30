@@ -7,6 +7,10 @@ import { IRON, BRONZE, GOLD } from './unit-gear.js';
 
 import { GAUL, FRANK, BOX, base } from './unit-base.js';
 import { extSpec, EXT_METRICS } from './unit-ext.js';
+import { CIVS } from '../../core/defs.js';
+
+/** Style de base (franks | gauls) d'un peuple. */
+export const artOf = (civ) => (CIVS[civ] && CIVS[civ].art) || (civ === 'gauls' ? 'gauls' : 'franks');
 
 /** Hauteur visible (pieds → sommet de la tête) et demi-largeur de chaque type, en px à zoom 1. */
 export const METRICS = {
@@ -38,6 +42,7 @@ export const METRICS = {
 export function unitSpec(type, civ, teamIdx) {
   const ext = extSpec(type, civ, teamIdx);
   if (ext) return ext;
+  civ = artOf(civ); // les peuples supplémentaires retombent sur le style franc ou gaulois (CIVS[id].art)
   const tm = teamColors(teamIdx);
   const g = civ === 'gauls';
   const P = g ? GAUL : FRANK;

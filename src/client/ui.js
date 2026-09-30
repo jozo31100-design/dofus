@@ -3,7 +3,7 @@
 import {
   BUILDINGS, UNITS, DEFS, TECHS, RESOURCES, RES_LABEL, AGE_NAMES, TEAM_COLORS,
   nameOf, trainableAt, techsAt, techForCiv, costText, tradeFee, tradeQuote, TRADE_RES, TRADE_LOT,
-  CHOICE_CATS, CHOICE_AGES, CHOICE_LABEL, choiceOptions, choiceKey,
+  CIVS, CHOICE_CATS, CHOICE_AGES, CHOICE_LABEL, choiceOptions, choiceKey,
 } from '../core/defs.js';
 import { wallLine } from '../core/common.js';
 import { Renderer } from './render.js';
@@ -909,7 +909,7 @@ export class GameUI {
       const p = st.players[st.myIdx];
       sig = `none|${st.me.age}`;
       build = () => h('div', { class: 'info-empty' },
-        h('div', { class: 'ie-title', text: p ? `Peuple ${p.civ === 'franks' ? 'franc' : 'gaulois'}` : '' }),
+        h('div', { class: 'ie-title', text: p ? `Peuple : ${CIVS[p.civ] ? CIVS[p.civ].name : ''}` : '' }),
         h('div', { class: 'ie-sub', text: AGE_NAMES[st.me.age] }),
         h('div', { class: 'ie-hint', html: 'Clic gauche : sélectionner · Clic droit : ordre<br>Molette : zoom · Flèches : déplacer la vue<br>F1 : aide' }));
     } else if (list.length === 1) {

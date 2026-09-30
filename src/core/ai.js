@@ -1,7 +1,7 @@
 // Adversaire contrôlé par l'ordinateur. Il joue avec les mêmes commandes qu'un humain (applyCommand),
 // donc les mêmes règles, mais sans brouillard de guerre. Trois niveaux : facile, moyen, difficile.
 
-import { DEFS, UNITS, BUILDINGS, TECHS, MAX_POP, FARM_MAX_WORKERS, RESOURCES, trainableAt, techsAt } from './defs.js';
+import { DEFS, UNITS, BUILDINGS, TECHS, CIVS, MAX_POP, FARM_MAX_WORKERS, RESOURCES, trainableAt, techsAt } from './defs.js';
 import { applyCommand } from './commands.js';
 import { placementError, findNodeNear, findFarmSlot, techBlocker } from './econ.js';
 import { isMilitary } from './common.js';
@@ -564,6 +564,8 @@ class Bot {
     // héros et unités spéciales choisis aux changements d'âge : ajoutés à la composition de leur bâtiment
     const comp = {};
     for (const k of Object.keys(COMP)) comp[k] = COMP[k].slice();
+    const uu = CIVS[pl.civ] && CIVS[pl.civ].uniqueUnit;
+    if (uu && UNITS[uu]) (comp[UNITS[uu].from] = comp[UNITS[uu].from] || []).push([uu, 4, UNITS[uu].age]);
     for (const id of Object.values(pl.chosen || {})) {
       const d = UNITS[id];
       if (!d || !d.choice || !d.from) continue;
@@ -639,7 +641,8 @@ class Bot {
 
   research(world, pl, S) {
     if (world.tick % 60 > this.lv.think) return;
-    const list = S.army.length >= 6 ? [...ECO_TECHS.slice(0, 5), ...WAR_TECHS, ...ECO_TECHS.slice(5)] : ECO_TECHS;
+    const uniq = CIVS[pl.civ] && CIVS[pl.civ].uniqueTech ? [CIVS[pl.civ].uniqueTech] : [];
+    const list = S.army.length >= 6 ? [...ECO_TECHS.slice(0, 5), ...WAR_TECHS, ...uniq, ...ECO_TECHS.slice(5)] : ECO_TECHS;
     for (const id of list) {
       const t = TECHS[id];
       const b = (S.byType[t.building] || []).find((x) => x.done && x.queue.length < 1);

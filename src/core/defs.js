@@ -1,3 +1,5 @@
+import CIV_MODULES from './civs/index.js';
+
 // Données du jeu : tout est déclaratif. Le moteur (sim.js) ne connaît aucun nom d'unité :
 // il lit ces tables. Pour équilibrer ou ajouter du contenu, on ne touche qu'à ce fichier.
 
@@ -944,8 +946,6 @@ export const CIVS = {
     ],
   },
 };
-export const CIV_IDS = Object.keys(CIVS);
-
 
 // ---------------------------------------------------------------------------
 // Choix à chaque âge (comme les dieux mineurs d'Age of Mythology) : en passant à l'âge II, III puis IV, le joueur
@@ -980,6 +980,25 @@ export const choiceKey = (age, cat) => `${age}${cat}`;
 // Index
 // ---------------------------------------------------------------------------
 
+// Civilisations supplémentaires : chaque module de src/core/civs/ apporte sa fiche (CIVS), ses unités, ses technologies,
+// ses choix d'âge et ses noms propres. Elles sont ajoutées après les données de base (les numéros réseau restent stables).
+for (const c of CIV_MODULES) {
+  CIVS[c.id] = {
+    id: c.id, name: c.name, tagline: c.tagline, story: c.story, bonuses: c.bonuses, uniqueUnit: c.uniqueUnit, uniqueTech: c.uniqueTech,
+    effects: c.effects || [], art: c.art || 'franks', names: c.names || {}, color: c.color,
+  };
+  for (const u of c.units || []) {
+    if (UNIT_LIST.some((x) => x.id === u.id)) throw new Error(`Unité en double : ${u.id} (${c.id})`);
+    UNIT_LIST.push({ civ: c.id, ...u });
+  }
+  for (const t of c.techs || []) {
+    if (TECH_LIST.some((x) => x.id === t.id)) throw new Error(`Technologie en double : ${t.id} (${c.id})`);
+    TECH_LIST.push({ civ: c.id, ...t });
+  }
+  if (c.choices) CHOICES[c.id] = c.choices;
+}
+export const CIV_IDS = Object.keys(CIVS);
+
 export const UNITS = {};
 for (const u of UNIT_LIST) UNITS[u.id] = finishUnit(u);
 export const ANIMALS = {};
@@ -988,6 +1007,11 @@ export const NODES = {};
 for (const n of NODE_LIST) NODES[n.id] = { tags: ['node'], ...n };
 export const BUILDINGS = {};
 for (const b of BUILDING_LIST) BUILDINGS[b.id] = finishBuilding(b);
+// les unités propres à un peuple rejoignent automatiquement la liste de production de leur bâtiment
+for (const u of Object.values(UNITS)) {
+  const b = u.from && BUILDINGS[u.from];
+  if (b && !b.trains.includes(u.id)) b.trains.push(u.id);
+}
 export const TECHS = {};
 for (const t of TECH_LIST) TECHS[t.id] = { effects: [], ...t, cost: cost(t.cost) };
 
@@ -1007,6 +1031,7 @@ export const TECH_IDS = Object.keys(TECHS);
 export function nameOf(id, civ) {
   const d = DEFS[id] || TECHS[id];
   if (!d) return id;
+  if (civ && CIVS[civ] && CIVS[civ].names && CIVS[civ].names[id]) return CIVS[civ].names[id];
   if (d.names && civ && d.names[civ]) return d.names[civ];
   return d.name || (d.names && Object.values(d.names)[0]) || id;
 }
@@ -1014,13 +1039,13 @@ export function nameOf(id, civ) {
 /** Une unité est-elle disponible pour cette civilisation ? */
 export function unitForCiv(id, civ) {
   const u = UNITS[id];
-  return !!u && (!u.civ || u.civ === civ);
+  return !!u && (!u.civ || u.civ === civ) && !(u.not && u.not.includes(civ)) && (!u.civs || u.civs.includes(civ));
 }
 
 /** Une technologie est-elle disponible pour cette civilisation ? */
 export function techForCiv(id, civ) {
   const t = TECHS[id];
-  return !!t && (!t.civ || t.civ === civ);
+  return !!t && (!t.civ || t.civ === civ) && !(t.not && t.not.includes(civ)) && (!t.civs || t.civs.includes(civ));
 }
 
 /** Un ensemble d'effets s'applique-t-il à cette définition ? */

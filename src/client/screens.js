@@ -136,7 +136,7 @@ export class App {
       } },
       h('div', { style: 'display:flex;justify-content:center;gap:6px' },
         h('img', { src: iconURL('portrait', 'hall', id, 0, 64), width: 64, height: 64, alt: '' }),
-        h('img', { src: iconURL('portrait', civ.uniqueUnit, id, 0, 64), width: 64, height: 64, alt: '' })),
+        h('img', { src: iconURL('portrait', civ.uniqueUnit || 'spearman', id, 0, 64), width: 64, height: 64, alt: '' })),
       h('h3', { text: civ.name }),
       h('div', { class: 'tag', text: civ.tagline }),
       h('ul', {}, civ.bonuses.map((b) => h('li', { text: b }))));
