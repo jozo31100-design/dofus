@@ -61,9 +61,16 @@ export class Minimap {
     for (let i = 0; i < S * S; i++) {
       const t = st.terrain[i];
       const c = t === 2 ? COL.water : t === 1 ? COL.ford : COL.grass;
-      img.data[i * 4] = c[0];
-      img.data[i * 4 + 1] = c[1];
-      img.data[i * 4 + 2] = c[2];
+      // variation déterministe (texture de prairie / reflets d'eau) et rive sablonneuse
+      const hv = (Math.imul(i, 2654435761) >>> 24) / 255 - 0.5;
+      const x = i % S;
+      const y = (i / S) | 0;
+      let sand = 0;
+      if (t === 0 && ((x > 0 && st.terrain[i - 1]) || (x < S - 1 && st.terrain[i + 1]) || (y > 0 && st.terrain[i - S]) || (y < S - 1 && st.terrain[i + S]))) sand = 0.55;
+      const sun = 1 + hv * 0.14 + (t === 0 ? (1 - (x + y) / S) * 0.08 : 0);
+      img.data[i * 4] = (c[0] + (214 - c[0]) * sand) * sun;
+      img.data[i * 4 + 1] = (c[1] + (194 - c[1]) * sand) * sun;
+      img.data[i * 4 + 2] = (c[2] + (140 - c[2]) * sand) * sun;
       img.data[i * 4 + 3] = 255;
     }
     for (const e of st.ents.values()) {

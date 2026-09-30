@@ -232,12 +232,12 @@ function cmdChoose(world, pi, cmd) {
 function cmdClimb(world, pi, cmd) {
   const t = world.get(cmd.tid);
   const pl = world.players[pi];
-  if (!t || t.dead || t.cls !== 'building' || t.owner === pi || !(DEFS[t.type].wall || DEFS[t.type].gate)) return;
+  if (!t || t.dead || t.cls !== 'building' || !(DEFS[t.type].wall || DEFS[t.type].gate)) return;
   if (!pl.techs.has('ladders')) { world.say(pi, 'Il faut d\'abord rechercher les échelles d\'assaut (maison des guerriers).', 'warn'); return; }
   for (const u of ownUnits(world, pi, cmd.ids)) {
     const d = DEFS[u.type];
     if (d.tags.includes('infantry') && !d.tags.includes('siege')) setOrder(u, { t: 'climb', target: t.id, phase: 'go' }, !!cmd.q);
-    else setOrder(u, { t: 'attack', target: t.id }, !!cmd.q);
+    else if (t.owner !== pi) setOrder(u, { t: 'attack', target: t.id }, !!cmd.q);
   }
 }
 
@@ -254,13 +254,25 @@ function cmdBoard(world, pi, cmd) {
 /** La tour de siège va se coller au mur visé et y déverse ses fantassins. */
 function cmdDeploy(world, pi, cmd) {
   const t = world.get(cmd.tid);
-  if (!t || t.dead || t.cls !== 'building' || t.owner === pi || !(DEFS[t.type].wall || DEFS[t.type].gate)) return;
+  if (!t || t.dead || t.cls !== 'building' || !(DEFS[t.type].wall || DEFS[t.type].gate)) return;
   for (const u of ownUnits(world, pi, cmd.ids)) if (u.cargo) setOrder(u, { t: 'deploy', target: t.id }, !!cmd.q);
 }
 
 /** Les passagers sortent sur place. */
 function cmdUnload(world, pi, cmd) {
   for (const u of ownUnits(world, pi, cmd.ids)) if (u.cargo && u.cargo.length) unloadCargo(world, u, null);
+}
+
+/** Désigne la cible prioritaire de tours et murailles armées (tout ce qui tire : tours, château, remparts garnis). */
+function cmdFocus(world, pi, cmd) {
+  const t = world.get(cmd.tid);
+  const ids = Array.isArray(cmd.bids) ? cmd.bids : [];
+  for (const id of ids.slice(0, 100)) {
+    const b = ownBuilding(world, pi, id);
+    if (!b || !b.done || !DEFS[b.type].atk) continue;
+    if (!t || t.dead || t.owner === pi || t.owner < 0 || t.cls === 'node' || t.cls === 'animal' || (t.cls === 'building' && DEFS[t.type].capture)) { b.focus = 0; continue; }
+    b.focus = t.id;
+  }
 }
 
 function cmdRepair(world, pi, cmd) {
@@ -376,6 +388,7 @@ export function applyCommand(world, pi, cmd) {
     case 'buildline': cmdBuildLine(world, pi, cmd); break;
     case 'choose': cmdChoose(world, pi, cmd); break;
     case 'climb': cmdClimb(world, pi, cmd); break;
+    case 'focus': cmdFocus(world, pi, cmd); break;
     case 'board': cmdBoard(world, pi, cmd); break;
     case 'deploy': cmdDeploy(world, pi, cmd); break;
     case 'unload': cmdUnload(world, pi, cmd); break;

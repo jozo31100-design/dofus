@@ -6,7 +6,7 @@ import {
 } from './defs.js';
 import { GRASS, WATER } from './mapgen.js';
 import { recalcPop, setOrder, finishOrder, freeSpotAround, ejectFromRect, distEdge, goalFor, REACH } from './common.js';
-import { buildingFire } from './combat.js';
+import { buildingFire, killEntity } from './combat.js';
 
 // ---------------------------------------------------------------------------
 // Mise à jour des bâtiments
@@ -281,6 +281,16 @@ export function cancelQueue(world, pl, b, idx) {
 // ---------------------------------------------------------------------------
 
 /** Vérifie l'emplacement ; renvoie null si valide, sinon la raison. */
+/** Un mur de ce joueur que la porte `def` posée en (tx, ty) remplacerait (même emprise exacte), ou null. */
+export function wallToReplace(world, pl, def, tx, ty) {
+  if (!def.gate) return null;
+  const S = world.S;
+  const b = world.get(world.occ[ty * S + tx]);
+  if (!b || b.dead || b.cls !== 'building' || b.owner !== pl.idx || !BUILDINGS[b.type].wall || BUILDINGS[b.type].gate) return null;
+  if (b.tx !== tx || b.ty !== ty || b.w !== def.size) return null;
+  return b;
+}
+
 export function placementError(world, pl, type, tx, ty) {
   const def = BUILDINGS[type];
   if (!def) return 'Bâtiment inconnu.';
@@ -294,7 +304,7 @@ export function placementError(world, pl, type, tx, ty) {
     for (let x = tx; x < tx + n; x++) {
       const i = y * S + x;
       if (world.terrain[i] !== GRASS) return 'Terrain impropre à la construction.';
-      if (world.occ[i]) return 'Emplacement occupé.';
+      if (world.occ[i] && !wallToReplace(world, pl, def, tx, ty)) return 'Emplacement occupé.';
       if (!pl.ai && !world.revealMap && !pl.explored[i]) return 'Zone inexplorée.';
     }
   }
@@ -321,6 +331,15 @@ export function startBuilding(world, pl, type, tx, ty, builderIds, queue) {
   const lack = costLack(pl, st.cost);
   if (lack) return `Pas assez de ${lack.toLowerCase()}.`;
   world.spend(pl, st.cost);
+  const old = wallToReplace(world, pl, BUILDINGS[type], tx, ty);
+  if (old) {
+    // la porte remplace le mur : sa garnison ressort et 60 % de son prix est rendu
+    const oc = world.stat(pl.idx, old.type).cost;
+    for (const r of RESOURCES) pl.res[r] += Math.floor((oc[r] || 0) * 0.6);
+    killEntity(world, old, null);
+    pl.lostBuildings--;
+    world.sweepDead();
+  }
   const b = world.addBuilding(type, pl.idx, tx, ty, false);
   const def = BUILDINGS[type];
   if (!def.walkable) ejectFromRect(world, tx, ty, tx + def.size, ty + def.size);

@@ -4,14 +4,15 @@
 import { BUILDINGS, DEFS, TECH_IDS, MAP_SIZE, computeStats } from '../core/defs.js';
 import { decodeRecord, decodeEvent } from '../core/snapshot.js';
 import { generateMap } from '../core/mapgen.js';
+import { generateArena } from '../core/arena.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export class ClientState {
-  constructor({ myIdx, mapSeed }) {
+  constructor({ myIdx, mapSeed, nPlayers = 2 }) {
     this.myIdx = myIdx;
     this.S = MAP_SIZE;
-    const map = generateMap(mapSeed);
+    const map = nPlayers > 2 ? generateArena(mapSeed, nPlayers) : generateMap(mapSeed);
     this.terrain = map.terrain;
     this.ents = new Map();
     this.ghosts = new Map();

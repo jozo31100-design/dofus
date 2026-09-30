@@ -359,6 +359,15 @@ export class GameUI {
     const fx = this.renderer.fx;
     const now = performance.now();
     if (!units.length) {
+      // tours, remparts garnis, château… : clic droit sur un ennemi = cible prioritaire ; clic droit sur le sol = annule
+      const shooters = sel.filter((e) => e.cls === 'building' && e.prog >= 100 && BUILDINGS[e.type].atk && (BUILDINGS[e.type].arrows || e.garr > 0));
+      if (shooters.length && (!blds.length || (target && target.owner >= 0 && target.owner !== this.state.myIdx))) {
+        const foe = target && target.owner >= 0 && target.owner !== this.state.myIdx && (target.cls === 'unit' || target.cls === 'building') ? target : null;
+        this.cmd({ c: 'focus', bids: shooters.map((b) => b.id), tid: foe ? foe.id : 0 });
+        if (foe) { fx.marker(foe.x, foe.y, 'attack', now); this.toast('Cible prioritaire désignée.', 'info'); } else this.toast('Cible prioritaire annulée.', 'info');
+        audio.play('click', { gain: 0.4 });
+        return;
+      }
       if (blds.length) {
         // point de ralliement
         const tid = target && (target.cls === 'node' || target.cls === 'animal' || (target.cls === 'building' && this.isOwn(target))) ? target.id : 0;
@@ -434,8 +443,8 @@ export class GameUI {
   /** Mode « Escalader » : le clic sur un mur ou une porte ennemie envoie les fantassins (ou la tour de siège) à l'assaut. */
   doClimbMode(x, y) {
     const t = this.renderer.pick(x, y);
-    if (!t || t.cls !== 'building' || t.owner < 0 || t.owner === this.state.myIdx || !(BUILDINGS[t.type].wall || BUILDINGS[t.type].gate)) {
-      this.toast('Cliquez sur un mur ou une porte ennemie (clic droit : annuler).', 'warn');
+    if (!t || t.cls !== 'building' || !(BUILDINGS[t.type].wall || BUILDINGS[t.type].gate)) {
+      this.toast('Cliquez sur un mur ou une porte (clic droit : annuler).', 'warn');
       return;
     }
     this.assaultWall(t, false);
@@ -517,6 +526,16 @@ export class GameUI {
     return occ;
   }
 
+  /** Une porte peut se poser à la place d'un de ses propres murs de même emprise. */
+  replaceableWall(type, tx, ty) {
+    const def = BUILDINGS[type];
+    if (!def.gate) return false;
+    for (const e of this.state.ents.values()) {
+      if (e.cls === 'building' && this.isOwn(e) && e.tx === tx && e.ty === ty && e.w === def.size && BUILDINGS[e.type].wall && !BUILDINGS[e.type].gate) return true;
+    }
+    return false;
+  }
+
   checkPlacement(type, tx, ty) {
     const st = this.state;
     const n = BUILDINGS[type].size;
@@ -531,7 +550,7 @@ export class GameUI {
         const i = y * S + x;
         if (x < 0 || y < 0 || x >= S || y >= S) { bad.add(dy * n + dx); reason = 'En dehors de la carte.'; continue; }
         if (st.terrain[i] !== 0) { bad.add(dy * n + dx); reason = 'Terrain impropre à la construction.'; continue; }
-        if (occ[i]) { bad.add(dy * n + dx); reason = 'Emplacement occupé.'; continue; }
+        if (occ[i] && !this.replaceableWall(type, tx, ty)) { bad.add(dy * n + dx); reason = 'Emplacement occupé.'; continue; }
         if (!st.explored[i] && !st.revealMap) { bad.add(dy * n + dx); reason = 'Zone inexplorée.'; }
       }
     }
@@ -1010,6 +1029,7 @@ export class GameUI {
       } else {
         if (def.pop) body.append(this.statRow('Population', `+${def.pop}`));
         if (own && e.type === 'farm' && e.food !== undefined) body.append(this.statRow('Récolte restante', `${e.food}`));
+        if (own && e.focus) { const ft = st.ents.get(e.focus); body.append(this.statRow('Cible prioritaire', ft ? nameOf(ft.type, ft.owner >= 0 && st.players[ft.owner] ? st.players[ft.owner].civ : civ) : 'hors de vue')); }
         if (BUILDINGS[e.type].garrison) body.append(this.statRow('Garnison', `${e.garr || 0}/${BUILDINGS[e.type].garrison}`));
         if (own && e.q && e.q.length) body.append(this.queueRow(e));
         else body.append(h('div', { class: 'desc', text: def.desc || '' }));
@@ -1275,6 +1295,7 @@ export class GameUI {
       ['Marché', 'Vendre ou acheter 100 ressources contre de l\'or ; les cours suivent l\'offre et la demande (Maj + clic : ×5)'],
       ['Choix d\'âge (K)', 'À chaque âge : 1 héros, 1 unité spéciale et 1 bonus parmi deux (comme Age of Mythology)'],
       ['Points stratégiques', 'Trésor (or et pierre) et deux collines (vue, nourriture, bois, +10 % d\'attaque) : tenez-les avec des soldats, sans ennemi à côté, pour les capturer'],
+      ['Tours et remparts', 'Sélectionnez une tour, un château ou un rempart garni, puis clic droit sur un ennemi : c\'est leur cible prioritaire (clic droit sur le sol pour annuler). Les soldats postés sur un rempart s\'y installent via clic droit sur le mur ; les archers tirent plus loin depuis le haut'],
       ['Contre-siège', 'Bâtiment très coûteux (Murailles et défenses) : −40 % de dégâts de siège aux bâtiments voisins, les machines ennemies proches brûlent'],
       ['Murailles', 'Menu « Murailles et défenses » : glissez pour tracer un mur ; portes pour laisser passer vos troupes ; échelles d\'assaut (maison des guerriers) puis clic droit sur un mur ennemi pour l\'escalader (ou bouton Escalader) ; tour de siège : clic droit d\'un fantassin sur elle pour monter, puis clic droit sur un mur pour y coller son pont ; sapeurs, béliers et catapultes pour le briser'],
       ['Héros', 'Un seul à la fois (choisi à l\'âge II, III ou IV) : son aura profite aux alliés proches'],
@@ -1319,7 +1340,7 @@ export class GameUI {
     const head = h('tr', {}, h('th', {}), ...st.players.map((p, i) => h('th', { style: `color:${TEAM_COLORS[i].light}`, text: p.name })));
     this.openOverlay(h('div', { class: `dialog wide end ${won ? 'win' : 'lose'}` },
       h('h1', { text: draw ? 'Match nul' : won ? 'Victoire !' : 'Défaite…' }),
-      h('p', { text: won ? 'Vous avez détruit votre adversaire.' : draw ? 'La partie est terminée.' : 'Votre peuple a été vaincu.' }),
+      h('p', { text: won ? (st.players.length > 2 ? 'Vous êtes le dernier peuple debout.' : 'Vous avez détruit votre adversaire.') : draw ? 'La partie est terminée.' : 'Votre peuple a été vaincu.' }),
       h('p', { class: 'note', text: `Durée de la partie : ${fmtTime(st.tick / 20)}` }),
       h('table', { class: 'help stats' }, head, ...rows),
       h('button', { class: 'btn big', text: 'Retour au menu principal', onclick: () => this.exit() }),
@@ -1424,6 +1445,16 @@ export class GameUI {
     };
     r.frame(now, ui);
     if (this.state.over) this.showEnd();
+    else if (!this.defeatShown && this.state.players[this.state.myIdx] && !this.state.players[this.state.myIdx].alive) {
+      // vaincu alors que la partie continue (plusieurs adversaires) : on propose de regarder la suite
+      this.defeatShown = true;
+      audio.play('lose');
+      this.openOverlay(h('div', { class: 'dialog end lose' },
+        h('h1', { text: 'Défaite…' }),
+        h('p', { text: 'Votre peuple a été vaincu, mais la partie continue sans vous.' }),
+        h('button', { class: 'btn big', text: 'Regarder la partie', onclick: () => { this.closeOverlay(); } }),
+        h('button', { class: 'btn', text: 'Retour au menu principal', onclick: () => this.exit() })));
+    }
     // interface : environ 8 fois par seconde
     if (now - this.lastHud > 120) {
       this.lastHud = now;

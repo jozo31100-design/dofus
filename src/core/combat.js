@@ -233,45 +233,79 @@ export function findTarget(world, u, radius) {
   return best;
 }
 
-/** Tir des bâtiments armés (salle, tour, château) sur les ennemis à portée. */
+/**
+ * Tir des bâtiments armés (salle, tour, château, murailles) sur les ennemis à portée.
+ * Les tireurs postés à l'intérieur (archers sur un rempart, par exemple) tirent avec leurs propres caractéristiques, portée accrue
+ * et +15 % de dégâts en surplomb ; les autres soldats abrités ajoutent une flèche du bâtiment.
+ */
 export function buildingFire(world, b) {
   const def = BUILDINGS[b.type];
   if (!def.atk || !b.done) return;
-  if (!def.arrows && !(def.garrison && b.garrison.length)) return;
+  const garrisoned = [];
+  for (const id of b.garrison) {
+    const g = world.get(id);
+    if (g && !g.dead && isMilitary(DEFS[g.type])) garrisoned.push(g);
+  }
+  if (!def.arrows && !garrisoned.length) return;
   if (b.cd > 0) { b.cd--; return; }
   const st = world.stat(b.owner, b.type);
+  const high = def.walk ? 1 : 0;
+  const shooters = [];
+  let melee = 0;
+  let rangeMax = st.range;
+  for (const g of garrisoned) {
+    const ust = world.stat(g.owner, g.type);
+    if (ust.range > 0) { shooters.push({ g, ust, r: ust.range + 1 + high }); rangeMax = Math.max(rangeMax, ust.range + 1 + high); } else melee++;
+  }
   const targets = [];
-  world.forUnitsNear(b.x, b.y, st.range + b.w / 2 + 1, (v) => {
+  world.forUnitsNear(b.x, b.y, rangeMax + b.w / 2 + 1, (v) => {
     if (v.owner === b.owner || v.owner < 0 || v.dead || v.inside) return;
     if (DEFS[v.type].onlyTargets) return; // les béliers sont insensibles aux flèches de toute façon
-    const d = distEdge(v.x, v.y, b) ;
-    if (d <= st.range) targets.push({ v, d });
+    const d = distEdge(v.x, v.y, b);
+    if (d <= rangeMax) targets.push({ v, d });
   });
   if (!targets.length) { b.cd = 6; return; }
   targets.sort((a, c) => a.d - c.d);
-  let garr = 0;
-  for (const id of b.garrison) {
-    const g = world.get(id);
-    if (g && isMilitary(DEFS[g.type])) garr++;
+  // cible prioritaire désignée par le joueur : tout le monde la vise tant qu'elle est à portée
+  if (b.focus) {
+    const f = world.get(b.focus);
+    if (!f || f.dead || f.owner === b.owner || f.owner < 0) b.focus = 0;
+    else {
+      const fd = distEdge(f.x, f.y, b);
+      const k = targets.findIndex((q) => q.v === f);
+      if (k >= 0) { const [q] = targets.splice(k, 1); targets.unshift(q); b.focusActive = true; }
+      else if (f.cls === 'building' && fd <= rangeMax && !DEFS[f.type].capture) { targets.unshift({ v: f, d: fd }); b.focusActive = true; }
+      else b.focusActive = false;
+    }
   }
-  const n = st.splash > 0 ? 1 + Math.floor(garr / 2) : Math.min(st.arrows + garr, 14);
-  if (n <= 0) { b.cd = 6; return; }
-  const def2 = DEFS[b.type];
-  for (let i = 0; i < n; i++) {
-    const t = targets[i % targets.length].v;
-    const tst = world.stat(t.owner, t.type);
-    const dmg = calcDamage(st, tst, DEFS[t.type]);
-    const dx = t.x - b.x;
-    const dy = t.y - b.y;
-    const dist = Math.hypot(dx, dy);
-    const flight = Math.max(2, Math.round(dist / (def2.projSpeed || 14) / DT));
+  const focusFirst = !!(b.focus && b.focusActive && targets.length && targets[0].v.id === b.focus);
+  const shoot = (t, kind, sst, dmg, speed, splash, from) => {
+    const dist = Math.hypot(t.x - b.x, t.y - b.y);
+    const flight = Math.max(2, Math.round(dist / (speed || 14) / DT));
     const ox = b.x + (world.rng() - 0.5) * (b.w * 0.4);
     const oy = b.y + (world.rng() - 0.5) * (b.h * 0.4);
     world.projectiles.push({
-      kind: def2.projectile || 'arrow', x0: ox, y0: oy, x1: t.x, y1: t.y, t0: world.tick, t1: world.tick + flight,
-      attacker: b.id, owner: b.owner, target: st.splash > 0 ? 0 : t.id, st, dmg, splash: st.splash,
+      kind, x0: ox, y0: oy, x1: t.x, y1: t.y, t0: world.tick, t1: world.tick + flight,
+      attacker: b.id, owner: b.owner, target: splash > 0 ? 0 : t.id, st: sst, dmg, splash,
     });
-    world.emit({ k: 'proj', kind: def2.projectile || 'arrow', x0: ox, y0: oy, x1: t.x, y1: t.y, dur: flight, x: ox, y: oy, from: 'b' });
+    world.emit({ k: 'proj', kind, x0: ox, y0: oy, x1: t.x, y1: t.y, dur: flight, x: ox, y: oy, from });
+  };
+  // tirs du bâtiment lui-même (et des soldats de mêlée abrités)
+  const near = targets.filter((q) => q.d <= st.range);
+  const nb = st.splash > 0 ? 1 + Math.floor(garrisoned.length / 2) : Math.min(st.arrows + melee, 14);
+  if (near.length) {
+    for (let i = 0; i < nb; i++) {
+      const t = focusFirst && near.some((q) => q.v.id === b.focus) ? world.get(b.focus) : near[i % near.length].v;
+      shoot(t, def.projectile || 'arrow', st, calcDamage(st, world.stat(t.owner, t.type), DEFS[t.type]), def.projSpeed, st.splash, 'b');
+    }
+  }
+  // tirs des archers postés : chacun vise la cible la plus proche dans sa portée
+  for (const sh of shooters) {
+    const pick = (focusFirst && targets[0].d <= sh.r) ? targets[0] : targets.find((q) => q.d <= sh.r);
+    if (!pick) continue;
+    const t = pick.v;
+    const gd = DEFS[sh.g.type];
+    shoot(t, gd.projectile || 'arrow', sh.ust, calcDamage(sh.ust, world.stat(t.owner, t.type), DEFS[t.type]) * 1.15, gd.projSpeed, sh.ust.splash, 'b');
   }
   b.cd = Math.max(1, Math.round(st.rof / DT));
 }

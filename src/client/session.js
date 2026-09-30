@@ -19,7 +19,7 @@ export class HostSession {
     this.cfg = cfg;
     this.world = new World(cfg);
     this.myIdx = 0;
-    this.state = new ClientState({ myIdx: 0, mapSeed: cfg.mapSeed });
+    this.state = new ClientState({ myIdx: 0, mapSeed: cfg.mapSeed, nPlayers: (cfg.players || []).length });
     this.state.revealMap = !!cfg.revealMap;
     this.speed = cfg.speed || 1;
     this.builder = new SnapshotBuilder(this.world, 0);
@@ -94,9 +94,9 @@ export class HostSession {
 
 /** Partie hébergée ailleurs : on reçoit des instantanés et on envoie des commandes. */
 export class GuestSession {
-  constructor({ send, mapSeed, myIdx = 1, revealMap = false }) {
+  constructor({ send, mapSeed, myIdx = 1, revealMap = false, nPlayers = 2 }) {
     this.myIdx = myIdx;
-    this.state = new ClientState({ myIdx, mapSeed });
+    this.state = new ClientState({ myIdx, mapSeed, nPlayers });
     this.state.revealMap = revealMap;
     this.send = send;
     this.stopped = false;

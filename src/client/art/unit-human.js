@@ -9,6 +9,10 @@ import {
 import * as G from './unit-gear.js';
 
 /** Proportions de base (z = 1 : villageois de 30 px). */
+/** Grossissement de la tête et des mains (silhouette héroïque, lisible à zoom 0,6). */
+export const HEAD_K = 1.14;
+export const HAND_R = 1.2;
+
 export const BODY = {
   foot: 1.0,
   thigh: 5.8,
@@ -79,7 +83,7 @@ export function rig(sp, P) {
   const shF = tf(BODY.shF[0], BODY.shF[1]);
   const neck = tf(BODY.neck[0], BODY.neck[1]);
   const headA = P.lean * 0.7 + P.head;
-  const [hdx, hdy] = rot(0.25 * z, -(0.7 + BODY.headR * 0.92) * z, headA);
+  const [hdx, hdy] = rot(0.25 * z, -(0.7 + BODY.headR * 0.92 * HEAD_K) * z, headA);
   const head = [neck[0] + hdx, neck[1] + hdy];
   const U = BODY.upper * z;
   const Fo = BODY.fore * z;
@@ -136,10 +140,22 @@ export function rig(sp, P) {
 // Jambes
 // ---------------------------------------------------------------------------
 
+/** Dégradé diagonal de volume (lumière chaude côté soleil, ombre froide à l'opposé), à poser sur une forme déjà peinte. */
+export function volGrad(ctx, x0, x1, y0, y1, a1 = 0.16, a2 = 0.26) {
+  const lit = light.s < 0 ? x0 : x1;
+  const dark = light.s < 0 ? x1 : x0;
+  const g = ctx.createLinearGradient(lit, y0, dark, y1);
+  g.addColorStop(0, `rgba(255,240,205,${a1})`);
+  g.addColorStop(0.42, 'rgba(255,240,205,0)');
+  g.addColorStop(0.62, 'rgba(10,18,50,0)');
+  g.addColorStop(1, `rgba(10,18,50,${a2})`);
+  return g;
+}
+
 function legPath(ctx, z, hip, knee, ank) {
   ctx.beginPath();
-  capsule(ctx, hip[0], hip[1], 1.65 * z, knee[0], knee[1], 1.22 * z);
-  capsule(ctx, knee[0], knee[1], 1.22 * z, ank[0], ank[1], 0.92 * z);
+  capsule(ctx, hip[0], hip[1], 1.78 * z, knee[0], knee[1], 1.32 * z);
+  capsule(ctx, knee[0], knee[1], 1.32 * z, ank[0], ank[1], 0.98 * z);
 }
 
 function drawLeg(ctx, sp, hip, knee, ank, shinA, far) {
@@ -150,6 +166,11 @@ function drawLeg(ctx, sp, hip, knee, ank, shinA, far) {
   legPath(ctx, z, hip, knee, ank);
   // Braies à carreaux : remplissage à motif (sans découpage, beaucoup plus rapide)
   ctx.fillStyle = L.kind === 'check' ? checkPattern(ctx, base, tone(L.c2, dk), 2.6 * z) : base;
+  ctx.fill();
+  // Volume : cuisse et mollet arrondis (lumière au-dessus, ombre sous la jambe)
+  const lx0 = Math.min(hip[0], knee[0], ank[0]) - 2.2 * z;
+  const lx1 = Math.max(hip[0], knee[0], ank[0]) + 2.2 * z;
+  ctx.fillStyle = volGrad(ctx, lx0, lx1, hip[1], ank[1], far ? 0.05 : 0.17, far ? 0.3 : 0.3);
   ctx.fill();
   ctx.strokeStyle = edge(base, 0.6);
   ctx.lineWidth = 0.7;
@@ -194,9 +215,11 @@ function drawLeg(ctx, sp, hip, knee, ank, shinA, far) {
   const fr = clamp(-shinA * 0.6, -0.6, 1.2);
   const [fx, fy] = rot(1.0 * z, 0.35 * z, fr);
   ctx.beginPath();
-  ell(ctx, ank[0] + fx, ank[1] + fy, 1.75 * z, 0.95 * z, fr);
+  ell(ctx, ank[0] + fx, ank[1] + fy, 1.95 * z, 1.05 * z, fr);
   const sc = tone(sp.shoes, dk);
   paint(ctx, sc, edge(sc, 0.7), 0.6);
+  // Reflet sur le cuir du soulier
+  line(ctx, ank[0] + fx - 0.6 * z, ank[1] + fy - 0.45 * z, ank[0] + fx + 0.7 * z, ank[1] + fy - 0.5 * z, rgba(tone(sc, 0.55), far ? 0.3 : 0.55), 0.35 * z);
 }
 
 // ---------------------------------------------------------------------------
@@ -228,7 +251,7 @@ function drawArm(ctx, sp, sh, el, hand, far) {
   cu = tone(cu, dk);
   cf = tone(cf, dk);
   ctx.beginPath();
-  capsule(ctx, sh[0], sh[1], 1.45 * z, el[0], el[1], 1.1 * z);
+  capsule(ctx, sh[0], sh[1], 1.55 * z, el[0], el[1], 1.18 * z);
   const ax0 = Math.min(sh[0], el[0]) - 1.5 * z;
   const ax1 = Math.max(sh[0], el[0]) + 1.5 * z;
   if (sl === 'mail') {
@@ -240,9 +263,13 @@ function drawArm(ctx, sp, sh, el, hand, far) {
     ctx.strokeStyle = edge(cu);
     ctx.lineWidth = 0.65;
     ctx.stroke();
-  } else paint(ctx, sideGrad(ctx, ax0, ax1, cu, 0.18, -0.2), edge(cu), 0.65);
+  } else {
+    paint(ctx, sideGrad(ctx, ax0, ax1, cu, 0.18, -0.2), edge(cu), 0.65);
+    ctx.fillStyle = volGrad(ctx, ax0, ax1, Math.min(sh[1], el[1]) - 1.5 * z, Math.max(sh[1], el[1]) + 1.5 * z, far ? 0.04 : 0.15, 0.26);
+    ctx.fill();
+  }
   ctx.beginPath();
-  capsule(ctx, el[0], el[1], 1.1 * z, hand[0], hand[1], sl === 'robe' ? 1.25 * z : 0.9 * z);
+  capsule(ctx, el[0], el[1], 1.18 * z, hand[0], hand[1], sl === 'robe' ? 1.3 * z : 0.98 * z);
   paint(ctx, cf, edge(cf), 0.65);
   if (sp.paint && sl === 'bare') {
     ctx.strokeStyle = rgba('#2f55b8', far ? 0.5 : 0.8);
@@ -272,7 +299,7 @@ function drawArm(ctx, sp, sh, el, hand, far) {
   }
   const hc = tone(sp.gloves || sp.skin, dk);
   ctx.beginPath();
-  ell(ctx, hand[0], hand[1], 1.0 * z, 1.0 * z);
+  ell(ctx, hand[0], hand[1], HAND_R * z, HAND_R * z);
   paint(ctx, hc, edge(hc, 0.7), 0.6);
 }
 
@@ -327,13 +354,23 @@ function drawSkirt(ctx, sp, R, P, color, hem, mail, band) {
     ctx.stroke();
   } else {
     paint(ctx, sideGrad(ctx, xl, xr, color, 0.15, -0.3, bot), edge(color), 0.7);
-    // Pli
+    ctx.fillStyle = volGrad(ctx, xl, xr, top, bot, 0.14, 0.3);
+    ctx.fill();
+    // Plis du tissu : un grand pli central et deux plis de côté qui s'évasent vers l'ourlet
     ctx.strokeStyle = rgba(tone(color, -0.45), 0.5);
     ctx.lineWidth = 0.45 * z;
     ctx.beginPath();
     const mx = (xn + xf) / 2;
     ctx.moveTo(mx, top + 1.2 * z);
     ctx.lineTo(mx + (xn - xf) * 0.1, bot + 0.3 * z);
+    ctx.moveTo(mx - 1.7 * z, top + 1.6 * z);
+    ctx.quadraticCurveTo(mx - 2.0 * z, (top + bot) / 2, mx - 2.6 * z - (xn - xf) * 0.05, bot);
+    ctx.stroke();
+    ctx.strokeStyle = rgba(tone(color, 0.5), 0.35);
+    ctx.lineWidth = 0.4 * z;
+    ctx.beginPath();
+    ctx.moveTo(mx - 2.4 * z, top + 1.4 * z);
+    ctx.quadraticCurveTo(mx - 3.0 * z, (top + bot) / 2, mx - 3.5 * z, bot - 0.6 * z);
     ctx.stroke();
   }
   if (band) {
@@ -377,6 +414,9 @@ function drawTorso(ctx, sp, R, P) {
   const base = naked ? sp.skin : sp.robe || sp.tunic;
   torsoPath(ctx);
   paint(ctx, sideGrad(ctx, -3.9, 4.1, base, 0.2, -0.28, -4), edge(base), lw);
+  // Volume du buste : poitrine éclairée, flanc et taille dans l'ombre froide
+  ctx.fillStyle = volGrad(ctx, -4.2, 4.6, -9, 0.6, 0.2, 0.3);
+  ctx.fill();
   if (naked) {
     // Pectoraux et abdominaux suggérés
     ctx.strokeStyle = rgba(tone(sp.skin, -0.35), 0.6);
@@ -587,7 +627,11 @@ function drawCape(ctx, sp, R, P) {
     ctx.strokeStyle = edge(c, 0.7);
     ctx.lineWidth = 0.7 / z;
     ctx.stroke();
-  } else paint(ctx, sideGrad(ctx, -6 * w, 2, c, 0.12, -0.35, 0), edge(c, 0.7), 0.7 / z);
+  } else {
+    paint(ctx, sideGrad(ctx, -6 * w, 2, c, 0.12, -0.35, 0), edge(c, 0.7), 0.7 / z);
+    ctx.fillStyle = volGrad(ctx, -6 * w, 2, -8, bot, 0.14, 0.3);
+    ctx.fill();
+  }
   ctx.strokeStyle = rgba(tone(c, -0.45), 0.55);
   ctx.lineWidth = 0.45;
   ctx.beginPath();
@@ -615,7 +659,7 @@ function headFrame(ctx, R) {
   ctx.save();
   ctx.translate(R.head[0], R.head[1]);
   ctx.rotate(R.headA);
-  ctx.scale(R.z, R.z);
+  ctx.scale(R.z * HEAD_K, R.z * HEAD_K);
 }
 
 /** Cheveux longs et capuches retombant dans le dos : dessinés avant le torse. */
@@ -751,6 +795,60 @@ function drawHair(ctx, sp, r, lw) {
     ctx.quadraticCurveTo(0.6, -1.9, -0.6, -0.6);
     ctx.quadraticCurveTo(-1.2, 0.6, -r * 0.95, 1.2);
     paint(ctx, sideGrad(ctx, -r - 2, r + 1, c, 0.3, -0.2, -2), edge(c, 0.8), lw);
+    return;
+  }
+  if (st === 'swept') {
+    // Cheveux gaulois chaulés (eau de chaux) : plaqués en arrière et relevés en crinière de mèches raides
+    ctx.beginPath();
+    ctx.moveTo(r * 0.72, -r * 0.55);
+    ctx.quadraticCurveTo(r * 0.3, -r - 0.9, -0.4, -r - 1.1);
+    const tips = [[-1.4, -r - 3.4], [-3.4, -r - 3.0], [-5.2, -r - 1.8], [-6.3, -1.6], [-5.6, 0.6]];
+    let px = -0.4;
+    let py = -r - 1.1;
+    for (const [tx, ty] of tips) {
+      ctx.quadraticCurveTo((px + tx) / 2 + 0.6, (py + ty) / 2 - 0.5, tx, ty);
+      ctx.lineTo((px + tx) / 2 + 0.6 - (tx < -4 ? 0.2 : 0), (py + ty) / 2 + 1.5);
+      px = tx;
+      py = ty;
+    }
+    ctx.quadraticCurveTo(-r - 0.6, 2.6, -r * 0.6, 2.3);
+    ctx.quadraticCurveTo(-1.3, 0.8, -0.95, -0.5);
+    ctx.quadraticCurveTo(-0.3, -1.5, 0.6, -1.8);
+    ctx.quadraticCurveTo(r * 0.5, -1.4, r * 0.72, -r * 0.55);
+    paint(ctx, sideGrad(ctx, -r - 6, r, c, 0.3, -0.2, -2), edge(c, 0.75), lw);
+    ctx.strokeStyle = rgba(tone(c, -0.3), 0.55);
+    ctx.lineWidth = 0.35;
+    ctx.beginPath();
+    ctx.moveTo(1.0, -r);
+    ctx.quadraticCurveTo(-2.5, -r - 1.5, -5.4, -r - 1.0);
+    ctx.moveTo(0.4, -r + 1.0);
+    ctx.quadraticCurveTo(-3, -r, -5.8, -1.6);
+    ctx.stroke();
+    return;
+  }
+  if (st === 'bowl') {
+    // Coupe « au bol » franque : calotte lisse, frange droite au front, nuque dégagée et oreille visible
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.74, 1.9);
+    ctx.arc(0, -0.1, r + 0.55, PI * 0.8, PI * 1.9);
+    ctx.lineTo(r * 0.78, -1.75);
+    ctx.quadraticCurveTo(r * 0.2, -2.1, -0.4, -1.8);
+    ctx.quadraticCurveTo(-0.9, -1.2, -1.15, 0.4);
+    ctx.quadraticCurveTo(-1.3, 1.4, -r * 0.74, 1.9);
+    paint(ctx, sideGrad(ctx, -r - 0.6, r, c, 0.3, -0.25, -2), edge(c, 0.75), lw);
+    ctx.strokeStyle = rgba(tone(c, -0.35), 0.55);
+    ctx.lineWidth = 0.35;
+    ctx.beginPath();
+    ctx.moveTo(-2.6, -2.6);
+    ctx.quadraticCurveTo(-0.8, -3.6, 1.4, -3.2);
+    ctx.moveTo(-3.3, -0.4);
+    ctx.quadraticCurveTo(-2.6, -2.0, -1.2, -2.6);
+    ctx.stroke();
+    ctx.strokeStyle = rgba(tone(c, 0.5), 0.55);
+    ctx.beginPath();
+    ctx.moveTo(-1.2, -3.4);
+    ctx.quadraticCurveTo(0.4, -4.0, 2.0, -3.2);
+    ctx.stroke();
     return;
   }
   if (st === 'tonsure') {
@@ -898,24 +996,86 @@ function drawHelmet(ctx, sp, r, lw) {
     }
     return;
   }
-  // Casques gaulois : calotte ronde (bronze ou fer), bouton sommital, couvre-nuque
+  // Casques gaulois : calotte ronde (bronze ou fer), bouton sommital, couvre-nuque, paragnathides.
+  // coolus : calotte hémisphérique lisse, visière et large couvre-nuque ; montefortino : haut bouton central et
+  // couvre-nuque plat ; agen : calotte de fer à bandeau décoré, paragnathides et cimier de crin facultatif.
+  const flat = k === 'coolus';
+  // Couvre-nuque évasé (derrière la calotte)
+  ctx.beginPath();
+  ctx.moveTo(-r - 0.3, -0.6);
+  ctx.quadraticCurveTo(-r - 2.3, 0.3, -r - 2.6, 2.2);
+  ctx.quadraticCurveTo(-r - 0.9, 1.9, -r * 0.4, 0.7);
+  ctx.closePath();
+  paint(ctx, tone(c, -0.18), edge(c, 0.8), lw * 0.8);
   ctx.beginPath();
   ctx.moveTo(-r - 0.6, 0.3);
   ctx.arc(0, -0.25, r + 0.55, PI * 0.97, PI * 1.94);
   ctx.quadraticCurveTo(0.4, -1.3, -r - 0.6, 0.3);
-  paint(ctx, ballGrad(ctx, -0.8, -2.3, r + 1.4, c, 0.45, -0.3), edge(c, 0.8), lw);
-  // Rebord
+  paint(ctx, ballGrad(ctx, -0.8, -2.3, r + 1.4, c, 0.5, -0.32), edge(c, 0.8), lw);
+  // Reflet de calotte
+  ctx.strokeStyle = rgba('#fffbe8', 0.55);
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.75, -r * 0.45);
+  ctx.quadraticCurveTo(-r * 0.4, -r - 0.25, 0.5, -r - 0.2);
+  ctx.stroke();
+  // Rebord / bandeau
   ctx.beginPath();
   ctx.moveTo(-r - 1.3, 0.8);
   ctx.quadraticCurveTo(0.2, -1.0, r + 0.7, -0.8);
   ctx.strokeStyle = tone(c, -0.3);
-  ctx.lineWidth = 0.9;
+  ctx.lineWidth = flat ? 1.15 : 0.9;
   ctx.stroke();
-  // Bouton
-  ctx.beginPath();
-  ell(ctx, -0.5, -r - 0.95, 0.75, 0.7);
-  paint(ctx, tone(c, 0.15), edge(c, 0.8), lw);
-  if (k === 'agen' || k === 'winged') {
+  if (k === 'agen') {
+    // Bandeau décoré de clous d'or
+    ctx.fillStyle = h.stud || G.GOLD;
+    for (const t of [0.1, 0.27, 0.44, 0.61, 0.78, 0.92]) {
+      const x = -r - 1.0 + t * (2 * r + 1.6);
+      ctx.beginPath();
+      ell(ctx, x, 0.05 - Math.sin(t * PI) * 0.72, 0.28, 0.28);
+      ctx.fill();
+    }
+  }
+  if (h.crest && (k === 'agen' || k === 'coolus' || k === 'montefortino')) {
+    // Cimier de crin (aux couleurs de l'équipe ou rouge) en arc de la nuque au front
+    const cc = h.crest;
+    ctx.beginPath();
+    ctx.moveTo(-r - 0.4, -1.3);
+    ctx.bezierCurveTo(-r - 1.4, -r - 2.6, -2.2, -r - 4.2, 0.6, -r - 3.6);
+    ctx.bezierCurveTo(r * 0.7, -r - 3.2, r + 0.4, -r, r + 0.3, -1.2);
+    ctx.quadraticCurveTo(r * 0.5, -r - 0.9, 0, -r - 1.1);
+    ctx.quadraticCurveTo(-r * 0.6, -r - 0.8, -r - 0.4, -1.3);
+    paint(ctx, sideGrad(ctx, -r - 1.5, r + 0.4, cc, 0.3, -0.25, -r - 2), edge(cc, 0.8), lw);
+    ctx.strokeStyle = rgba(tone(cc, -0.4), 0.55);
+    ctx.lineWidth = 0.3;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const x = -r + i * 1.4;
+      ctx.moveTo(x, -r - 1.0 - Math.sin(((i + 0.5) / 6) * PI) * 1.0);
+      ctx.lineTo(x - 0.25, -r - 3.0 - Math.sin(((i + 0.5) / 6) * PI) * 0.7);
+    }
+    ctx.stroke();
+  }
+  // Bouton / cimier central
+  if (k === 'montefortino') {
+    ctx.beginPath();
+    poly(ctx, [-1.5, -r - 0.3, -1.0, -r - 1.9, 0.0, -r - 2.4, 0.5, -r - 0.9]);
+    paint(ctx, ballGrad(ctx, -0.5, -r - 1.5, 1.4, c, 0.5, -0.25), edge(c, 0.8), lw);
+  } else if (!h.crest) {
+    ctx.beginPath();
+    ell(ctx, -0.5, -r - 0.95, flat ? 0.55 : 0.75, flat ? 0.5 : 0.7);
+    paint(ctx, tone(c, 0.15), edge(c, 0.8), lw);
+  }
+  if (flat) {
+    // Petite visière (bord relevé au-dessus du front)
+    ctx.beginPath();
+    ctx.moveTo(r - 0.6, -1.25);
+    ctx.quadraticCurveTo(r + 1.1, -1.35, r + 1.4, -0.3);
+    ctx.quadraticCurveTo(r + 0.4, -0.75, r - 0.9, -0.5);
+    ctx.closePath();
+    paint(ctx, tone(c, 0.06), edge(c, 0.8), lw * 0.8);
+  }
+  if (k === 'agen' || k === 'winged' || k === 'montefortino') {
     // Paragnathide (protège-joue)
     ctx.beginPath();
     poly(ctx, [-0.2, -0.6, 1.4, -0.4, 1.3, 2.6, 0.1, 3.0]);
@@ -958,6 +1118,13 @@ function drawWeapon(ctx, sp, R, P, which) {
       break;
     case 'seax':
       G.seax(ctx, x, y, a, z);
+      break;
+    case 'scramasax':
+      // Scramasaxe : long coutelas franc à un tranchant, lame large et pommeau simple
+      G.seax(ctx, x, y, a, z, 8.6);
+      break;
+    case 'angon':
+      G.angon(ctx, x, y, a, z, { fwd: sp.spearFwd || 10, back: sp.spearBack || 7 });
       break;
     case 'spear':
       G.spear(ctx, x, y, a, z, { fwd: sp.spearFwd || 11, back: sp.spearBack || 8 });

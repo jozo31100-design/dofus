@@ -8,7 +8,52 @@ import { francisca } from './unit-gear.js';
 const spriteCache = new Map();
 
 /** Nombre de variantes distinctes par type de ressource. */
-export const NODE_VARIANTS = { tree: TREE_KINDS.length * 2, berries: 3, gold: 3, stone: 3, carcass: 2, fish: 4 };
+export const NODE_VARIANTS = { tree: TREE_KINDS.length * 4, berries: 3, gold: 3, stone: 3, carcass: 2, fish: 4 };
+
+
+/**
+ * Éclairage « soleil chaud » appliqué après le dessin d'un objet (source-atop : seulement sur les pixels
+ * déjà peints) : lumière dorée en haut à gauche, ombre froide violacée en bas à droite, reflet de contour.
+ * box = [gauche, haut, droite, bas] en coordonnées locales ; k = intensité.
+ */
+function sunLight(ctx, box, k = 1) {
+  const [x0, y0, x1, y1] = box;
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-atop';
+  const g = ctx.createLinearGradient(x0, y0, x1, y1);
+  g.addColorStop(0, `rgba(255,214,120,${0.3 * k})`);
+  g.addColorStop(0.45, 'rgba(255,214,120,0)');
+  g.addColorStop(0.6, 'rgba(70,40,120,0)');
+  g.addColorStop(1, `rgba(62,36,118,${0.3 * k})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+  // pied plus sombre (occlusion ambiante)
+  const a = ctx.createLinearGradient(0, -6, 0, 3);
+  a.addColorStop(0, 'rgba(30,20,60,0)');
+  a.addColorStop(1, `rgba(30,20,60,${0.3 * k})`);
+  ctx.fillStyle = a;
+  ctx.fillRect(x0, -6, x1 - x0, 12);
+  ctx.restore();
+}
+
+/** Ombre portée violacée, allongée vers le bas-droite. */
+function castShadow(rx, ry, len = 9, a = 0.36) {
+  return (ctx) => {
+    const cx = 3 + len * 0.5;
+    const g = ctx.createRadialGradient(cx, 2, 0, cx, 2, rx + len);
+    g.addColorStop(0, `rgba(38,24,70,${a})`);
+    g.addColorStop(0.65, `rgba(38,24,70,${a * 0.62})`);
+    g.addColorStop(1, 'rgba(38,24,70,0)');
+    ctx.save();
+    ctx.translate(cx, 2);
+    ctx.scale(1, ry / (rx + len));
+    ctx.beginPath();
+    ctx.arc(0, 0, rx + len, 0, TAU);
+    ctx.restore();
+    ctx.fillStyle = g;
+    ctx.fill();
+  };
+}
 
 function groundShadow(rx, ry, cx = 2, a = 0.28) {
   return (ctx) => {
@@ -64,13 +109,13 @@ export function getNodeSprite(type, variant = 0, frac = 1) {
   if (type === 'tree') {
     const kind = v % TREE_KINDS.length;
     const seed = Math.floor(v / TREE_KINDS.length) + 1;
-    r = bake([-40, -84, 46, 16], 1, (ctx) => { h = drawTree(ctx, kind, seed); }, (ctx) => treeShadow(ctx, kind), ['#0f1e08', 0.38]);
+    r = bake([-40, -84, 46, 16], 1, (ctx) => { h = drawTree(ctx, kind, seed); sunLight(ctx, [-34, -84, 34, 4], 1); }, (ctx) => treeShadow(ctx, kind), ['#14200c', 0.42]);
   } else if (type === 'berries') {
-    r = bake([-22, -32, 24, 10], 1, (ctx) => { h = drawBerries(ctx, v, q); }, groundShadow(15, 6, 3), ['#10200a', 0.5]);
+    r = bake([-22, -32, 24, 10], 1, (ctx) => { h = drawBerries(ctx, v, q); sunLight(ctx, [-16, -30, 16, 4], 0.9); }, castShadow(13, 5, 5, 0.34), ['#16240e', 0.5]);
   } else if (type === 'gold') {
-    r = bake([-38, -40, 40, 22], 1, (ctx) => { h = drawGold(ctx, v, q); }, dirtShadow('#6e5a40'), ['#1c140a', 0.5]);
+    r = bake([-38, -40, 40, 22], 1, (ctx) => { h = drawGold(ctx, v, q); sunLight(ctx, [-30, -36, 30, 14], 0.8); }, dirtShadow('#5c4a4a'), ['#24160a', 0.55]);
   } else if (type === 'stone') {
-    r = bake([-38, -40, 40, 22], 1, (ctx) => { h = drawStone(ctx, v, q); }, dirtShadow('#766c5c'), ['#1c1a14', 0.5]);
+    r = bake([-38, -40, 40, 22], 1, (ctx) => { h = drawStone(ctx, v, q); sunLight(ctx, [-30, -36, 30, 14], 1); }, dirtShadow('#5e5668'), ['#1e1c20', 0.55]);
   } else if (type === 'fish') {
     // Banc de poissons : posé sur l'eau, sans ombre ni contour (rides claires et poissons argentés)
     r = bake([-34, -34, 34, 20], 1, (ctx) => { h = drawFish(ctx, v, q); }, null, null);

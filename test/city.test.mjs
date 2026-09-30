@@ -224,3 +224,68 @@ test('tour de siège détruite : les passagers ressortent', () => {
   assert.equal(m.inside, 0);
   assert.ok(!m.dead);
 });
+
+test('escalade : on peut franchir aussi ses propres murs, et un obstacle de l\'autre côté est contourné', () => {
+  const w = two();
+  const pl = w.players[0];
+  pl.techs.add('ladders'); pl.techList.push('ladders');
+  const wall = w.addBuilding('wall', 0, 50, 50, true);
+  w.addNode('tree', 48, 50); // un arbre pile en face de la case d'arrivée
+  const u = w.addUnit('swordsman', 0, 51.5, 50.5);
+  applyCommand(w, 0, { c: 'climb', ids: [u.id], tid: wall.id });
+  run(w, 14);
+  assert.ok(!u.climbing);
+  assert.ok(u.x < 49.6, `passé de l'autre côté malgré l'arbre (x=${u.x.toFixed(2)})`);
+});
+
+test('une porte se pose à la place d\'un mur existant (60 % rendus, garnison libérée)', () => {
+  const w = two();
+  const pl = w.players[0];
+  pl.age = 2; pl.res.stone = 1000; pl.res.wood = 1000;
+  const hall = w.playerBuildings(0, 'hall')[0];
+  const tx = hall.tx + 9;
+  const ty = hall.ty + 6;
+  const wall = w.addBuilding('wall', 0, tx, ty, true);
+  assert.match(placementError(w, pl, 'wall', tx, ty) || '', /occupé/);
+  assert.equal(placementError(w, pl, 'gate', tx, ty), null, 'la porte peut remplacer le mur');
+  const vils = w.playerUnits(0, 'villager').map((u) => u.id);
+  const s0 = pl.res.stone;
+  applyCommand(w, 0, { c: 'build', type: 'gate', tx, ty, ids: vils });
+  w.step();
+  assert.ok(wall.dead, 'le mur a disparu');
+  assert.equal(w.playerBuildings(0, 'gate').length, 1);
+  const c = w.stat(0, 'gate').cost.stone;
+  assert.equal(pl.res.stone, s0 - c + Math.floor(w.stat(0, 'wall').cost.stone * 0.6));
+});
+
+test('des archers postés sur un rempart tirent avec leurs propres caractéristiques', () => {
+  const w = two();
+  w.players[0].age = 3;
+  const hall = w.playerBuildings(0, 'hall')[0];
+  const wall = w.addBuilding('rampart', 0, hall.tx + 9, hall.ty + 5, true);
+  const archers = [0, 1, 2].map((i) => w.addUnit('archer', 0, wall.x + 1 + i * 0.4, wall.y + 1.5));
+  applyCommand(w, 0, { c: 'garrison', ids: archers.map((a) => a.id), tid: wall.id });
+  run(w, 15);
+  assert.equal(wall.garrison.length, 3, 'trois archers sur le rempart');
+  const foe = w.addUnit('swordsman', 1, wall.x + 7, wall.y);
+  const hp = foe.hp;
+  run(w, 6);
+  assert.ok(foe.hp < hp, 'les archers postés tirent à longue portée');
+});
+
+test('cible prioritaire : une tour tire sur l\'ennemi désigné et non sur le plus proche', () => {
+  const w = two();
+  w.players[0].age = 2;
+  const hall = w.playerBuildings(0, 'hall')[0];
+  const tower = w.addBuilding('tower', 0, hall.tx + 9, hall.ty + 5, true);
+  const near = w.addUnit('swordsman', 1, tower.x + 3, tower.y);
+  const far = w.addUnit('swordsman', 1, tower.x, tower.y + 6.5);
+  near.hp = far.hp = 1000; near.maxHp = far.maxHp = 1000;
+  applyCommand(w, 0, { c: 'focus', bids: [tower.id], tid: far.id });
+  run(w, 6);
+  assert.ok(far.hp < 1000, 'la cible désignée est touchée');
+  assert.equal(near.hp, 1000, 'le plus proche est épargné');
+  applyCommand(w, 0, { c: 'focus', bids: [tower.id], tid: 0 });
+  run(w, 5);
+  assert.ok(near.hp < 1000, 'sans désignation la tour reprend le plus proche');
+});

@@ -306,7 +306,10 @@ function tryClimbFallback(world, u, o) {
   return true;
 }
 
-/** Point de l'autre côté d'un mur, en face du point (fx, fy) : null s'il n'y a pas de place libre. */
+/**
+ * Point de l'autre côté d'un mur, en face du point (fx, fy) : on cherche la case libre la plus proche de l'axe
+ * (en s'écartant un peu le long du mur si des arbres ou des bâtiments gênent) ; null s'il n'y en a vraiment pas.
+ */
 function crossDest(world, u, t, fx, fy) {
   const dx = fx - t.x;
   const dy = fy - t.y;
@@ -314,13 +317,16 @@ function crossDest(world, u, t, fx, fy) {
   const sy = sx ? 0 : Math.sign(dy) || 1;
   const blocked = world.blockedOf(u);
   const S = world.S;
-  for (let k = 0; k < 5; k++) {
-    const px = t.x - sx * (t.w / 2 + 0.6 + k);
-    const py = t.y - sy * (t.h / 2 + 0.6 + k);
-    const cx = Math.floor(px) | 0;
-    const cy = Math.floor(py) | 0;
-    if (cx < 0 || cy < 0 || cx >= S || cy >= S) break;
-    if (!blocked[cy * S + cx]) return { x: sx ? px : fx, y: sy ? py : fy };
+  for (let k = 0; k < 6; k++) {
+    for (const off of [0, 1, -1, 2, -2, 3, -3]) {
+      let px = t.x - sx * (t.w / 2 + 0.6 + k);
+      let py = t.y - sy * (t.h / 2 + 0.6 + k);
+      if (sx) py = fy + off; else px = fx + off;
+      const cx = Math.floor(px);
+      const cy = Math.floor(py);
+      if (cx < 0 || cy < 0 || cx >= S || cy >= S) continue;
+      if (!blocked[cy * S + cx]) return { x: px, y: py };
+    }
   }
   return null;
 }
@@ -388,7 +394,7 @@ function doClimb(world, u, o, st) {
     if (r === 'failed') { finishOrder(u); return; }
     if (r !== 'reached') return;
     const dest = crossDest(world, u, t, u.x, u.y);
-    if (!dest) { finishOrder(u); return; }
+    if (!dest) { world.say(u.owner, 'Pas de place de l\'autre côté du mur.', 'warn'); finishOrder(u); return; }
     const tags = DEFS[t.type].tags;
     let time = tags.includes('great') ? CLIMB_TIME.great : tags.includes('stone') ? CLIMB_TIME.stone : CLIMB_TIME.wood;
     let assisted = false;

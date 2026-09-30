@@ -10,9 +10,11 @@ import {
   WOOD, WOOD_DARK, WOOD_LIGHT, INTERIOR,
   roundHut, thatchCone, coneRafters, openCyl, scaffoldRound, scaffoldBox, scaffold, shed, gableRoof, gableGeo, gableRafters,
   stakes, arcPts, linePts, wickerFence, railFence, ringWall, eaveBand, pyramidRoof, postScreen, stick, groundPatch,
+  longHouse, doorLocal, windowLocal,
 } from './building-parts.js';
+import { horse, hen, pig, laundry, trophyPole, charcoal } from './building-fauna.js';
 import {
-  pennant, carnyx, boarStandard, shieldLocal, barrel, sack, crate, logPile, logH, haystack, hayBale, anvil, glow, smoke,
+  pennant, carnyx, boarStandard, triskele, shieldLocal, barrel, sack, crate, logPile, logH, haystack, hayBale, anvil, glow, smoke,
   target, weaponRack, cart, millstone, millstoneUp, sawhorse, stumpAxe, trough, menhir, oak, well, campfire, debris, wheel,
 } from './building-props.js';
 
@@ -115,6 +117,10 @@ function house(g) {
     wickerFence(g, arcPts(-0.08, -0.08, 0.98, 0.05, 0.85, 0.2), 6);
     sack(g, 0.12, 0.8, 0, { s: 0.85 });
     barrel(g, -0.28, 0.82, 0, 0.8);
+    hen(g, 0.42, 0.88, { dir: 1 });
+    hen(g, 0.62, 0.78, { dir: -1, col: '#a8683a', tail: '#3a2a1a' });
+    laundry(g, -0.98, 0.3, -0.6, 0.92, 21);
+    smoke(g, 0.02, -0.04, 52, { h: 26, n: 6 });
   }
 }
 
@@ -234,40 +240,41 @@ function mining(g) {
 function barracks(g) {
   const st = g.stage;
   const tc = g.tc;
-  roundHut(g, {
-    x: -0.42, y: -0.36, r: 0.86, wallH: 23, R: 1.0, apex: 86, door: 1.5, doorW: 11, doorH: 16, posts: 9,
-    roofBand: tc.main, th: 5.5, band: '#a8553a', bandAt: 0.74,
-    wallDeco: st === 3 ? (c, X, Y, rx, ry) => {
-      for (const [t, v] of [[0.55, 0], [0.9, 1], [2.1, 1], [2.45, 0], [2.8, 1]]) roundShield(c, tc, X, Y, rx, ry, t, 12, 5.5, v);
+  // grande halle rectangulaire en poutres et torchis chaulé, toit de chaume (casernement d'un clan)
+  longHouse(g, {
+    x0: -1.3, y0: -1.12, x1: 0.22, y1: 0.86, plinthH: 3, plinthMat: MAT.dryStone, wallH: 26, ridgeH: 82, axis: 'y',
+    wallMat: MAT.daubFrame, roofMat: MAT.thatch, gableMat: MAT.daubFrame, heads: false, ov: 0.14, ovg: 0.12, th: 5.5, edge: THATCH_EDGE,
+    ridge: '#8a6a30', ridgeW: 4,
+    decoL: (c, w, h) => {
+      doorLocal(c, w / 2, h, 11, 17, { open: 0.45 });
+      if (st === 3) {
+        shieldLocal(c, tc, w * 0.17, h * 0.46, 4.4, 'gauls', 1);
+        shieldLocal(c, tc, w * 0.83, h * 0.46, 4.4, 'gauls', 0);
+      }
+    },
+    decoR: (c, w, h) => {
+      if (st === 3) {
+        for (let i = 0; i < 6; i++) shieldLocal(c, tc, w * (0.1 + 0.16 * i), h * 0.62, 4.8, 'gauls', i % 3);
+      } else for (const f of [0.25, 0.75]) windowLocal(c, w * f, h * 0.45, 4, 6);
+    },
+    gableDeco: st === 3 ? (c, w, h) => {
+      triskele(c, w / 2, h * 0.3, 6.5, '#e9d9a0');
     } : null,
   });
-  roundHut(g, { x: 0.72, y: -0.86, r: 0.38, wallH: 14, R: 0.47, apex: 44, door: 2.3, doorW: 6, doorH: 10, posts: 4, roofBand: tc.main, th: 4 });
-  apexPennant(g, -0.42, -0.36, 86, 16, 20);
   if (st === 3) {
-    weaponRack(g, 1.12, -0.05, 'y', 0.7);
-    // trophée : poteau portant boucliers et casque
-    const c = g.ctx;
-    const [px, py] = g.P(0.62, 0.72, 0);
-    postScreen(c, px, py, 24, 3, '#6a4a2c');
-    stick(c, px - 8, py - 17, px + 8, py - 18, '#6a4a2c', 1.6);
-    shieldLocal(c, tc, px - 6, py - 13, 4.2, 'gauls', 0);
-    shieldLocal(c, tc, px + 6, py - 14, 4.2, 'gauls', 1);
-    c.fillStyle = '#9aa0a6';
-    c.beginPath();
-    c.arc(px, py - 25, 3.4, PI, 0);
-    c.fill();
-    c.fillStyle = '#e8e2d0';
-    c.beginPath();
-    c.moveTo(px - 3, py - 26);
-    c.quadraticCurveTo(px - 8, py - 31, px - 5, py - 33);
-    c.quadraticCurveTo(px - 5, py - 29, px - 2, py - 27);
-    c.moveTo(px + 3, py - 26);
-    c.quadraticCurveTo(px + 8, py - 31, px + 5, py - 33);
-    c.quadraticCurveTo(px + 5, py - 29, px + 2, py - 27);
-    c.fill();
-    boarStandard(g, 1.05, 1.05, 0, 58, { dir: -1, s: 1.3 });
-    wickerFence(g, [[-0.2, 1.36], [0.4, 1.36], [1.36, 1.36], [1.36, 0.45]], 6);
-    barrel(g, 0.12, 1.02, 0, 0.9);
+    apexPennant(g, -0.54, -0.1, 82, 16, 22);
+    // autre bâtiment du clan : petit grenier rond, poteaux de trophées de chaque côté de la porte
+    roundHut(g, { x: 0.84, y: -0.92, r: 0.36, wallH: 14, R: 0.45, apex: 42, door: 2.3, doorW: 6, doorH: 10, posts: 4, roofBand: tc.main, th: 4 });
+    trophyPole(g, -1.38, 1.22, 40);
+    trophyPole(g, 0.15, 1.3, 36, { col: tc.main });
+    carnyx(g, -0.4, 1.12, 0, 34, { dir: 1, s: 1.2 });
+    weaponRack(g, 0.98, 0.16, 'y', 0.8);
+    boarStandard(g, 1.1, 1.05, 0, 58, { dir: -1, s: 1.3 });
+    barrel(g, -0.96, 1.05, 0, 0.9);
+    wickerFence(g, [[1.3, 0.55], [1.3, 1.36], [0.55, 1.36]], 6);
+    hen(g, 0.6, 1.0);
+  } else if (st === 2) {
+    roundHut(g, { x: 0.84, y: -0.92, r: 0.36, wallH: 14, R: 0.45, apex: 42, door: 2.3, doorW: 6, doorH: 10, posts: 4, roofBand: tc.main, th: 4 });
   }
 }
 
@@ -321,40 +328,44 @@ function stable(g) {
   });
   apexPennant(g, -0.48, -0.48, 66, 15, 18);
   if (st >= 2) {
-    const fence = [[-1.35, 0.55], [-0.2, 0.62], [0.62, 0.62], [0.62, -0.2], [0.55, -1.35]];
-    const out = [[-1.35, 1.35], [1.35, 1.35], [1.35, -1.35]];
     if (st === 3) {
       haystack(g, 1.0, -0.85, 0.3, 20);
       trough(g, 0.95, 0.2, 'y', 0.5);
       hayBale(g, -0.7, 1.0, 0, 'x');
       hayBale(g, -0.35, 1.05, 0, 'x');
       hayBale(g, -0.52, 1.02, 6, 'x');
+      // les chevaux gaulois, petits et robustes, dans l'enclos
+      horse(g, -0.08, 1.02, { dir: 1, col: '#8a5530', pose: 'graze', s: 1.2 });
+      horse(g, 1.05, 0.4, { dir: -1, col: '#b9b2a0', mane: '#8a8270', pose: 'look', blaze: true, s: 1.2 });
+      horse(g, 0.78, 1.1, { dir: -1, col: '#5b3a24', pose: 'stand', s: 1.15 });
     }
     railFence(g, [[-1.38, 0.75], [-1.38, 1.38], [0.0, 1.38], [1.38, 1.38], [1.38, 0.0], [1.38, -0.2]], 9, { col: '#8a6844' });
-    void fence;
-    void out;
   }
 }
 
 function forge(g) {
   const st = g.stage;
-  roundHut(g, {
-    x: -0.42, y: -0.42, r: 0.8, wallH: 21, R: 0.94, apex: 70, door: 1.9, doorW: 11, doorH: 15, posts: 0,
-    wallMat: MAT.dryStone, roofBand: g.tc.main, th: 5,
-    wallDeco: (c, X, Y, rx, ry) => {
-      // lueur du foyer par la porte
-      const t = 1.9;
-      const px = X + rx * Math.cos(t);
-      const py = Y - 6 + ry * Math.sin(t);
-      const gr = c.createRadialGradient(px, py, 0, px, py, 9);
-      gr.addColorStop(0, 'rgba(255,170,60,0.9)');
-      gr.addColorStop(1, 'rgba(255,120,30,0)');
-      if (g.stage === 3) {
+  // atelier de pierres sèches sous un toit de chaume (le forgeron est un personnage respecté)
+  longHouse(g, {
+    x0: -1.32, y0: -0.98, x1: 0.16, y1: 0.16, plinthH: 3, plinthMat: MAT.dryStone, wallH: 24, ridgeH: 66, axis: 'x',
+    wallMat: MAT.dryStone, roofMat: MAT.thatch, gableMat: MAT.planks, heads: false, ov: 0.14, ovg: 0.12, th: 5, edge: THATCH_EDGE,
+    ridge: '#8a6a30', ridgeW: 3.6,
+    decoL: (c, w, h) => {
+      doorLocal(c, w * 0.42, h, 13, 16, { open: 0.6 });
+      if (st === 3) {
+        const gr = c.createRadialGradient(w * 0.42, h - 6, 0, w * 0.42, h - 6, 11);
+        gr.addColorStop(0, 'rgba(255,190,80,0.85)');
+        gr.addColorStop(1, 'rgba(255,120,30,0)');
         c.fillStyle = gr;
-        c.fillRect(px - 9, py - 9, 18, 18);
+        c.fillRect(w * 0.42 - 11, h - 17, 22, 17);
       }
+      windowLocal(c, w * 0.8, h * 0.5, 4, 5);
     },
+    decoR: (c, w, h) => windowLocal(c, w * 0.5, h * 0.45, 4, 5),
   });
+  if (st === 3) {
+    charcoal(g, -1.1, 0.5);
+  }
   // bas fourneau d'argile (cheminée qui fume)
   const fx = 0.62;
   const fy = -0.5;

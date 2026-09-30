@@ -32,8 +32,8 @@ const CROUCH = { nT: 0.55, nS: -0.35, fT: 0.75, fS: -0.1 };
 // Positions de repos des bras selon la manière de tenir l'arme.
 export const REST = {
   tool: { nU: 0.12, nF: 0.42, wA: 0.5, fU: 0.08, fF: 0.3 },
-  sword: { nU: 0.28, nF: 1.15, wA: 2.25, fU: 0.2, fF: 1.3 },
-  spear: { nU: 0.32, nF: 2.05, wA: 3.08, fU: 0.2, fF: 1.3 },
+  sword: { nU: 0.28, nF: 1.15, wA: 2.25, fU: 0.3, fF: 1.45 },
+  spear: { nU: 0.32, nF: 2.05, wA: 3.08, fU: 0.3, fF: 1.45 },
   bow: { nU: 0.08, nF: 0.35, fU: 0.2, fF: 0.75, aim: 0.55 },
   xbow: { ik: 3, aim: 2.3 },
   staff: { nU: 0.34, nF: 1.95, wA: 3.04, fU: 0.14, fF: 0.75 },
@@ -51,6 +51,11 @@ export function idlePose(hold, p, carry) {
   o.nU += sway;
   o.wA += sway * 1.5;
   o.fU -= sway * 0.5;
+  // Transfert de poids lent et léger mouvement de tête : l'unité « vit » à l'arrêt
+  const shift = Math.sin(p * TAU + 2.2);
+  o.bx = (o.bx || 0) + shift * 0.22;
+  o.head = (o.head || 0) + Math.sin(p * TAU * 2 + 0.6) * 0.035;
+  o.lean = (o.lean || 0) + shift * 0.012 + b * 0.012;
   o.cape = 0.1 + 0.08 * b;
   if (carry) applyCarry(o, carry, 0);
   return o;

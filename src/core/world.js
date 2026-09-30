@@ -9,6 +9,7 @@ import {
   TRADE_RES,
 } from './defs.js';
 import { generateMap, WATER, FORD, DEFAULT_SEED } from './mapgen.js';
+import { generateArena } from './arena.js';
 import { PathGrid } from './path.js';
 import { mulberry32 } from './util.js';
 import { updateUnit, separateUnits, updateAnimal } from './units.js';
@@ -33,7 +34,9 @@ export class World {
     this.tick = 0;
     this.nextId = 1;
     this.rng = mulberry32((cfg.seed ?? 12345) >>> 0);
-    this.map = generateMap(cfg.mapSeed ?? DEFAULT_SEED);
+    const nPlayers = (cfg.players || []).length;
+    // 2 joueurs : le duel sur « La Rivière des Carnutes » ; 3 à 8 : la « Grande arène »
+    this.map = nPlayers > 2 ? generateArena(cfg.mapSeed ?? DEFAULT_SEED, nPlayers) : generateMap(cfg.mapSeed ?? DEFAULT_SEED);
     this.terrain = this.map.terrain;
     this.terrainBlock = new Uint8Array(S * S);
     for (let i = 0; i < S * S; i++) this.terrainBlock[i] = this.terrain[i] === WATER ? 1 : 0;

@@ -139,9 +139,13 @@ function roundCrown(ctx, K, rnd, cx, cy, rx, ry) {
 
 /** Dessine l'essence v (0..7) ; seed varie la silhouette. Renvoie la hauteur visible. */
 export function drawTree(ctx, v, seed) {
-  const K = TREE_KINDS[v % TREE_KINDS.length];
+  const K0 = TREE_KINDS[v % TREE_KINDS.length];
+  // seed 1..4 : silhouettes (1, 2) et teintes (3 : plus doré, 4 : plus frais) différentes
+  const tk = seed === 3 ? 0.07 : seed === 4 ? -0.08 : 0;
+  const K = tk ? { ...K0, leaf: tone(K0.leaf, tk), light: tone(K0.light, tk * 1.4), dark: tone(K0.dark, tk * 0.6) } : K0;
   const rnd = mulberry32(seed * 7919 + v * 131 + 17);
-  const H = K.h - (seed === 2 ? 4 : 0);
+  const H = Math.round(K.h * (seed === 2 ? 0.93 : seed === 4 ? 1.06 : 1));
+  seed = seed === 3 ? 1 : seed === 4 ? 2 : seed;
   const sk = seed === 2 ? 1.5 : -1; // léger penché selon la silhouette
   switch (K.id) {
     case 'pine': {
@@ -240,20 +244,27 @@ export function drawTree(ctx, v, seed) {
   return H;
 }
 
-/** Ombre portée d'un arbre (vers le bas-droite), à dessiner sous le sprite. */
+/** Ombre portée d'un arbre (vers le bas-droite, violacée), à dessiner sous le sprite. */
 export function treeShadow(ctx, v) {
   const K = TREE_KINDS[v % TREE_KINDS.length];
-  const w = K.id === 'poplar' ? 13 : K.id === 'fir' || K.id === 'pine' ? 17 : K.rx * 0.95;
-  const g = ctx.createRadialGradient(8, 2, 0, 8, 2, w + 7);
-  g.addColorStop(0, 'rgba(10,20,5,0.36)');
-  g.addColorStop(0.7, 'rgba(10,20,5,0.22)');
-  g.addColorStop(1, 'rgba(10,20,5,0)');
+  const w = K.id === 'poplar' ? 12 : K.id === 'fir' || K.id === 'pine' ? 16 : K.rx * 0.9;
+  const R = w + 14;
+  const cx = 12;
+  const g = ctx.createRadialGradient(cx, 3, 0, cx, 3, R);
+  g.addColorStop(0, 'rgba(40,24,72,0.46)');
+  g.addColorStop(0.6, 'rgba(40,24,72,0.3)');
+  g.addColorStop(1, 'rgba(40,24,72,0)');
   ctx.fillStyle = g;
   ctx.save();
-  ctx.translate(8, 2);
-  ctx.scale(1, 0.44);
+  ctx.translate(cx, 3);
+  ctx.scale(1, 0.42);
   ctx.beginPath();
-  ctx.arc(0, 0, w + 7, 0, TAU);
+  ctx.arc(0, 0, R, 0, TAU);
   ctx.restore();
+  ctx.fill();
+  // contact sombre au pied du tronc
+  ctx.fillStyle = 'rgba(28,16,50,0.5)';
+  ctx.beginPath();
+  ell(ctx, 1.5, 1.2, 5, 2);
   ctx.fill();
 }

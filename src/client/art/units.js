@@ -8,12 +8,13 @@
 import {
   PI, TAU, clamp, lerp, smooth, fract, setLightSide, bakeSprite, alive, SpriteCache, ScalePicker, blit,
 } from './unit-kit.js';
-import { drawHuman } from './unit-human.js';
+import { drawHuman, rig } from './unit-human.js';
 import { idlePose, walkPose, attackPose, workPose, diePose, full, WORK } from './unit-poses.js';
 import { drawHorse, gallopPose, standPose, fallPose } from './unit-horse.js';
 import { drawRam, drawCatapult } from './unit-siege.js';
 import { climbPose, drawLadder } from './unit-ladder.js';
-import { unitSpec, METRICS } from './unit-specs.js';
+import { METRICS } from './unit-specs.js';
+import { histSpec } from './unit-hist-specs.js';
 import { drawBoat, drawWater, hullOf } from './unit-naval.js';
 import { EXT_TYPES, EXT_KINDS } from './unit-ext.js';
 import { CIV_IDS } from '../../core/defs.js';
@@ -53,14 +54,16 @@ const SHIP_DIE_N = 12;
 const AIM_N = 11;
 const AIM_MAX = 1.25;
 
-const OUTLINE = ['#1b120a', 0.55];
+const OUTLINE = ['#1b120a', 0.6];
+/** Rendu peint des sprites (liseré de soleil, contour teinté, saturation, ombre froide) : cf. bakeSprite. */
+const PAINT = { sat: 1.12, rim: 0.3, shadow: [16, 24, 40] };
 
 const specs = new Map();
 function specOf(type, civ, team) {
   const k = type + civ + team;
   let s = specs.get(k);
   if (!s) {
-    s = unitSpec(type, civ, team);
+    s = histSpec(type, civ, team);
     specs.set(k, s);
   }
   return s;
@@ -146,6 +149,46 @@ function aimLimb(fr) {
   return PI / 2 - local;
 }
 
+/** Longueur approximative (px locaux × z) de la partie tranchante d'une arme de taille, pour sa traînée. */
+const TRAIL_LEN = { sword: 9.2, longsword: 11, waraxe: 10, axe: 9, greatsword: 14, royalsword: 13, noblesword: 12, bronzesword: 10, seax: 8 };
+
+/**
+ * Traînée lumineuse d'un coup d'arme : croissant translucide entre les positions récentes de la pointe et celles du
+ * milieu de la lame, estompé vers le passé. Dessiné après le personnage, seulement pendant la frappe.
+ */
+function swingTrail(ctx, sp, hold, q, weapon, aimA) {
+  if (hold !== 'sword' && hold !== 'fury' && hold !== 'great') return;
+  if (q < 0.34 || q > 0.84) return;
+  const z = sp.sz;
+  const len = (TRAIL_LEN[weapon] || 9) * (weapon === 'sword' && sp.swordLen ? sp.swordLen / 8 : 1) * z;
+  const tips = [];
+  const mids = [];
+  const N = 11;
+  for (let i = 0; i < N; i++) {
+    const qi = Math.max(0.3, q - i * 0.016);
+    const Pi = attackPose(hold, qi, aimA);
+    const R = rig(sp, Pi);
+    const sa = Math.sin(Pi.wA);
+    const ca = Math.cos(Pi.wA);
+    tips.push([R.handN[0] + sa * len, R.handN[1] + ca * len]);
+    mids.push([R.handN[0] + sa * len * 0.5, R.handN[1] + ca * len * 0.5]);
+  }
+  ctx.save();
+  for (let i = 0; i < N - 1; i++) {
+    const a = 0.5 * (1 - i / (N - 1)) * (q > 0.66 ? 1 - (q - 0.66) / 0.3 : 1);
+    if (a <= 0.02) continue;
+    ctx.beginPath();
+    ctx.moveTo(tips[i][0], tips[i][1]);
+    ctx.lineTo(tips[i + 1][0], tips[i + 1][1]);
+    ctx.lineTo(mids[i + 1][0], mids[i + 1][1]);
+    ctx.lineTo(mids[i][0], mids[i][1]);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(255,248,225,${a.toFixed(3)})`;
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function humanFrame(ctx, S, fr) {
   const sp = S.sp;
   let hold = S.hold;
@@ -190,7 +233,10 @@ function humanFrame(ctx, S, fr) {
     ctx.rotate(P.rot);
     drawHuman(ctx, sp, P, opt);
     ctx.restore();
-  } else drawHuman(ctx, sp, P, opt);
+  } else {
+    drawHuman(ctx, sp, P, opt);
+    if (fr.anim === 3) swingTrail(ctx, sp, hold, fr.q, opt.weapon === undefined ? sp.weapon : opt.weapon, aimLimb(fr));
+  }
   // Effets propres à un costume (ex. poussière de l'explosion du sapeur) : sp.fx(ctx, fr)
   if (sp.fx) sp.fx(ctx, fr);
 }
@@ -365,27 +411,31 @@ function drawFrame(ctx, S, fr) {
 /** Ombre douce au sol, décalée vers le bas-droite (lumière en haut à gauche). */
 function shadowOf(S, fr) {
   const m = METRICS[S.type] || METRICS.villager;
-  let rx = m.w + 1.5;
-  let ry = Math.max(3.2, rx * 0.36);
-  let cx = 1.2;
-  let a = 0.3;
+  // Ombre portée allongée vers le bas-droite (soleil au nord-ouest), plus longue pour les grandes silhouettes
+  let rx = m.w * 1.12 + 2.2 + m.h * 0.04;
+  let ry = Math.max(3.4, rx * 0.36);
+  let cx = 2.4 + m.h * 0.06;
+  let a = 0.34;
+  let rot = 0.2;
   if (S.kind === 'human' && fr.anim === 4) {
     const f = smooth(clamp((fr.q - 0.12) / 0.78));
     rx = lerp(rx, 13, f);
     cx += fr.dir * lerp(0, -3, f);
   } else if (S.kind === 'mounted') {
-    rx = m.w + 2;
-    ry = 5.5;
-    a = 0.32;
+    rx = m.w + 4;
+    ry = 5.8;
+    cx = 4;
+    a = 0.36;
   } else if (EXT_KINDS[S.kind] && EXT_KINDS[S.kind].shadow) {
     return EXT_KINDS[S.kind].shadow(S, fr, m);
   } else if (S.kind === 'ram' || S.kind === 'catapult') {
-    rx = 33;
+    rx = 34;
     ry = 11;
-    cx = 2;
+    cx = 3;
+    rot = 0.1;
     if (fr.anim === 4) a *= 1 - smooth(fr.q) * 0.5;
   }
-  return { cx, cy: 1, rx, ry, a };
+  return { cx, cy: 1, rx, ry, a, rot };
 }
 
 function bakeFrame(S, fr, b) {
@@ -428,6 +478,7 @@ function bakeFrame(S, fr, b) {
     S.kind === 'boat' ? null : shadowOf(S, fr),
     OUTLINE,
     under,
+    PAINT,
   );
 }
 

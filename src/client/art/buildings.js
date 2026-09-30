@@ -87,6 +87,58 @@ function paintShadows(g) {
   c.restore();
 }
 
+/**
+ * Pose le calque du bâtiment sur le sol : contour fin sombre, liseré de lumière sur les arêtes haut-gauche,
+ * dégradé de lumière (chaud en haut à gauche, froid en bas à droite) et léger gain de saturation.
+ */
+function finishLayer(dst, layer, ax, ay, n) {
+  const w = layer.width;
+  const h = layer.height;
+  const tint = (col, a) => {
+    const t = makeCanvas(w, h);
+    t.ctx.drawImage(layer, 0, 0);
+    t.ctx.globalCompositeOperation = 'source-in';
+    t.ctx.fillStyle = col;
+    t.ctx.fillRect(0, 0, w, h);
+    return t;
+  };
+  // 1. contour : silhouette teintée, décalée de 1 px dans les huit directions
+  const dark = tint('#2b1b10');
+  dst.save();
+  dst.globalAlpha = 0.5;
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) dst.drawImage(dark.canvas, dx, dy);
+  dst.globalAlpha = 0.22;
+  for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) dst.drawImage(dark.canvas, dx, dy);
+  dst.restore();
+  // 2. lumière et couleur sur le calque
+  const c = layer.getContext('2d');
+  const hh = n * TILE_H + 120;
+  c.save();
+  c.globalCompositeOperation = 'source-atop';
+  const gr = c.createLinearGradient(ax - n * 30, ay - hh, ax + n * 30, ay + n * 10);
+  gr.addColorStop(0, 'rgba(255,226,160,0.13)');
+  gr.addColorStop(0.55, 'rgba(255,240,210,0)');
+  gr.addColorStop(1, 'rgba(40,50,120,0.10)');
+  c.fillStyle = gr;
+  c.fillRect(0, 0, w, h);
+  c.restore();
+  // liseré : bande de 1,5 px le long des bords exposés au haut-gauche
+  const rim = makeCanvas(w, h);
+  rim.ctx.drawImage(layer, 0, 0);
+  rim.ctx.globalCompositeOperation = 'destination-out';
+  rim.ctx.drawImage(layer, 1.5, 1.5);
+  rim.ctx.globalCompositeOperation = 'source-in';
+  rim.ctx.fillStyle = '#fff0c4';
+  rim.ctx.fillRect(0, 0, w, h);
+  dst.save();
+  dst.filter = 'saturate(1.16) contrast(1.05)';
+  dst.drawImage(layer, 0, 0);
+  dst.filter = 'none';
+  dst.globalAlpha = 0.5;
+  dst.drawImage(rim.canvas, 0, 0);
+  dst.restore();
+}
+
 /** Recadre un canvas sur ses pixels visibles ; renvoie le nouveau canvas et le décalage appliqué. */
 function crop(canvas) {
   const w = canvas.width;
@@ -160,6 +212,7 @@ export function getBuildingSprite(typeId, civ, teamIdx, stage = 3, mask = 0) {
   const design = (DESIGNS[cv] && DESIGNS[cv][typeId]) || DESIGNS[base][typeId];
   const W = workCanvas(n, (HEIGHT[typeId] || 100) + 30);
   const g = new Gfx(W.ctx, W.ax, W.ay, { stage: st, civ: base, team: tm, size: n, seed: hash(typeId, cv, mk) });
+  const finishing = st >= 1 && (cv === 'gauls' || cv === 'franks');
   g.civId = cv;
   g.mask = mk;
   if (!design) {
@@ -188,8 +241,17 @@ export function getBuildingSprite(typeId, civ, teamIdx, stage = 3, mask = 0) {
       design(g);
       paintShadows(g);
       g.mode = 'draw';
+      // peintre « Age of Mythology » : le bâtiment est peint sur un calque à part (sans sol ni ombre), puis
+      // posé avec contour, lumière de bord, dégradé chaud/froid et saturation (civilisations franque et gauloise)
+      const lay = finishing ? makeCanvas(W.canvas.width, W.canvas.height) : null;
+      const base0 = g.ctx;
+      if (lay) g.ctx = lay.ctx;
       design(g);
       if (st < 3) siteFlag(g);
+      if (lay) {
+        g.ctx = base0;
+        finishLayer(base0, lay.canvas, W.ax, W.ay, n);
+      }
     }
   }
   // hauteur du sommet mesurée avant la fumée (dessins différés) ; une seule lecture de pixels sinon

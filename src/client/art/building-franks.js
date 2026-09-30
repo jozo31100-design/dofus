@@ -14,8 +14,13 @@ import {
   target, weaponRack, cart, millstone, sawhorse, stumpAxe, trough, well, debris, wheel, pennant, GOLD,
 } from './building-props.js';
 import { catapultFrame, ram } from './building-gauls.js';
+import { horse, hen, pig, laundry } from './building-fauna.js';
 
 const PI = Math.PI;
+// bardeaux de chêne : tons plus chauds que le gris d'origine, variés d'un bâtiment à l'autre
+const OAK = { ...MAT.shingle, col: '#96653f' };
+const OAK_DARK = { ...MAT.shingle, col: '#7a5a44' };
+const THATCH_EDGE = '#9a7a36';
 const PLINTH = { col: '#9a9890', tex: MAT.stone.tex, rh: 4, sw: 9 };
 
 /** Rangée de boucliers ronds sur une face (repère local). */
@@ -36,7 +41,8 @@ function house(g) {
   if (st === 3) logPile(g, 0.1, -0.78, 'x', [3, 2], 0.7, 2.4);
   longHouse(g, {
     x0: -0.62, y0: -0.52, x1: 0.5, y1: 0.3, plinthH: 4, wallH: 19, ridgeH: 45, axis: 'x',
-    wallMat: MAT.planks, roofMat: MAT.shingle, heads: true, ov: 0.13, ovg: 0.08, th: 3,
+    wallMat: MAT.daubFrame, roofMat: MAT.thatch, gableMat: MAT.daubFrame, heads: false, ov: 0.15, ovg: 0.1, th: 5, edge: THATCH_EDGE,
+    ridge: '#8a6a30', ridgeW: 3,
     decoL: (c, w, h) => {
       doorLocal(c, w * 0.34, h, 7, 12);
       windowLocal(c, w * 0.76, h * 0.42, 4, 4.5);
@@ -48,6 +54,10 @@ function house(g) {
   if (st === 3) {
     barrel(g, 0.74, 0.02, 0, 0.9);
     railFence(g, [[-0.9, 0.55], [-0.35, 0.72], [0.2, 0.75]], 8);
+    hen(g, 0.1, 0.56, { dir: 1 });
+    hen(g, 0.34, 0.5, { dir: -1, col: '#b07a48', tail: '#2e2a26' });
+    laundry(g, 0.72, -0.6, 0.72, 0.3, 20, { cols: ['#ece4d0', '#6d8fb8', '#b5603a'] });
+    smoke(g, 0.0, -0.1, 45, { h: 26, n: 6 });
   }
 }
 
@@ -56,7 +66,7 @@ function hall(g) {
   const tc = g.tc;
   longHouse(g, {
     x0: -1.72, y0: -1.3, x1: 1.35, y1: 0.28, plinthH: 6, wallH: 34, ridgeH: 100, axis: 'x',
-    wallMat: MAT.planksGrey, roofMat: MAT.shingle, heads: true, ov: 0.18, ovg: 0.12, th: 3.5,
+    wallMat: MAT.planksGrey, roofMat: OAK_DARK, heads: true, ov: 0.18, ovg: 0.12, th: 3.5,
     headOpts: { len: 10 },
     decoL: (c, w, h) => {
       for (const f of [0.1, 0.24, 0.72, 0.9]) windowLocal(c, w * f, h * 0.4, 4, 6);
@@ -90,6 +100,10 @@ function hall(g) {
     barrel(g, 1.45, 0.45, 0, 0.9);
     crate(g, 1.5, 0.78);
     well(g, -1.35, 1.1);
+    smoke(g, 0.2, -0.5, 100, { h: 34, n: 7 });
+    hen(g, -0.9, 0.9, { dir: 1 });
+    hen(g, 0.9, 1.15, { dir: -1, col: '#b07a48', tail: '#2e2a26' });
+    pig(g, 1.15, 1.3, { dir: -1 });
   }
 }
 
@@ -264,7 +278,7 @@ function barracks(g) {
   const tc = g.tc;
   longHouse(g, {
     x0: -1.18, y0: -1.12, x1: 0.3, y1: 0.82, plinthH: 5, wallH: 28, ridgeH: 76, axis: 'y',
-    wallMat: MAT.planks, roofMat: MAT.shingle, heads: true, ov: 0.1, ovg: 0.1, th: 2.5,
+    wallMat: MAT.planks, roofMat: OAK, heads: true, ov: 0.1, ovg: 0.1, th: 2.5,
     decoL: (c, w, h) => {
       doorLocal(c, w / 2, h, 11, 17, { open: 0.45 });
       if (st === 3) {
@@ -346,7 +360,7 @@ function archery(g) {
     scaffold(g, [[x1 + 0.15, y0], [x1 + 0.15, y1 + 0.1]], zw + 4);
   } else {
     g.beam(x0, y1 - 0.04, zw - 1, x1, y1 - 0.04, zw - 1, WOOD_DARK, 2.4);
-    gableRoof(g, { x0, y0, x1, y1, zw, zr, axis: 'x', ov: 0.14, ovg: 0.1, mat: MAT.shingle, th: 3, gableMat: MAT.planks, heads: true });
+    gableRoof(g, { x0, y0, x1, y1, zw, zr, axis: 'x', ov: 0.14, ovg: 0.1, mat: MAT.thatch, th: 5, edge: THATCH_EDGE, ridge: '#8a6a30', ridgeW: 3.4, gableMat: MAT.planks, heads: true });
   }
   if (st === 3) {
     hayBale(g, 1.08, 0.12, 0, 'y');
@@ -364,7 +378,7 @@ function stable(g) {
   const tc = g.tc;
   longHouse(g, {
     x0: -1.3, y0: -1.3, x1: 0.62, y1: -0.15, plinthH: 4, wallH: 25, ridgeH: 64, axis: 'x',
-    wallMat: MAT.planks, roofMat: MAT.shingle, heads: true, ov: 0.15, ovg: 0.1, th: 3,
+    wallMat: MAT.planks, roofMat: OAK, heads: true, ov: 0.15, ovg: 0.1, th: 3,
     decoL: (c, w, h) => {
       // grandes portes de grange
       for (const f of [0.3, 0.72]) {
@@ -392,6 +406,10 @@ function stable(g) {
       hayBale(g, 0.95, -0.78, 6, 'y');
       trough(g, 0.3, 0.5, 'x', 0.6);
       banner(g, -1.25, 0.25, 0, 44, { w: 10, h: 15 });
+      // destriers dans l'enclos
+      horse(g, -0.75, 0.75, { dir: 1, col: '#e4dfd2', mane: '#9a9484', pose: 'graze', s: 1.3 });
+      horse(g, 0.85, 0.3, { dir: -1, col: '#7a4a2a', pose: 'look', s: 1.3, blaze: true });
+      horse(g, 0.2, 1.08, { dir: 1, col: '#2e2622', mane: '#14100c', pose: 'stand', s: 1.25 });
     }
     railFence(g, [[-1.38, 0.1], [-1.38, 1.38], [0, 1.38], [1.38, 1.38], [1.38, 0], [1.38, -0.3]], 9);
   }
@@ -405,7 +423,7 @@ function forge(g) {
   const y1 = 0.2;
   longHouse(g, {
     x0, y0, x1, y1, plinthH: 0, wallH: 26, ridgeH: 70, axis: 'y', frame: false,
-    wallMat: MAT.stone, gableMat: MAT.planksDark, roofMat: MAT.shingle, heads: false, ov: 0.14, ovg: 0.1, th: 3,
+    wallMat: MAT.stone, gableMat: MAT.planksDark, roofMat: OAK_DARK, heads: false, ov: 0.14, ovg: 0.1, th: 3,
     decoL: (c, w, h) => {
       // grande ouverture de l'atelier et foyer rougeoyant
       c.fillStyle = INTERIOR;
@@ -648,7 +666,7 @@ function siege(g) {
     gableRafters(g, G, 'front');
     scaffold(g, [[x1 + 0.15, y0 + 0.2], [x1 + 0.15, y1], [x0, y1 + 0.15]], 40);
   } else {
-    gableRoof(g, { x0, y0, x1, y1, zw: 34, zr: 88, axis: 'y', ov: 0.2, ovg: 0.12, mat: MAT.shingle, th: 3, gableMat: MAT.planks, heads: true });
+    gableRoof(g, { x0, y0, x1, y1, zw: 34, zr: 88, axis: 'y', ov: 0.2, ovg: 0.12, mat: OAK, th: 3, gableMat: MAT.planks, heads: true });
   }
   if (st === 3) {
     ram(g, 0.9, -0.6, '#7c828c');

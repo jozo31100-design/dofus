@@ -14,10 +14,18 @@ export const RES_LABEL = { food: 'Nourriture', wood: 'Bois', gold: 'Or', stone: 
 export const TEAM_COLORS = [
   { name: 'Bleu', main: '#3b72e8', dark: '#1c3f9a', light: '#adc8ff' },
   { name: 'Rouge', main: '#dc4538', dark: '#8a1f19', light: '#ffb3a9' },
-  { name: 'Neutre', main: '#a8a08a', dark: '#5e584a', light: '#e4ddc8' }, // points stratégiques non capturés
+  { name: 'Vert', main: '#3fae4a', dark: '#1d6a27', light: '#b3f0b8' },
+  { name: 'Jaune', main: '#e8c636', dark: '#9a7d10', light: '#fff0a0' },
+  { name: 'Violet', main: '#9a55d6', dark: '#572496', light: '#dcbcff' },
+  { name: 'Orange', main: '#ee8a2c', dark: '#9a4d0c', light: '#ffd0a0' },
+  { name: 'Turquoise', main: '#33bfc0', dark: '#136b6d', light: '#b0f0f0' },
+  { name: 'Rose', main: '#e46aa8', dark: '#94306a', light: '#ffc0df' },
+  { name: 'Neutre', main: '#a8a08a', dark: '#5e584a', light: '#e4ddc8' }, // points stratégiques non capturés (index NEUTRAL_TEAM)
 ];
+export const MAX_PLAYERS = 8;
+export const NEUTRAL_TEAM = 8;
 /** Couleur d'équipe d'un propriétaire (les bâtiments neutres, propriétaire −1, prennent la couleur neutre). */
-export const teamOf = (owner) => (owner >= 0 ? owner : 2);
+export const teamOf = (owner) => (owner >= 0 ? owner : NEUTRAL_TEAM);
 
 export const AGE_NAMES = ['', 'Âge du Village', 'Âge du Bourg', 'Âge de la Forteresse', 'Âge Impérial'];
 export const AGE_SHORT = ['', 'I', 'II', 'III', 'IV'];
@@ -444,7 +452,7 @@ const BUILDING_LIST = [
     id: 'tower', names: { franks: 'Tour de guet', gauls: 'Tour de guet' }, page: 'mil', size: 2, hp: 850,
     armor: { melee: 5, pierce: 9 }, cost: { wood: 50, stone: 100 }, time: 35, age: 2, los: 10,
     atk: { pierce: 6 }, range: 8, rof: 2, arrows: 1, projectile: 'arrow', projSpeed: 15, garrison: 5, tags: ['building', 'tower', 'stone'],
-    desc: 'Tour de défense : tire des flèches sur les ennemis proches. Chaque soldat à l\'intérieur ajoute une flèche.',
+    desc: 'Tour de défense : tire des flèches sur les ennemis proches. Chaque soldat à l\'intérieur ajoute une flèche. Clic droit sur un ennemi : cible prioritaire.',
   },
   {
     id: 'slingtower', names: { franks: 'Tour à mangonneau', gauls: 'Tour lance-pierres' }, page: 'mil', size: 2, hp: 1100,
@@ -503,7 +511,7 @@ const BUILDING_LIST = [
   // ---------------------------------- Défenses : palissades, murailles, portes, bastions ---------------------------
   {
     id: 'palisade', names: { franks: 'Palissade', gauls: 'Palissade' }, page: 'def', size: 1, hp: 450,
-    armor: { melee: 2, pierce: 10 }, cost: { wood: 8 }, time: 6, age: 1, los: 2, wall: true, tags: ['building', 'wall', 'wood'],
+    armor: { melee: 2, pierce: 10 }, cost: { wood: 8 }, time: 6, age: 1, los: 2, wall: true, garrison: 2, walk: true, tags: ['building', 'wall', 'wood'],
     desc: 'Enceinte de troncs pointus : pas chère, vite montée, mais elle brûle. Se trace en ligne.',
   },
   {
@@ -513,31 +521,31 @@ const BUILDING_LIST = [
   },
   {
     id: 'wall', names: { franks: 'Mur de pierre', gauls: 'Murus gallicus' }, page: 'def', size: 1, hp: 2200,
-    armor: { melee: 6, pierce: 18 }, cost: { stone: 28 }, time: 12, age: 2, los: 3, wall: true, garrison: 2,
+    armor: { melee: 6, pierce: 18 }, cost: { stone: 28 }, time: 12, age: 2, los: 3, wall: true, garrison: 4, walk: true,
     atk: { pierce: 4 }, range: 7, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 14, tags: ['building', 'wall', 'stone'],
     desc: 'Muraille de pierre : difficile à détruire. Deux soldats peuvent y prendre position et tirer depuis le chemin de ronde.',
   },
   {
     id: 'gate', names: { franks: 'Porte fortifiée', gauls: 'Porte fortifiée' }, page: 'def', size: 1, hp: 1800,
-    armor: { melee: 6, pierce: 18 }, cost: { stone: 45, wood: 25 }, time: 18, age: 2, los: 4, gate: true, garrison: 2,
+    armor: { melee: 6, pierce: 18 }, cost: { stone: 45, wood: 25 }, time: 18, age: 2, los: 4, gate: true, garrison: 4, walk: true,
     atk: { pierce: 4 }, range: 7, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 14, tags: ['building', 'gate', 'wall', 'stone'],
     desc: 'Porte de pierre : vos unités passent, celles de l\'ennemi doivent la détruire ou escalader la muraille.',
   },
   {
     id: 'rampart', names: { franks: 'Grande muraille', gauls: 'Grand rempart' }, page: 'def', size: 2, hp: 6500,
-    armor: { melee: 10, pierce: 25 }, cost: { stone: 110, gold: 20 }, time: 30, age: 3, los: 4, wall: true, garrison: 4,
+    armor: { melee: 10, pierce: 25 }, cost: { stone: 110, gold: 20 }, time: 30, age: 3, los: 4, wall: true, garrison: 10, walk: true,
     atk: { pierce: 5 }, range: 8, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 15, tags: ['building', 'wall', 'stone', 'great'],
     desc: 'Immense muraille : très chère, presque indestructible sans machines de siège. Quatre soldats y tirent du haut du chemin de ronde.',
   },
   {
     id: 'great_gate', names: { franks: 'Grande porte', gauls: 'Grande porte' }, page: 'def', size: 2, hp: 4500,
-    armor: { melee: 10, pierce: 25 }, cost: { stone: 140, wood: 60, gold: 30 }, time: 40, age: 3, los: 5, gate: true, garrison: 4,
+    armor: { melee: 10, pierce: 25 }, cost: { stone: 140, wood: 60, gold: 30 }, time: 40, age: 3, los: 5, gate: true, garrison: 6, walk: true,
     atk: { pierce: 5 }, range: 8, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 15, tags: ['building', 'gate', 'wall', 'stone', 'great'],
     desc: 'Porte monumentale de la Grande muraille : passage large pour vos armées.',
   },
   {
     id: 'bastion', names: { franks: 'Bastion', gauls: 'Bastion' }, page: 'def', size: 3, hp: 3600,
-    armor: { melee: 8, pierce: 16 }, cost: { stone: 320, wood: 60 }, time: 70, age: 3, los: 11, garrison: 10,
+    armor: { melee: 8, pierce: 16 }, cost: { stone: 320, wood: 60 }, time: 70, age: 3, los: 11, garrison: 16, walk: true,
     atk: { pierce: 9 }, range: 10, rof: 1.8, arrows: 3, projectile: 'arrow', projSpeed: 16, tags: ['building', 'tower', 'stone', 'great'],
     desc: 'Tour massive à poser aux angles des murailles : volées de flèches à longue portée, abrite 10 soldats.',
   },

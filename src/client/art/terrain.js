@@ -89,23 +89,24 @@ const smooth = (a, b, x) => {
 
 const C = Object.fromEntries(
   Object.entries({
-    gDark: '#4a7d33',
-    gMid: '#5f9440',
-    gLight: '#79ad4c',
-    gYellow: '#93ae4f',
+    gDark: '#3f7a2c',
+    gMid: '#68a038',
+    gLight: '#8cc04a',
+    gYellow: '#a9bb4c',
     gCool: '#4f8a45',
     gDry: '#a2a95a',
     gLush: '#3f7a35',
-    sand: '#d6c38d',
+    sand: '#e3cf96',
     sandWet: '#ab9a70',
     mud: '#8c7a58',
     shallow: '#6fb7b6',
     ford: '#78bfb4',
     fordSand: '#c2b98a',
-    water: '#3278ad',
-    deep: '#235d93',
-    abyss: '#1b4a7d',
-    foam: '#e4f1ec',
+    water: '#2c72ab',
+    deep: '#1d5790',
+    abyss: '#133f73',
+    foam: '#f3fbf6',
+    dirtP: '#9b7c4c',
   }).map(([k, v]) => [k, hexToRgb(v)]),
 );
 
@@ -206,6 +207,34 @@ function stamps() {
     c.fill();
   });
   const pebbles = [pebble(1.3, '#a8a398'), pebble(1.8, '#9c968a'), pebble(2.4, '#b1ab9e'), pebble(1.5, '#8f8a80'), pebble(3, '#a39d90')];
+  // roseaux : tiges debout avec épis bruns
+  const reeds = [0, 1, 2].map(() => mk(16, 16, (c) => {
+    for (let k = 0; k < 6; k++) {
+      const x = 4 + rnd() * 8;
+      const y = 10 + rnd() * 3;
+      const hs = 5 + rnd() * 4;
+      const hx = (rnd() - 0.5) * 2;
+      const [vx, vy] = upright(hx, hs);
+      c.strokeStyle = k % 2 ? 'rgba(86,120,48,0.95)' : 'rgba(62,98,36,0.95)';
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + vx, y + vy);
+      c.stroke();
+      if (k % 3 === 0) {
+        c.strokeStyle = 'rgba(96,58,26,0.95)';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.moveTo(x + vx * 0.78, y + vy * 0.78);
+        c.lineTo(x + vx, y + vy);
+        c.stroke();
+      }
+    }
+    c.fillStyle = 'rgba(25,40,70,0.3)';
+    c.beginPath();
+    c.ellipse(9, 11, 5, 2, 0.8, 0, 2 * PI);
+    c.fill();
+  }));
   // mottes de terre / petites taches sombres
   const dirt = mk(10, 10, (c) => {
     c.fillStyle = 'rgba(110,85,50,0.35)';
@@ -350,7 +379,7 @@ function stamps() {
       for (const ox of [0, -256, 256]) for (const oy of [0, -256, 256]) c.drawImage(im, (x + ox) | 0, (y + oy) | 0);
     }
   });
-  STAMPS = { tufts, flowers, pebbles, dirt, ripples, sparkle, glint, waves, meadow, waveTile };
+  STAMPS = { reeds, tufts, flowers, pebbles, dirt, ripples, sparkle, glint, waves, meadow, waveTile };
   return STAMPS;
 }
 
@@ -410,7 +439,7 @@ export function renderTerrainTexture(terrain, W, H, seed = 1) {
   const wpx = anyWet ? wimg.data : null;
   const shore = new Float32Array(N); // valeur de rivage, réutilisée pour placer les détails
   const deepV = anyDeep ? new Float32Array(N) : null;
-  const { gDark, gMid, gLight, gYellow, gCool, gDry, gLush, sand, sandWet, mud, shallow, ford, fordSand, water, deep: dCol, abyss, foam } = C;
+  const { dirtP, gDark, gMid, gLight, gYellow, gCool, gDry, gLush, sand, sandWet, mud, shallow, ford, fordSand, water, deep: dCol, abyss, foam } = C;
   for (let i = 0; i < N; i++) {
     const f = nF[i];
     const m = nM[i];
@@ -437,6 +466,16 @@ export function renderTerrainTexture(terrain, W, H, seed = 1) {
     r += (gDry[0] - r) * t5 * 0.5;
     g += (gDry[1] - g) * t5 * 0.5;
     b += (gDry[2] - b) * t5 * 0.5;
+    // plaques de terre battue (rares, bordures douces)
+    const t6 = smooth(0.84, 0.97, x2 * 0.7 + (1 - l) * 0.3) * smooth(0.5, 0.25, m);
+    r += (dirtP[0] - r) * t6 * 0.55;
+    g += (dirtP[1] - g) * t6 * 0.55;
+    b += (dirtP[2] - b) * t6 * 0.55;
+    // lumière du soleil : grandes plages dorées, ombres fraîches (éclairage « peint »)
+    const sun = (l - 0.5) * 16 + (m - 0.5) * 8;
+    r += sun * 1.1;
+    g += sun * 0.8;
+    b += sun * 0.15;
     const fv = (f - 0.5) * 12;
     r += fv;
     g += fv * 1.1;
@@ -494,10 +533,14 @@ export function renderTerrainTexture(terrain, W, H, seed = 1) {
           wr += sheen;
           wg += sheen;
           wb += sheen * 0.8;
-          const fo = (1 - smooth(0.5, 0.58, s)) * tw;
-          wr += (foam[0] - wr) * fo * 0.5;
-          wg += (foam[1] - wg) * fo * 0.5;
-          wb += (foam[2] - wb) * fo * 0.5;
+          // écume : liseré clair irrégulier au contact de la berge, puis léger ombrage de l'eau
+          const foamBand = (1 - smooth(0.5, 0.6, s)) * tw * (0.55 + 0.6 * smooth(0.3, 0.8, f * 0.5 + x2 * 0.5));
+          wr += (foam[0] - wr) * Math.min(1, foamBand) * 0.85;
+          wg += (foam[1] - wg) * Math.min(1, foamBand) * 0.85;
+          wb += (foam[2] - wb) * Math.min(1, foamBand) * 0.85;
+          const under = smooth(0.52, 0.64, s) * (1 - smooth(0.64, 0.8, s)) * 0.16;
+          wr -= wr * under * 0.6;
+          wg -= wg * under * 0.4;
           wpx[j] = wr;
           wpx[j + 1] = wg;
           wpx[j + 2] = wb;
@@ -552,6 +595,17 @@ export function renderTerrainTexture(terrain, W, H, seed = 1) {
       const x = ((i % lw) + rnd()) * (PPT / LR);
       const y = (((i / lw) | 0) + rnd()) * (PPT / LR);
       ctx.drawImage(S.pebbles[(rnd() * S.pebbles.length) | 0], x | 0, y | 0);
+    }
+  }
+
+  // roseaux et touffes épaisses sur la berge
+  if (anyWet) {
+    for (let i = 0; i < N; i += 1) {
+      const sh = shore[i];
+      if (sh < 0.27 || sh > 0.46 || rnd() > 0.018) continue;
+      const x = ((i % lw) + rnd()) * (PPT / LR);
+      const y = (((i / lw) | 0) + rnd()) * (PPT / LR);
+      ctx.drawImage(S.reeds[(rnd() * 3) | 0], x | 0, y | 0);
     }
   }
 

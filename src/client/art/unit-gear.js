@@ -137,6 +137,41 @@ export function francisca(ctx, x, y, a, z) {
   line(ctx, hx + dx * 2.8 * z + px * 3.3 * z, hy + dy * 2.8 * z + py * 3.3 * z, hx - dx * 0.9 * z + px * 3.1 * z, hy - dy * 0.9 * z + py * 3.1 * z, 'rgba(255,255,255,0.75)', 0.45 * z);
 }
 
+/**
+ * Angon franc : javelot à longue douille de fer (tige fine) terminée par une pointe barbelée ;
+ * la hampe de frêne est longue et claire. o = { fwd, back }
+ */
+export function angon(ctx, x, y, a, z, o = {}) {
+  const fwd = (o.fwd || 10) * z;
+  const back = (o.back || 7) * z;
+  const [dx, dy, px, py] = dirs(a);
+  shaft(ctx, x, y, a, back, fwd, 0.8 * z, '#c9a06a');
+  // Longue douille de fer
+  const sx = x + dx * fwd;
+  const sy = y + dy * fwd;
+  const L = 6.4 * z;
+  ctx.beginPath();
+  ctx.moveTo(sx - px * 0.45 * z, sy - py * 0.45 * z);
+  ctx.lineTo(sx + dx * L - px * 0.25 * z, sy + dy * L - py * 0.25 * z);
+  ctx.lineTo(sx + dx * L + px * 0.25 * z, sy + dy * L + py * 0.25 * z);
+  ctx.lineTo(sx + px * 0.45 * z, sy + py * 0.45 * z);
+  paint(ctx, '#9aa1aa', 'rgba(30,34,40,0.8)', 0.4);
+  // Pointe à deux barbes
+  const tx = sx + dx * L;
+  const ty = sy + dy * L;
+  ctx.beginPath();
+  poly(ctx, [
+    tx - dx * 0.2 * z, ty - dy * 0.2 * z,
+    tx - dx * 1.6 * z + px * 1.2 * z, ty - dy * 1.6 * z + py * 1.2 * z,
+    tx + dx * 0.1 * z + px * 0.5 * z, ty + dy * 0.1 * z + py * 0.5 * z,
+    tx + dx * 2.6 * z, ty + dy * 2.6 * z,
+    tx + dx * 0.1 * z - px * 0.5 * z, ty + dy * 0.1 * z - py * 0.5 * z,
+    tx - dx * 1.6 * z - px * 1.2 * z, ty - dy * 1.6 * z - py * 1.2 * z,
+  ]);
+  paint(ctx, STEEL, 'rgba(40,44,52,0.8)', 0.45);
+  line(ctx, sx, sy, sx + dx * L, sy + dy * L, 'rgba(255,255,255,0.45)', 0.3 * z);
+}
+
 /** Pioche : fer à deux pointes courbes perpendiculaire au manche. */
 export function pickaxe(ctx, x, y, a, z) {
   const L = 7.5 * z;
@@ -214,10 +249,10 @@ export function club(ctx, x, y, a, z) {
 }
 
 /** Seax : coutelas franc à un tranchant. */
-export function seax(ctx, x, y, a, z) {
+export function seax(ctx, x, y, a, z, len = 6.2) {
   const [dx, dy, px, py] = dirs(a);
   shaft(ctx, x, y, a, 1.4 * z, 0.8 * z, 0.9 * z, WOOD_D);
-  const L = 6.2 * z;
+  const L = len * z;
   const bx = x + dx * 0.9 * z;
   const by = y + dy * 0.9 * z;
   ctx.beginPath();
@@ -479,10 +514,45 @@ export function shield(ctx, cx, cy, z, kind, face, s = 1, tilt = 0, deco = 'boss
     ctx.strokeStyle = rgba('#d8d8d0', 0.55);
     ctx.lineWidth = 0.5 * k;
     ctx.stroke();
-    // Ombilic
+    // Umbo de fer (cône bas à collerette) surmonté d'un bouton
     ctx.beginPath();
-    ell(ctx, 0.2 * k, 0, 1.25 * k, 1.45 * k);
-    paint(ctx, ballGrad(ctx, 0.2 * k, 0, 1.4 * k, '#aab2bb', 0.45, -0.35), 'rgba(30,32,38,0.8)', 0.5);
+    ell(ctx, 0.2 * k, 0, 1.4 * k, 1.65 * k);
+    paint(ctx, ballGrad(ctx, 0.2 * k, 0, 1.6 * k, '#aab2bb', 0.45, -0.35), 'rgba(30,32,38,0.8)', 0.5);
+    ctx.beginPath();
+    ell(ctx, 0.5 * k, -0.15 * k, 0.5 * k, 0.55 * k);
+    paint(ctx, ballGrad(ctx, 0.5 * k, -0.2 * k, 0.6 * k, '#e4e8ec', 0.4, -0.3), 'rgba(30,32,38,0.7)', 0.4);
+  } else if (kind === 'almond') {
+    // Bouclier en amande (carolingien) : haut arrondi, pointe en bas, umbo et bordure cloutée
+    const path = (ox) => {
+      ctx.beginPath();
+      ctx.moveTo(ox, -8.0 * k);
+      ctx.bezierCurveTo(ox + 4.0 * k, -7.4 * k, ox + 4.0 * k, -2.0 * k, ox + 3.0 * k, 1.8 * k);
+      ctx.quadraticCurveTo(ox + 1.6 * k, 6.0 * k, ox + 0.1 * k, 9.0 * k);
+      ctx.quadraticCurveTo(ox - 1.6 * k, 6.0 * k, ox - 3.0 * k, 1.8 * k);
+      ctx.bezierCurveTo(ox - 4.0 * k, -2.0 * k, ox - 4.0 * k, -7.4 * k, ox, -8.0 * k);
+      ctx.closePath();
+    };
+    path(-0.9 * k);
+    paint(ctx, '#5a3c22', 'rgba(30,20,10,0.6)', 0.6);
+    path(0);
+    paint(ctx, sideGrad(ctx, -4 * k, 4 * k, face, 0.22, -0.3), edge(face, 0.75), 0.7);
+    // Croix claire peinte (quartiers) et bordure
+    ctx.fillStyle = rgba('#fff4d8', 0.42);
+    ctx.fillRect(-0.55 * k, -7.2 * k, 1.1 * k, 15 * k);
+    ctx.fillRect(-3.2 * k, -2.6 * k, 6.4 * k, 1.1 * k);
+    path(0);
+    ctx.strokeStyle = rgba('#e4e0d0', 0.6);
+    ctx.lineWidth = 0.55 * k;
+    ctx.stroke();
+    ctx.fillStyle = '#d0d5da';
+    for (const [bx, by] of [[-3.0, -4.4], [3.0, -4.4], [-3.1, 0.2], [3.1, 0.2], [-1.8, 4.4], [1.8, 4.4]]) {
+      ctx.beginPath();
+      ell(ctx, bx * k, by * k, 0.32 * k, 0.32 * k);
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ell(ctx, 0.2 * k, -2.0 * k, 1.35 * k, 1.35 * k);
+    paint(ctx, ballGrad(ctx, 0.2 * k, -2.0 * k, 1.5 * k, '#aab2bb', 0.45, -0.35), 'rgba(30,32,38,0.8)', 0.5);
   } else {
     // Bouclier gaulois long (ovale ou hexagonal) à arête centrale (spina) et ombilic en bande
     const rx = 3.1 * k;
@@ -512,10 +582,14 @@ export function shield(ctx, cx, cy, z, kind, face, s = 1, tilt = 0, deco = 'boss
     ctx.beginPath();
     capsule(ctx, 0.3 * k, -ry * 0.82, 0.45 * k, 0.3 * k, ry * 0.82, 0.45 * k);
     paint(ctx, '#b58a5a', 'rgba(40,25,10,0.5)', 0.4);
-    // Ombilic en bande de fer
+    // Umbo fusiforme (en « fuseau ») sur la nervure centrale : deux pointes, renflement de fer poli
     ctx.beginPath();
-    ell(ctx, 0.35 * k, 0, 1.25 * k, 1.9 * k);
-    paint(ctx, ballGrad(ctx, 0.35 * k, 0, 1.8 * k, '#a8b0b8', 0.45, -0.35), 'rgba(30,32,38,0.8)', 0.5);
+    ctx.moveTo(0.35 * k, -ry * 0.56);
+    ctx.quadraticCurveTo(1.9 * k, -ry * 0.12, 0.35 * k, ry * 0.56);
+    ctx.quadraticCurveTo(-1.2 * k, ry * 0.12, 0.35 * k, -ry * 0.56);
+    ctx.closePath();
+    paint(ctx, ballGrad(ctx, 0.35 * k, 0, 2.3 * k, '#b4bcc4', 0.5, -0.35), 'rgba(30,32,38,0.85)', 0.5);
+    line(ctx, 0.25 * k, -ry * 0.4, 0.25 * k, ry * 0.4, 'rgba(255,255,255,0.55)', 0.3 * k);
     if (deco === 'boar') {
       // Petit sanglier doré (bouclier de champion)
       ctx.fillStyle = GOLD;

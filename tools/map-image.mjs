@@ -2,11 +2,13 @@
 import zlib from 'node:zlib';
 import fs from 'node:fs';
 import { generateMap, checkMap, GRASS, FORD, WATER } from '../src/core/mapgen.js';
+import { generateArena, checkArena } from '../src/core/arena.js';
 
 const out = process.argv[2] || '.scratch/map.png';
 const seed = process.argv[3] ? Number(process.argv[3]) : undefined;
-const map = generateMap(seed);
-const problems = checkMap(map);
+const nPl = process.argv[4] ? Number(process.argv[4]) : 2;
+const map = nPl > 2 ? generateArena(seed, nPl) : generateMap(seed);
+const problems = nPl > 2 ? checkArena(map) : checkMap(map);
 console.log(problems.length ? 'PROBLÈMES : ' + problems.join(' | ') : 'carte valide');
 const counts = {};
 for (const n of map.nodes) counts[n.type] = (counts[n.type] || 0) + 1;
@@ -27,7 +29,7 @@ for (const n of map.nodes) fill(n.x, n.y, col[n.type], n.type === 'tree' ? 0 : 1
 for (const a of map.animals) fill(Math.floor(a.x), Math.floor(a.y), a.type === 'deer' ? [180, 120, 60] : [255, 255, 255], 2);
 for (const pt of map.points || []) for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) fill(pt.tx + x, pt.ty + y, [255, 0, 255]);
 map.starts.forEach((s, i) => {
-  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) fill(s.hall.x + x, s.hall.y + y, i ? [220, 60, 50] : [60, 110, 230]);
+  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) fill(s.hall.x + x, s.hall.y + y, [[60, 110, 230], [220, 60, 50], [60, 180, 70], [230, 200, 50], [150, 80, 210], [240, 140, 40], [50, 190, 190], [230, 110, 170]][i % 8]);
   for (const u of s.units) fill(Math.floor(u.x), Math.floor(u.y), [255, 255, 0], 2);
 });
 // PNG

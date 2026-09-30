@@ -84,7 +84,7 @@ for (const [civ, team] of [['gauls', 0], ['franks', 1]]) {
 }
 
 // merveilles 6×6 : terminées puis les quatre stades (une ligne par peuple)
-for (const [civ, team] of [['gauls', 0], ['franks', 1]]) {
+for (const [civ, team] of BUILDINGS.wonder ? [['gauls', 0], ['franks', 1]] : []) { // merveille retirée du jeu : ignorée si absente
   const hh = art.buildingMetrics('wonder').h;
   const cw = 6 * 64 + 50;
   const cy = y0 + hh + 6 * 16 + 24;

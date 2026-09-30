@@ -29,9 +29,30 @@ function boulder(ctx, x, y, w, h, c, rnd, angular = false) {
   poly(ctx, [x - w * 0.55, y - h * 0.75, x + w * 0.1, y - h * 1.02, x + w * 0.5, y - h * 0.7, x - w * 0.05, y - h * 0.45]);
   ctx.fillStyle = rgba(tone(c, 0.4), 0.55);
   ctx.fill();
+  // Facette d'ombre (côté droit) pour accentuer le volume
+  ctx.beginPath();
+  poly(ctx, [x + w * 0.1, y - h * 0.45, x + w * 0.5, y - h * 0.7, x + w * 0.95, y - h * 0.3, x + w * 0.6, y + h * 0.05, x + w * 0.2, y]);
+  ctx.fillStyle = rgba(tone(c, -0.55), 0.38);
+  ctx.fill();
   // Fissure
   line(ctx, x + w * 0.2, y - h * 0.5, x + w * 0.35, y - h * 0.05, rgba(tone(c, -0.6), 0.5), 0.5);
   return pts;
+}
+
+/** Cristal / pépite allongée facettée d'or : pointe, face claire à gauche, face sombre à droite. */
+function crystal(ctx, x, y, w, h, tilt = 0) {
+  const tx = x + tilt;
+  const ty = y - h;
+  // face gauche (éclairée)
+  ctx.beginPath();
+  poly(ctx, [x - w, y, tx - w * 0.15, ty + h * 0.22, tx, ty, x, y + 1]);
+  paint(ctx, '#ffe27a', 'rgba(120,70,8,0.85)', 0.5);
+  // face droite (ombre chaude)
+  ctx.beginPath();
+  poly(ctx, [x, y + 1, tx, ty, tx + w * 0.2, ty + h * 0.25, x + w, y]);
+  paint(ctx, '#c98a1a', 'rgba(100,56,6,0.85)', 0.5);
+  // arête vive
+  line(ctx, x - w * 0.35, y - h * 0.15, tx - w * 0.05, ty + h * 0.12, 'rgba(255,255,230,0.9)', 0.6);
 }
 
 function nugget(ctx, x, y, r) {
@@ -71,6 +92,10 @@ export function drawGold(ctx, variant, frac) {
     ctx.lineWidth = 0.4;
     ctx.stroke();
   }
+  // Grappe de cristaux d'or qui sortent du filon
+  const cr = [[-3, -6, 3.2, 13, -1.5], [4, -4, 2.8, 10, 2], [-9, -2, 2.4, 8, -2.5], [9, 0, 2.2, 7, 2.5], [0, -2, 2.6, 15, 0.5]];
+  const nc = Math.max(1, Math.round(cr.length * (0.3 + 0.7 * frac)));
+  for (let i = 0; i < nc; i++) crystal(ctx, cr[i][0], cr[i][1] + 2, cr[i][2], cr[i][3] * (0.6 + 0.4 * frac), cr[i][4]);
   // Pépites au pied du tas
   const nug = [[-7, 12, 2.7], [6, 13, 2.4], [16, 10, 2.0], [-16, 10, 2.1], [1, 4, 2.9], [-9, 3, 2.5], [10, 3, 2.3]];
   const m = Math.max(1, Math.round(nug.length * frac));
@@ -97,6 +122,13 @@ export function drawStone(ctx, variant, frac) {
   for (let i = 0; i < rocks.length; i++) {
     const [x, y, w, h] = rocks[i];
     boulder(ctx, x, y, w, h * (0.7 + 0.3 * frac), col[i % 3], rnd, true);
+  }
+  // Mousse sur les arêtes supérieures
+  ctx.fillStyle = 'rgba(112,160,64,0.75)';
+  for (const [x, y] of [[-16, -6], [-3, -14], [6, -13], [14, -8], [-9, 2]]) {
+    ctx.beginPath();
+    ell(ctx, x, y, 2.6, 1.1, -0.2);
+    ctx.fill();
   }
   // Éclats clairs au pied
   ctx.fillStyle = '#d6d4cb';

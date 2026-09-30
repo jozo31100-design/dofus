@@ -98,8 +98,24 @@ class Bot {
       }
     }
     S.hall = (S.byType.hall || []).find((b) => b.done) || null;
-    S.enemy = world.players[1 - idx];
+    S.enemy = this.pickEnemy(world, S.hall);
     return S;
+  }
+
+  /** Adversaire visé : le camp vivant le plus proche (on le garde tant qu'il n'est pas éliminé, pour ne pas se disperser). */
+  pickEnemy(world, hall) {
+    const cur = this.foe !== undefined ? world.players[this.foe] : null;
+    if (cur && cur.alive && cur.idx !== this.idx) return cur;
+    let best = null;
+    let bd = Infinity;
+    for (const p of world.players) {
+      if (p.idx === this.idx || !p.alive) continue;
+      const h = world.buildings.find((b) => b.owner === p.idx && b.type === 'hall' && !b.dead);
+      const d = h && hall ? Math.hypot(h.x - hall.x, h.y - hall.y) : 1e6 + p.idx;
+      if (d < bd) { bd = d; best = p; }
+    }
+    this.foe = best ? best.idx : undefined;
+    return best;
   }
 
   canSpend(pl, cost) {
@@ -650,7 +666,7 @@ class Bot {
     if (!this._enemyMix || world.tick % 100 === 0) {
       const mix = { cavalry: 0, archer: 0, infantry: 0, siege: 0, total: 1 };
       for (const u of world.units) {
-        if (u.owner !== 1 - this.idx || u.dead) continue;
+        if (u.owner === this.idx || u.owner < 0 || u.dead) continue;
         const tags = DEFS[u.type].tags;
         if (tags.includes('cavalry')) mix.cavalry++;
         else if (tags.includes('archer')) mix.archer++;
@@ -700,7 +716,8 @@ class Bot {
 
   attack(world, pl, S) {
     const army = S.army.filter((u) => !u.inside);
-    const enemyBuildings = world.buildings.filter((b) => b.owner === 1 - this.idx && !b.dead);
+    const foe = this.pickEnemy(world, S.hall);
+    const enemyBuildings = foe ? world.buildings.filter((b) => b.owner === foe.idx && !b.dead && !DEFS[b.type].capture) : [];
     if (!enemyBuildings.length) return;
     const enemyHall = enemyBuildings.find((b) => b.type === 'hall') || enemyBuildings[0];
     const wave = this.wave;

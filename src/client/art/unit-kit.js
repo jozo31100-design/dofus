@@ -464,7 +464,7 @@ let scratchU = null;
  * under(ctx) (facultatif) dessine un calque SOUS le contour de silhouette, sans contour lui-même (reflet et
  * sillage sur l'eau, anneau doré des héros) ; il se compose par-dessus l'ombre et sous le sujet.
  */
-export function bakeSprite(box, b, draw, shadow, outline, under) {
+export function bakeSprite(box, b, draw, shadow, outline, under, style) {
   const pad = 3;
   const ox = Math.ceil(-box[0] * b) + pad;
   const oy = Math.ceil(-box[1] * b) + pad;
@@ -506,6 +506,8 @@ export function bakeSprite(box, b, draw, shadow, outline, under) {
       }
     }
   }
+  const y0s = y0;
+  const y1s = y1;
   const ol = outline ? 1 : 0;
   if (x1 >= 0) {
     x0 = Math.max(0, x0 - ol);
@@ -554,26 +556,45 @@ export function bakeSprite(box, b, draw, shadow, outline, under) {
   const oa = outline ? outline[1] : 0;
   const sa = shadow ? shadow.a : 0;
   const row = W * 4;
+  // Rendu « peint » (style) : contour teinté par la couleur voisine, liseré de lumière côté soleil
+  // (haut-gauche), arêtes basses un peu plus sombres, dégradé vertical doux, saturation légère,
+  // ombre portée froide et allongée vers le bas-droite avec un noyau plus dense sous les pieds.
+  const st = style || null;
+  const ys0 = y0s;
+  const ysH = Math.max(1, y1s - y0s);
+  const rc = st && shadow ? Math.cos(shadow.rot || 0) : 1;
+  const rs = st && shadow ? Math.sin(shadow.rot || 0) : 0;
+  const sTint = st ? st.shadow || [14, 22, 34] : [10, 16, 6];
   for (let y = 0; y < h; y++) {
     const sy = y + y0;
     for (let x = 0; x < w; x++) {
       const sx = x + x0;
       const si = sy * row + sx * 4;
       const oi = (y * w + x) * 4;
-      // Ombre au sol (dégradé radial elliptique)
+      // Ombre au sol (dégradé radial elliptique, éventuellement incliné)
       let ca = 0;
       let cr = 0;
       let cg = 0;
       let cb = 0;
       if (sa) {
-        const ex = (sx + 0.5 - scx) / srx;
-        const ey = (sy + 0.5 - scy) / sry;
+        let ex = (sx + 0.5 - scx) / srx;
+        let ey = (sy + 0.5 - scy) / sry;
+        if (st) {
+          const tx = ex * rc + ey * rs * (sry / srx);
+          const ty = -ex * rs * (srx / sry) + ey * rc;
+          ex = tx;
+          ey = ty;
+        }
         const r = Math.sqrt(ex * ex + ey * ey);
         if (r < 1) {
           ca = sa * (r < 0.6 ? 1 - r * 0.42 : 0.75 * (1 - (r - 0.6) / 0.4));
-          cr = 10;
-          cg = 16;
-          cb = 6;
+          if (st) {
+            // Noyau de contact : plus sombre près du centre
+            ca *= 0.78 + 0.5 * (1 - r) * (1 - r);
+          }
+          cr = sTint[0];
+          cg = sTint[1];
+          cb = sTint[2];
         }
       }
       // Calque inférieur (reflet, sillage, anneau) par-dessus l'ombre
@@ -592,26 +613,65 @@ export function bakeSprite(box, b, draw, shadow, outline, under) {
       const fa = d[si + 3];
       if (oa && fa < 255) {
         let n = 0;
-        if (sx > 0 && d[si - 1] > n) n = d[si - 1];
-        if (sx < W - 1 && d[si + 7] > n) n = d[si + 7];
-        if (sy > 0 && d[si - row + 3] > n) n = d[si - row + 3];
-        if (sy < H - 1 && d[si + row + 3] > n) n = d[si + row + 3];
+        let ni = -1;
+        if (sx > 0 && d[si - 1] > n) { n = d[si - 1]; ni = si - 4; }
+        if (sx < W - 1 && d[si + 7] > n) { n = d[si + 7]; ni = si + 4; }
+        if (sy > 0 && d[si - row + 3] > n) { n = d[si - row + 3]; ni = si - row; }
+        if (sy < H - 1 && d[si + row + 3] > n) { n = d[si + row + 3]; ni = si + row; }
         if (n) {
           const la = (oa * n) / 255;
           const na = la + ca * (1 - la);
-          cr = (orgb[0] * la + cr * ca * (1 - la)) / na;
-          cg = (orgb[1] * la + cg * ca * (1 - la)) / na;
-          cb = (orgb[2] * la + cb * ca * (1 - la)) / na;
+          let orr = orgb[0];
+          let org = orgb[1];
+          let orb = orgb[2];
+          if (st && ni >= 0) {
+            // Teinte sombre dérivée de la couleur du bord voisin (jamais de noir pur)
+            orr = orr * 0.45 + d[ni] * 0.2;
+            org = org * 0.45 + d[ni + 1] * 0.2;
+            orb = orb * 0.45 + d[ni + 2] * 0.22 + 4;
+          }
+          cr = (orr * la + cr * ca * (1 - la)) / na;
+          cg = (org * la + cg * ca * (1 - la)) / na;
+          cb = (orb * la + cb * ca * (1 - la)) / na;
           ca = na;
         }
       }
       // Sujet par-dessus
       if (fa) {
+        let sr = d[si];
+        let sg = d[si + 1];
+        let sb = d[si + 2];
+        if (st && fa > 200) {
+          // Saturation et dégradé vertical (haut lumineux, bas dans l'ombre)
+          const lum = sr * 0.3 + sg * 0.59 + sb * 0.11;
+          const sat = st.sat || 1.1;
+          const vy = (sy - ys0) / ysH;
+          const k = 1.05 - 0.13 * vy;
+          sr = (lum + (sr - lum) * sat) * k;
+          sg = (lum + (sg - lum) * sat) * k;
+          sb = (lum + (sb - lum) * sat) * (k - 0.015 * vy);
+          // Arêtes : côté soleil (haut/gauche) éclairé, côté opposé (bas/droite) assombri, teinte froide
+          const up = sy > 0 ? d[si - row + 3] : 0;
+          const lf = sx > 0 ? d[si - 1] : 0;
+          const dn = sy < H - 1 ? d[si + row + 3] : 0;
+          const rt = sx < W - 1 ? d[si + 7] : 0;
+          const ul = sx > 0 && sy > 0 ? d[si - row - 1] : 0;
+          if (up < 60 || lf < 60 || ul < 60) {
+            const rk = st.rim === undefined ? 0.3 : st.rim;
+            sr += (255 - sr) * rk;
+            sg += (238 - sg) * rk;
+            sb += (196 - sb) * rk;
+          } else if (dn < 60 || rt < 60) {
+            sr *= 0.86;
+            sg *= 0.88;
+            sb *= 0.95;
+          }
+        }
         const f = fa / 255;
         const na = f + ca * (1 - f);
-        cr = (d[si] * f + cr * ca * (1 - f)) / na;
-        cg = (d[si + 1] * f + cg * ca * (1 - f)) / na;
-        cb = (d[si + 2] * f + cb * ca * (1 - f)) / na;
+        cr = (sr * f + cr * ca * (1 - f)) / na;
+        cg = (sg * f + cg * ca * (1 - f)) / na;
+        cb = (sb * f + cb * ca * (1 - f)) / na;
         ca = na;
       }
       if (ca > 0) {

@@ -93,7 +93,7 @@ export function decodeRecord(r) {
     const x = r[10] || null;
     return {
       id: r[0], cls: 'building', type: DEF_IDS[r[2]], owner: r[3], tx: r[4], ty: r[5], hp: r[6], maxHp: r[7],
-      prog: r[8], garr: r[9], cap: x && x.c ? x.c : null, q: x ? x.q : null, rally: x && x.r ? x.r : null, food: x ? x.f : undefined,
+      prog: r[8], garr: r[9], cap: x && x.c ? x.c : null, focus: x && x.t ? x.t : 0, gar: x && x.g ? x.g.map((i) => DEF_IDS[i]) : null, q: x ? x.q : null, rally: x && x.r ? x.r : null, food: x ? x.f : undefined,
     };
   }
   if (kind === K_NODE) {
@@ -188,6 +188,14 @@ export class SnapshotBuilder {
         if (b.queue.length) extra.q = b.queue.map((it) => [it.kind === 'unit' ? 0 : 1, it.kind === 'unit' ? DEF_INDEX[it.id] : TECH_INDEX[it.id], Math.round((1 - it.left / it.total) * 100)]);
         if (b.rally) extra.r = [q32(b.rally.x), q32(b.rally.y)];
         if (b.type === 'farm') extra.f = Math.ceil(b.food);
+        if (b.focus) extra.t = b.focus;
+      }
+      if (DEFS[b.type].walk && b.garrison.length) {
+        // les soldats postés sur un mur se voient (et se comptent) : information publique
+        if (!extra) extra = {};
+        const types = [];
+        for (const id of b.garrison) { const g = w.get(id); if (g && !g.dead) types.push(DEF_INDEX[g.type]); }
+        extra.g = types.slice(0, 10);
       }
       const prog = b.done ? 100 : Math.floor(b.progress * 100);
       push(b.id, [b.id, K_BUILDING, DEF_INDEX[b.type], b.owner, b.tx, b.ty, Math.ceil(b.hp), Math.round(b.maxHp), prog, b.garrison.length, extra]);

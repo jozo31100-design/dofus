@@ -72,7 +72,7 @@ export class Renderer {
         }
       }
     }
-    for (const t of ['tree', 'berries', 'gold', 'stone', 'carcass']) for (let v = 0; v < 8; v++) art.getNodeSprite(t, v, 1);
+    for (const t of ['tree', 'berries', 'gold', 'stone', 'carcass']) for (let v = 0; v < (art.NODE_VARIANTS ? art.NODE_VARIANTS[t] || 8 : 8); v++) art.getNodeSprite(t, v, 1);
     onProgress(0.6, 'Préparation des unités…');
     await tick();
     await this.warmUnits((p) => onProgress(0.6 + 0.4 * p, 'Préparation des unités…'), tick);
@@ -182,6 +182,7 @@ export class Renderer {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, this.W, this.H);
     this.drawTerrain();
+    this.drawWaterGlints(now);
     this.fx.update(now);
     const { flat, tall } = this.collect(now);
     this.fx.drawGround(ctx, this, now, this.state);
@@ -191,6 +192,7 @@ export class Renderer {
     this.drawTall(tall, now);
     this.fx.drawAir(ctx, this, now);
     this.drawBars(tall, ui, now);
+    this.drawAtmosphere();
     this.drawFog();
     this.drawRally(ui);
     this.drawPlacing(ui, now);
@@ -211,6 +213,73 @@ export class Renderer {
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(this.terrainTex, 0, 0);
     ctx.setTransform(d, 0, 0, d, 0, 0);
+  }
+
+  /** Scintillements animés sur l'eau profonde (quelques dizaines de points, dessinés à la volée). */
+  drawWaterGlints(now) {
+    const st = this.state;
+    if (!this.glints) {
+      const S = this.S;
+      const list = [];
+      for (let y = 0; y < S; y++) {
+        for (let x = 0; x < S; x++) {
+          if (st.terrain[y * S + x] !== 2) continue;
+          const h = Math.imul(x * 374761393 + y * 668265263, 1274126177) >>> 0;
+          if (h % 7 !== 0) continue;
+          list.push(x + ((h >> 8) % 100) / 100, y + ((h >> 16) % 100) / 100, ((h >> 4) % 628) / 100);
+        }
+      }
+      this.glints = list;
+    }
+    const L = this.glints;
+    const ctx = this.ctx;
+    const z = this.zoom;
+    const ox = this.W / 2 - (this.cam.x - this.cam.y) * TW2 * z;
+    const oy = this.H / 2 - (this.cam.x + this.cam.y) * TH2 * z;
+    const t = now / 1000;
+    ctx.fillStyle = '#eaf8ff';
+    for (let i = 0; i < L.length; i += 3) {
+      const sx = (L[i] - L[i + 1]) * TW2 * z + ox;
+      const sy = (L[i] + L[i + 1]) * TH2 * z + oy;
+      if (sx < -10 || sx > this.W + 10 || sy < -10 || sy > this.H + 10) continue;
+      const a = Math.sin(t * 1.7 + L[i + 2]);
+      if (a < 0.35) continue;
+      ctx.globalAlpha = (a - 0.35) * 0.9;
+      const w = (3 + a * 3) * z;
+      ctx.fillRect(sx - w, sy, w * 2, Math.max(1, z));
+      ctx.fillRect(sx - w * 0.4, sy - Math.max(1, z), w * 0.8, Math.max(1, z));
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /** Atmosphère : voile chaud venant du soleil (haut-gauche) et vignette froide violacée dans les coins. */
+  drawAtmosphere() {
+    const W = this.W;
+    const H = this.H;
+    const d = this.dpr;
+    const key = W + 'x' + H + 'x' + d;
+    if (this._atmKey !== key) {
+      this._atmKey = key;
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(W * d * 0.5));
+      c.height = Math.max(1, Math.round(H * d * 0.5));
+      const g = c.getContext('2d');
+      const cw = c.width;
+      const ch = c.height;
+      const v = g.createRadialGradient(cw * 0.5, ch * 0.5, Math.min(cw, ch) * 0.42, cw * 0.5, ch * 0.5, Math.hypot(cw, ch) * 0.6);
+      v.addColorStop(0, 'rgba(40,24,80,0)');
+      v.addColorStop(1, 'rgba(34,18,70,0.34)');
+      g.fillStyle = v;
+      g.fillRect(0, 0, cw, ch);
+      const sun = g.createRadialGradient(0, 0, 0, 0, 0, Math.hypot(cw, ch) * 0.7);
+      sun.addColorStop(0, 'rgba(255,214,130,0.16)');
+      sun.addColorStop(1, 'rgba(255,214,130,0)');
+      g.fillStyle = sun;
+      g.fillRect(0, 0, cw, ch);
+      this._atm = c;
+    }
+    this.ctx.imageSmoothingEnabled = true;
+    this.ctx.drawImage(this._atm, 0, 0, W, H);
   }
 
   /** Rassemble les entités visibles à l'écran, en séparant les objets plats des objets qui se dressent. */
@@ -322,8 +391,29 @@ export class Renderer {
       ctx.fillStyle = TEAM_COLORS[e.cap[0]] ? TEAM_COLORS[e.cap[0]].main : '#ddd';
       ctx.fillRect(bx, by, (bw * e.cap[1]) / 100, 7 * z);
     }
+    if (e.gar && e.gar.length && !d.ghost) this.drawWallGuards(d, e, now);
     if (!d.ghost) this.fx.damageSmoke(e, now, s.h);
     return s;
+  }
+
+  /** Soldats postés sur un mur : on les voit debout sur le chemin de ronde (les archers y tirent). */
+  drawWallGuards(d, e, now) {
+    const ctx = this.ctx;
+    const z = this.zoom;
+    const top = { palisade: 30, palisade_gate: 34, wall: 58, gate: 58, rampart: 94, great_gate: 94, bastion: 108 }[e.type] || 60;
+    const n = Math.min(e.gar.length, e.w > 1 ? 6 : 3);
+    const gap = (e.w > 1 ? 15 : 13) * z;
+    for (let i = 0; i < n; i++) {
+      const type = e.gar[i];
+      if (!DEFS[type] || DEFS[type].cls !== 'unit') continue;
+      const ox = (i - (n - 1) / 2) * gap;
+      const oy = ((i % 2) - 0.5) * 3 * z;
+      ctx.save();
+      ctx.translate(d.sx + ox, d.sy - top * z + oy);
+      ctx.scale(z * 0.8, z * 0.8);
+      art.drawUnit(ctx, { type, civ: this.civOf(e.owner), team: e.owner, sx: 0, sy: 0, t: now / 1000 + i * 0.7, anim: 'idle', dir: i % 2 ? 1 : -1, deathT: 0, scale: 1 });
+      ctx.restore();
+    }
   }
 
   drawFlat(list, now) {
@@ -345,9 +435,18 @@ export class Renderer {
       const hovered = ui.hoverId === e.id;
       if (!selected && !hovered) return;
       const rel = e.owner === state.myIdx ? 'own' : e.owner < 0 ? 'gaia' : 'foe';
-      ctx.strokeStyle = RING[rel];
-      ctx.lineWidth = selected ? 2 : 1.5;
-      ctx.globalAlpha = selected ? 1 : 0.7;
+      const col = RING[rel];
+      const pulse = selected ? 0.85 + 0.15 * Math.sin(now / 260) : 0.7;
+      const stroke = (w) => {
+        ctx.strokeStyle = 'rgba(20,12,36,0.5)';
+        ctx.lineWidth = w + 2;
+        ctx.stroke();
+        ctx.strokeStyle = col;
+        ctx.lineWidth = w;
+        ctx.globalAlpha = pulse;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      };
       if (e.cls === 'building') {
         const half = e.w / 2 + 0.12;
         const p = (dx, dy) => this.worldToScreen(e.x + dx * half, e.y + dy * half);
@@ -361,14 +460,21 @@ export class Renderer {
         ctx.lineTo(cx, cy);
         ctx.lineTo(dx2, dy2);
         ctx.closePath();
-        ctx.stroke();
+        ctx.fillStyle = col;
+        ctx.globalAlpha = 0.07;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        stroke(selected ? 2 : 1.5);
       } else {
         const r = ((DEFS[e.type].radius || 0.3) + 0.22) * Math.SQRT2;
         ctx.beginPath();
         ctx.ellipse(d.sx, d.sy, r * TW2 * z, r * TH2 * z, 0, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.fillStyle = col;
+        ctx.globalAlpha = selected ? 0.16 : 0.08;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        stroke(selected ? 1.6 : 1.2);
       }
-      ctx.globalAlpha = 1;
     };
     for (const d of flat) draw(d);
     for (const d of tall) draw(d);
@@ -512,13 +618,17 @@ export class Renderer {
     const vis = state.vis;
     const exp = state.explored;
     for (let i = 0; i < S * S; i++) {
-      img.data[i * 4 + 3] = vis[i] ? 0 : exp[i] ? 105 : 255;
+      const k = i * 4;
+      img.data[k] = 18;
+      img.data[k + 1] = 14;
+      img.data[k + 2] = 38;
+      img.data[k + 3] = vis[i] ? 0 : exp[i] ? 112 : 252;
     }
     sctx.putImageData(img, 0, 0);
     const bctx = this.fog.big.getContext('2d');
     bctx.clearRect(0, 0, S * 4, S * 4);
     bctx.imageSmoothingEnabled = true;
-    bctx.filter = 'blur(3px)';
+    bctx.filter = 'blur(5px)';
     bctx.drawImage(this.fog.small, 0, 0, S * 4, S * 4);
     bctx.filter = 'none';
     this.fog.version = state.visVersion;
