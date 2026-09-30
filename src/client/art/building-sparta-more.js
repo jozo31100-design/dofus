@@ -7,7 +7,7 @@ import {
   longHouse, shed, scaffoldBox, doorLocal, windowLocal, railFence, pyramidRoof, leanRoof, stonePile, plankPile, scaffold, linePts, WOOD, WOOD_DARK,
 } from './building-parts.js';
 import {
-  banner, pennant, barrel, crate, sack, weaponRack, target, hayBale, cart, millstone, millstoneUp, sawhorse, stumpAxe, logPile, trough, anvil, glow, smoke, GOLD,
+  pennant, barrel, crate, sack, weaponRack, target, hayBale, cart, millstone, millstoneUp, sawhorse, stumpAxe, logPile, trough, anvil, glow, smoke, GOLD,
 } from './building-props.js';
 import { amphora, cauldron, boatHull, netRack, fishCrate, bollard } from './building-civic.js';
 import { horse } from './building-fauna.js';
@@ -16,7 +16,7 @@ import { wallPiece, gatePiece, FRANK_WALL, WMAT, uvRect, uvPt, boxUV, archDeco }
 import { FRANK_RAMP, FRANK_GG } from './building-defense.js';
 import { dockDeck, dockDeckRail, dockMooring, dockFoundExtra, DOCK_ZT, DOCK_E } from './building-dock.js';
 import {
-  MARBLE, STYL, WALL, TILE, TILE_EDGE, lambdaDisc, column, doric, hoplonLocal, olive, tripod, statue, palmette,
+  MARBLE, STYL, WALL, TILE, TILE_EDGE, lambdaDisc, column, doric, hoplonLocal, olive, tripod, statue, palmette, banner,
 } from './building-sparta-parts.js';
 
 const PI = Math.PI;

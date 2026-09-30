@@ -1,7 +1,8 @@
 // Planche de contrôle des Spartiates (unités propres et costumes de base) :
 //   node tools/shot.mjs tools/artboard-sparta.js .scratch/art/sparta.png 1600x1000
 // Sections choisies par globalThis.__spSec ou #ancre : review (zoom 1, tous les états), big (portraits ×3), loupe (×6 par unité),
-// base (unités de base spartiates ×3 face aux franques), crowd (zoom 0,6 : lisibilité et équipes), bld (bâtiments).
+// base (unités de base spartiates ×3 face aux franques), crowd (zoom 0,6 : lisibilité et équipes), bld (tous les bâtiments ;
+// globalThis.__spStage / __spTeam), ships (trière et barque).
 import { drawUnit } from '../src/client/art/units.js';
 import { mulberry32 } from '../src/client/art/palette.js';
 import { getBuildingSprite } from '../src/client/art/buildings.js';
@@ -140,15 +141,21 @@ function crowd() {
 }
 
 function bld() {
-  const types = ['hall', 'house', 'barracks', 'temple', 'castle', 'wonder', 'monument', 'market', 'academy', 'archery', 'stable', 'forge', 'dock', 'infirmary', 'great_house', 'tower'];
-  const H = 900;
+  // tous les types spartiates terminés ; les murs sont montrés avec des masques de voisinage (@n)
+  const types = ['hall', 'house', 'barracks', 'temple', 'castle', 'wonder', 'monument', 'market', 'academy', 'infirmary', 'great_house', 'archery', 'stable', 'forge',
+    'siege', 'dock', 'mill', 'lumber', 'mining', 'tower', 'slingtower', 'countersiege', 'outpost', 'bastion',
+    'wall@5', 'wall@10', 'wall@15', 'gate@5', 'rampart@5', 'great_gate@5', 'palisade@5', 'palisade_gate@5', 'farm'];
+  const team = globalThis.__spTeam || 0;
+  const stage = globalThis.__spStage ?? 3;
+  const H = 1000;
   const ctx = canvas(H);
   grass(ctx, 0, 0, W, H, 8);
   let x = 10;
   let y = 10;
   let rowH = 0;
   for (const t of types) {
-    const s = getBuildingSprite(t, 'sparta', 0, 3);
+    const [id, mk] = t.split('@');
+    const s = getBuildingSprite(id, 'sparta', team, stage, mk ? +mk : 0);
     if (x + s.canvas.width > W) { x = 10; y += rowH + 24; rowH = 0; }
     ctx.drawImage(s.canvas, x, y);
     label(ctx, t, x, y + s.canvas.height + 12, 12);
@@ -157,4 +164,22 @@ function bld() {
   }
 }
 
-({ review, big, loupe, base, crowd, bld })[only]();
+function ships() {
+  const ctx = canvas(520);
+  ctx.fillStyle = '#3d78a8';
+  ctx.fillRect(0, 0, W, 520);
+  label(ctx, 'Trière et barque de Laconie (bleu/rouge ; attente, marche, attaque)', 12, 20, 15);
+  ['warship', 'fishingboat'].forEach((t, i) => {
+    [['idle', 0.4], ['walk', 0.3], ['attack', 0.3]].forEach(([a, tt], j) => {
+      for (const team of [0, 1]) {
+        ctx.save();
+        ctx.translate(150 + (i * 3 + j) * 260, 140 + team * 190);
+        ctx.scale(1.6, 1.6);
+        drawUnit(ctx, U(t, team, { sx: 0, sy: 0, anim: a, t: tt, aim: 0.2 }));
+        ctx.restore();
+      }
+    });
+  });
+}
+
+({ review, big, loupe, base, crowd, bld, ships })[only]();

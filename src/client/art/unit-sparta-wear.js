@@ -456,7 +456,25 @@ function headHook() {
   return false;
 }
 
+/** Cnémides : jambière de bronze moulée sur le tibia de la jambe proche (sp.xgreaves = couleur du bronze). */
+function greavesHook(ctx, sp, R) {
+  if (!sp.xgreaves) return;
+  const z = R.z;
+  const col = sp.xgreaves;
+  const [kx, ky] = R.kneeN;
+  const [ax, ay] = R.ankN;
+  const sx = kx + (ax - kx) * 0.18;
+  const sy = ky + (ay - ky) * 0.18;
+  ctx.beginPath();
+  capsule(ctx, sx, sy, 1.55 * z, ax, ay - 0.6 * z, 1.1 * z);
+  paint(ctx, sideGrad(ctx, Math.min(sx, ax) - 2, Math.max(sx, ax) + 2, col, 0.45, -0.3), edge(col, 0.85), 0.5);
+  line(ctx, sx - 0.4 * z, sy + 0.8 * z, ax - 0.4 * z, ay - 1.4 * z, 'rgba(255,240,190,0.65)', 0.35 * z);
+  // genouillère : petit liseré au sommet
+  line(ctx, sx - 1.2 * z, sy - 0.2 * z, sx + 1.2 * z, sy - 0.2 * z, rgba(tone(col, -0.4), 0.7), 0.4 * z);
+}
+
 export const HOOKS = {
+  front: greavesHook,
   torso: torsoHook,
   helmet: helmetHook,
   head: headHook,

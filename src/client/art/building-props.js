@@ -180,7 +180,20 @@ export function banner(g, x, y, z0, hPole, o = {}) {
   c.lineWidth = 0.9;
   c.stroke();
   if (o.emblem === 'bee') bee(c, px, y0 + H * 0.42, W * 0.3);
-  else fleurDeLys(c, px, y0 + H * 0.42, W * 0.34);
+  else if (o.emblem === 'lambda') {
+    // lambda de Lacédémone (Sparte)
+    const r = W * 0.26;
+    c.strokeStyle = GOLD;
+    c.lineWidth = Math.max(1.3, W * 0.12);
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+    c.beginPath();
+    c.moveTo(px - r * 0.8, y0 + H * 0.42 + r * 1.0);
+    c.lineTo(px, y0 + H * 0.42 - r * 1.0);
+    c.lineTo(px + r * 0.85, y0 + H * 0.42 + r * 1.0);
+    c.stroke();
+    c.lineCap = 'butt';
+  } else fleurDeLys(c, px, y0 + H * 0.42, W * 0.34);
   // embouts dorés de la traverse
   c.fillStyle = GOLD;
   c.beginPath();

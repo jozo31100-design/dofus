@@ -338,12 +338,10 @@ export function egyptBase(type, teamIdx) {
       return human(sp, 'bow', BOX_BASE);
     }
     case 'healer': {
-      // Prêtre : crâne rasé, longue robe de lin, étole d'équipe, bâton à ankh
-      sp = eg(tm, 1.06, { naked: false, hem: 10.4, sleeves: 'robe', belt: GOLDE });
-      sp.robe = LINEN;
-      sp.stole = tm.main;
+      // Prêtre sem : crâne rasé, peau de léopard sur l'épaule, long pagne de lin au liseré d'équipe, bâton à ankh
+      sp = eg(tm, 1.06, { naked: true, hem: 9.4, band: tm.main, bracelet: GOLDE, belt: GOLDE });
       sp.xhelm = { kind: 'bald' };
-      sp.xtorso = [];
+      sp.xtorso = ['leopard'];
       sp.weapon = 'ankhStaff';
       return human(sp, 'staff', BOX_BASE);
     }

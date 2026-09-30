@@ -57,6 +57,15 @@ scramasaxe (`sp.sax`), moustache courte (`sp.moustacheShort`). Outil de contrôl
   manteaux agrafés et capes de fourrure, boucliers ronds à umbo et bouton, francisque, angon, scramasaxe ; cottes de mailles et casques coniques à nasal
   réservés aux élites ; chevaliers carolingiens : haubert, bouclier en amande.
 
+### Égyptiens (`civ === 'egypt'`, Nouvel Empire)
+- Palette : grès doré, briques crues enduites de chaux, lapis, turquoise, or, vert papyrus.
+- Bâtiments (`building-egypt*.js`, rendu commun `finishLayer` de `buildings.js` comme Francs et Gaulois) : maisons de briques chaulées à toit-terrasse et loggia de roseaux, palais à colonnes papyriformes,
+  temple à pylône, obélisques et mâts à oriflammes, forteresse nubienne, greniers à coupoles (moulin), scierie de troncs de palmier, camp minier, champ des archers, écurie des chars, forge de Ptah à four à coupole,
+  tours à fruit, atelier de siège, port du Nil (barque de papyrus), maison de vie médicale, villa, contre-siège ; murs, portes, rempart, grande porte, palissade, bastion et poste de guet en briques crues
+  (`building-egypt-walls.js`, même moteur de masque que `building-walls.js`). Planches : `tools/artboard-egypt-buildings.js`, `tools/artboard-egypt-walls.js`.
+- Personnages : shendyt plissé, nemes rayé, couronnes blanche / rouge / bleue / pschent, barbe postiche, kohl, collier ousekh, archers nubiens et arcs composites, grands boucliers de peau à sommet arrondi,
+  khopesh, chars légers à deux chevaux à la place de la cavalerie, prêtres au crâne rasé et à la peau de léopard, barques de papyrus et navires de Pount (`unit-egypt-*.js`, planche `tools/artboard-egypt.js`).
+
 ## 3. API (à respecter à l'identique)
 
 Tous les modules sont des modules ES sans dépendance, **Canvas 2D uniquement** (pas d'API Node, pas d'image externe,

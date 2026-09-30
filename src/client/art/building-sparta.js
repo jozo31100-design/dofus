@@ -6,10 +6,10 @@
 // building-sparta-parts.js. DESIGNS.sparta dans buildings.js.
 import { MAT } from './building-gfx.js';
 import { longHouse, scaffoldBox, doorLocal, windowLocal } from './building-parts.js';
-import { banner, barrel, crate, weaponRack, shieldLocal, GOLD } from './building-props.js';
+import { barrel, crate, weaponRack, shieldLocal, GOLD } from './building-props.js';
 import { brazier, amphora, lectern } from './building-civic.js';
 import {
-  MARBLE, STYL, WALL, TILE, TILE_EDGE, lambdaDisc, column, doric, flankBanners, hoplonLocal, olive, tripod, statue,
+  MARBLE, STYL, WALL, TILE, TILE_EDGE, lambdaDisc, column, doric, flankBanners, hoplonLocal, olive, tripod, statue, banner,
 } from './building-sparta-parts.js';
 import { MORE } from './building-sparta-more.js';
 import { tone } from './building-gfx.js';

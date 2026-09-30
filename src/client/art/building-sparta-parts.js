@@ -3,7 +3,10 @@
 // laconiens : olivier, trépied de bronze, statue d'hoplite, hoplons suspendus, palmettes d'acrotère.
 import { MAT, tone, ink } from './building-gfx.js';
 import { gableRoof, scaffoldBox, doorLocal, windowLocal, stick } from './building-parts.js';
-import { banner, GOLD } from './building-props.js';
+import { banner as baseBanner, GOLD } from './building-props.js';
+
+/** Bannière d'équipe au lambda d'or. */
+export const banner = (g, x, y, z0, h, o = {}) => baseBanner(g, x, y, z0, h, { emblem: 'lambda', ...o });
 
 const PI = Math.PI;
 export const MARBLE = { ...MAT.stoneLight, col: '#dcd6c6' };

@@ -7,6 +7,7 @@ import { base, BOX } from './unit-base.js';
 import { balisteSpec } from './unit-baliste.js';
 import { HOOKS, BRONZE_S, CREST_RED } from './unit-sparta-wear.js';
 import { unitSpec } from './unit-specs.js';
+import { tone } from './unit-kit.js';
 import { spProw, spSailCols, spShieldCols } from './unit-sparta-ship.js';
 
 const BOX_HERO = [-44, -74, 50, 10];
@@ -57,6 +58,7 @@ function sb(tm, z) {
 function corinth(sp, o) {
   sp.helmet = HELM_FLAG;
   sp.xhelm = { kind: 'corinth', ...o };
+  sp.xgreaves = o.c ? tone(o.c, 0.05) : '#c9a04a'; // cnémides assorties au casque
 }
 
 function human(sp, hold, box, extra) {
