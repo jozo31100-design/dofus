@@ -544,6 +544,18 @@ function drawTorso(ctx, sp, R, P) {
     ctx.beginPath();
     ell(ctx, 2.5, -1.5, 0.75, 0.62);
     paint(ctx, sp.buckle || G.BRONZE, null);
+    if (sp.sax) {
+      // Scramasaxe au côté : fourreau de cuir oblique et poignée de bois qui dépasse à la hanche
+      ctx.beginPath();
+      poly(ctx, [-3.3, -1.9, -2.3, -2.0, -0.3, 2.3, -1.1, 2.6]);
+      paint(ctx, '#6b4426', 'rgba(30,18,8,0.8)', 0.45);
+      ctx.beginPath();
+      capsule(ctx, -3.3, -2.2, 0.55, -4.3, -3.3, 0.45);
+      paint(ctx, '#3e2a18', 'rgba(20,12,6,0.8)', 0.4);
+      ctx.beginPath();
+      ell(ctx, -0.7, 2.5, 0.42, 0.38);
+      paint(ctx, '#c9b070', null);
+    }
     if (sp.sickleBelt) {
       ctx.beginPath();
       ctx.arc(-0.8, 0.4, 1.5, -0.4, PI * 0.9);

@@ -24,21 +24,38 @@ et riches, mais **lisibles** : chaque silhouette doit se reconnaître au premier
 cape ou face du bouclier ; sur les bâtiments, bannières, fanions, bandeaux de toit. Assez de surface pour qu'on
 distingue les camps dans une foule à zoom 0,6. Ne jamais teinter tout le sprite.
 
+### Rendu des personnages (moteur `unit-kit.js` / `unit-human.js`)
+Lumière au nord-ouest pour tous les sprites cuits (`bakeSprite`, style `PAINT` de `units.js`) : liseré chaud sur les arêtes côté soleil,
+arêtes basses assombries et teintées de froid, contour fin **teinté par la couleur voisine** (jamais de noir pur), saturation légère,
+dégradé vertical doux et ombre portée froide allongée vers le bas-droite avec un noyau de contact. Volumes : dégradé diagonal (`volGrad`)
+sur le buste, les membres, les jupes et les capes ; plis de tissu ; tête et mains agrandies (`HEAD_K`, `HAND_R`) pour une silhouette
+héroïque lisible à zoom 0,6. Animations : transfert de poids et mouvement de tête à l'arrêt, bouclier plus levé, traînée lumineuse du coup
+d'épée (`swingTrail` dans `units.js`). Chevaux : reflets de musculature, creux du coude, selle celtique à quatre cornes (`horse.horns`).
+Le style n'est activé que pour les unités (`bakeSprite(..., style)` : `nature.js` n'est pas concerné).
+
+**Costumes historiques** : `unit-hist-specs.js` (`histSpec`) décrit les unités de base des Gaulois (La Tène, Ier s. av. J.-C.) et des Francs
+(Mérovingiens puis Carolingiens). Les autres peuples (Sparte, Vikings, Égypte) dérivent toujours de `unitSpec()` (`unit-specs.js`), inchangé :
+ne pas mélanger. Nouveautés de dessin : coiffures `swept` (cheveux chaulés relevés) et `bowl` (coupe au bol), casques `coolus` / `montefortino` /
+`agen` (cimier `helmet.crest`, clous `helmet.stud`), bouclier `almond` (amande carolingienne), umbo fusiforme des boucliers gaulois, angon,
+scramasaxe (`sp.sax`), moustache courte (`sp.moustacheShort`). Outil de contrôle rapide : `tools/artboard-uview.js` (grille de types, voir l'en-tête).
+
 ### Gaulois (`civ === 'gauls'`)
 - Palette : verts, ocres, bruns chauds, blanc cassé (torchis chaulé), paille dorée.
 - Bâtiments : plans **ronds** ou ovales, toits **coniques en chaume**, murs de torchis blanc sur ossature de bois apparente,
   palissades de troncs pointus, murs en pierres sèches à poutres (*murus gallicus*), **carnyx** (long cor de bronze
   à tête de sanglier) et sangliers sur des mâts, boucliers peints, clôtures d'osier.
-- Personnages : longues **moustaches**, cheveux blond paille ou roux, **braies à carreaux** (vert/brun), torque doré au cou,
-  boucliers ovales/hexagonaux en bois avec ombilic de fer, casques simples ou ailés pour les élites.
+- Personnages : longues **moustaches**, cheveux chaulés relevés (ou blond paille, roux), **braies à carreaux**, sagum agrafé par une fibule, torque doré,
+  boucliers ovales/hexagonaux à nervure et umbo fusiforme, casques Coolus / Montefortino / Agen (les ailes et les cornes restent des parures de chef),
+  cottes de mailles, guerriers nus peints réservés aux gésates, druides en robe blanche.
 
 ### Francs (`civ === 'franks'`)
 - Palette : bruns-gris, ardoise, bleu-gris, blanc, acier, touches d'or.
 - Bâtiments : **longues salles de bois** à bardeaux, toits à forte pente avec **têtes sculptées aux pignons**, murs de planches
   verticales sur soubassement de pierre ; château de pierre à donjon carré et tours d'angle ; bannières à emblème doré
   (abeille / fleur de lys), boucliers ronds accrochés, croix pour la chapelle.
-- Personnages : tuniques longues, jambes **entrelacées de lanières**, cheveux longs ou barbe, capes de fourrure, boucliers ronds
-  à ombilic métallique, cottes de mailles et casques coniques à nasal pour les unités avancées.
+- Personnages : tuniques courtes, jambes **entrelacées de bandelettes**, coupe au bol (simples guerriers) ou longs cheveux (nobles), moustaches sans barbe,
+  manteaux agrafés et capes de fourrure, boucliers ronds à umbo et bouton, francisque, angon, scramasaxe ; cottes de mailles et casques coniques à nasal
+  réservés aux élites ; chevaliers carolingiens : haubert, bouclier en amande.
 
 ## 3. API (à respecter à l'identique)
 

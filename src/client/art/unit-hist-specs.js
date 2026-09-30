@@ -123,7 +123,7 @@ function gaulSpec(type, tm) {
       sp.torque = true;
       sp.weapon = 'longsword';
       sp.hem = 4.6;
-      sagum(sp, tm.main, { len: 8 });
+      sagum(sp, tm.main, { len: 10.5, w: 1.12 });
       break;
     }
     case 'champion': {
@@ -250,6 +250,7 @@ function frankSpec(type, tm) {
       sp = frank(tm, 1.11, { hair: FRANK.dark, legs: '#6f7a52' });
       sp.shield = { kind: 'round', face: tm.main, deco: 'segments' };
       sp.weapon = 'angon';
+      sp.sax = true;
       sp.spearFwd = 12;
       sp.spearBack = 9;
       mantle(sp, tone(tm.main, -0.3), { len: 6.5, fibula: '#c9b070' });
@@ -265,7 +266,8 @@ function frankSpec(type, tm) {
       sp.shield = { kind: 'round', face: tm.main, deco: 'segments' };
       sp.weapon = 'sword';
       sp.hem = 6.6;
-      mantle(sp, tm.main, { len: 8.5, fibula: GOLD });
+      sp.sax = true;
+      mantle(sp, tm.main, { len: 10.5, w: 1.1, fibula: GOLD });
       break;
     }
     case 'champion': {
@@ -288,6 +290,7 @@ function frankSpec(type, tm) {
       sp.swordLen = 9;
       sp.hilt = GOLD;
       sp.hem = 7.0;
+      sp.sax = true;
       break;
     }
     case 'archer': {
@@ -319,6 +322,7 @@ function frankSpec(type, tm) {
       sp.sleeves = 'short';
       sp.sash = tm.main;
       sp.weapon = 'francisca';
+      sp.sax = true;
       sp.back = 'shield';
       sp.shieldFace = tm.main;
       sp.hem = 5.6;
@@ -453,6 +457,19 @@ function frankMounted(type, tm) {
   return { kind: 'mounted', sp, hold, horse, box: type === 'knight' ? BOX.knight : BOX.mounted, type };
 }
 
+/** Bateaux : coque de unitSpec() (inchangée), équipage historique (pêcheur en tunique, archers en cucullus ou capuche de laine). */
+function crewed(type, civ, teamIdx, tm, g) {
+  const S = unitSpec(type, civ, teamIdx);
+  const fisher = g ? gaul(tm, 0.9, { braies: 3, hem: 3.4 }) : frank(tm, 0.9, { hair: FRANK.auburn, hem: 5.0 });
+  fisher.weapon = null;
+  S.sp = fisher;
+  if (S.archer) {
+    const a = (g ? gaulSpec('archer', tm) : frankSpec('archer', tm)).sp;
+    S.archer = { ...a, sz: 0.84 };
+  }
+  return S;
+}
+
 /**
  * Description d'une unité gauloise ou franque de base (historique), ou celle de unitSpec() pour tout autre cas
  * (engins, bateaux, unités d'extension, autres peuples). Même contrat que unitSpec().
@@ -461,6 +478,7 @@ export function histSpec(type, civ, teamIdx) {
   if (civ !== 'gauls' && civ !== 'franks') return unitSpec(type, civ, teamIdx);
   const tm = teamColors(teamIdx);
   const g = artOf(civ) === 'gauls';
+  if (type === 'fishingboat' || type === 'warship') return crewed(type, civ, teamIdx, tm, g);
   let r = null;
   if (type === 'scout' || type === 'cavalry' || type === 'knight') r = g ? gaulMounted(type, tm) : frankMounted(type, tm);
   else if (type === 'gesate' || type === 'vercingetorix') r = g ? gaulSpec(type, tm) : null;
