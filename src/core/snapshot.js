@@ -222,6 +222,7 @@ export class SnapshotBuilder {
       p: pl.pop, c: pl.popCap, a: pl.age,
       t: pl.techList.map((id) => TECH_INDEX[id]),
       k: [...pl.queuedTechs].map((id) => TECH_INDEX[id]),
+      ch: pl.chosen,
       pr: [pl.prices.food, pl.prices.wood, pl.prices.stone].map((v) => Math.round(v * 100) / 100),
     });
     if (me !== this.lastMe) { this.lastMe = me; snap.me = JSON.parse(me); }

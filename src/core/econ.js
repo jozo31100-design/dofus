@@ -2,7 +2,7 @@
 
 import {
   DT, DEFS, UNITS, BUILDINGS, TECHS, BUILD_EXPONENT, FARM_RESEED_COST, FARM_MAX_WORKERS, RESOURCES,
-  AGE_NAMES, trainableAt, techForCiv, RES_LABEL, nameOf, TICK_RATE, TRADE_LOT, TRADE_RES, WONDER_TIME, tradeFee, tradeQuote,
+  AGE_NAMES, CHOICE_CATS, CHOICE_AGES, choiceOptions, choiceKey, trainableAt, techForCiv, RES_LABEL, nameOf, TICK_RATE, TRADE_LOT, TRADE_RES, WONDER_TIME, tradeFee, tradeQuote,
 } from './defs.js';
 import { GRASS, WATER } from './mapgen.js';
 import { recalcPop, setOrder, finishOrder, freeSpotAround, ejectFromRect, distEdge, goalFor, REACH } from './common.js';
@@ -42,6 +42,7 @@ function completeBuilding(world, b, pl) {
   b.progress = 1;
   b.hp = b.maxHp;
   recalcPop(world, pl);
+  if (BUILDINGS[b.type].gate) world.openGate(b);
   world.emit({ k: 'built', id: b.id, type: b.type, owner: b.owner, x: b.x, y: b.y });
   if (BUILDINGS[b.type].wonder) {
     b.wonderEnds = world.tick + WONDER_TIME * TICK_RATE;
@@ -158,6 +159,8 @@ function completeTech(world, pl, techId) {
   if (t.ageUp) {
     pl.age = t.ageUp;
     world.emit({ k: 'age', owner: pl.idx, age: t.ageUp });
+    if (pl.ai) for (const cat of CHOICE_CATS) applyChoice(world, pl, t.ageUp, cat, choiceOptions(pl.civ, t.ageUp, cat)[world.rng() < 0.5 ? 0 : 1]);
+    else if (CHOICE_AGES.includes(t.ageUp)) world.say(pl.idx, 'Nouvel âge : choisissez un héros, une unité spéciale et un bonus (bouton « Choix »).', 'info');
   } else {
     pl.techs.add(techId);
     pl.techList.push(techId);
@@ -165,6 +168,29 @@ function completeTech(world, pl, techId) {
   pl.statCache.clear();
   refreshMaxHp(world, pl);
   world.emit({ k: 'tech', owner: pl.idx, id: techId });
+}
+
+/** Identifiants choisis (héros, unités spéciales, bonus) sous forme d'ensemble. */
+export function chosenSet(pl) {
+  return new Set(Object.values(pl.chosen || {}));
+}
+
+/** Enregistre un choix d'âge (héros, unité spéciale ou bonus). Renvoie null ou un message d'erreur. */
+export function applyChoice(world, pl, age, cat, id) {
+  if (!CHOICE_CATS.includes(cat) || !CHOICE_AGES.includes(age)) return 'Choix invalide.';
+  if (pl.age < age) return `Requiert l'${AGE_NAMES[age]}.`;
+  const key = choiceKey(age, cat);
+  if (pl.chosen[key]) return 'Ce choix est déjà fait.';
+  if (!choiceOptions(pl.civ, age, cat).includes(id)) return 'Choix invalide.';
+  pl.chosen[key] = id;
+  if (cat === 'bonus' && TECHS[id]) {
+    pl.techs.add(id);
+    pl.techList.push(id);
+    pl.statCache.clear();
+    refreshMaxHp(world, pl);
+  }
+  world.emit({ k: 'choice', owner: pl.idx, age, cat, id });
+  return null;
 }
 
 /** Après une technologie : recalcule les points de vie maximum des unités et bâtiments existants. */
@@ -188,7 +214,7 @@ function costLack(pl, cost) {
 /** Ajoute une unité à la file d'un bâtiment. Renvoie null si tout va bien, sinon un message d'erreur. */
 export function queueUnit(world, pl, b, type) {
   if (!b || b.dead || b.owner !== pl.idx || !b.done) return 'Ce bâtiment n\'est pas terminé.';
-  if (!trainableAt(b.type, pl.civ).includes(type)) return 'Ce bâtiment ne peut pas former cette unité.';
+  if (!trainableAt(b.type, pl.civ, chosenSet(pl)).includes(type)) return 'Ce bâtiment ne peut pas former cette unité.';
   const def = UNITS[type];
   if (pl.age < def.age) return `Requiert l'${AGE_NAMES[def.age]}.`;
   if (b.queue.length >= 8) return 'La file d\'attente est pleine.';
@@ -217,7 +243,7 @@ export function techBlocker(world, pl, techId) {
   if (t.requiresTech && !pl.techs.has(t.requiresTech)) return `Requiert : ${TECHS[t.requiresTech].name}.`;
   if (t.ageUp) {
     if (pl.age !== t.ageUp - 1) return `Requiert l'${AGE_NAMES[t.ageUp - 1]}.`;
-    for (const other of ['age2', 'age3']) if (pl.queuedTechs.has(other)) return 'Un changement d\'âge est déjà en cours.';
+    for (const other of ['age2', 'age3', 'age4']) if (pl.queuedTechs.has(other)) return 'Un changement d\'âge est déjà en cours.';
     if (t.requires) {
       let n = 0;
       for (const b of world.buildings) if (b.owner === pl.idx && b.done && !b.dead && t.requires.among.includes(b.type)) n++;

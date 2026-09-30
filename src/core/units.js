@@ -1,10 +1,10 @@
 // Comportement des unités : déplacement, ordres (marcher, attaquer, récolter, construire…), collisions, animaux.
 
-import { DT, DEFS, ANIMALS, BUILDINGS, GATHER_BASE, FARM_MAX_WORKERS, RESOURCES, RES_LABEL } from './defs.js';
+import { DT, DEFS, ANIMALS, BUILDINGS, GATHER_BASE, FARM_MAX_WORKERS, RESOURCES, RES_LABEL, CLIMB_TIME } from './defs.js';
 import {
   ANIM, WORK, REACH, distEdge, goalFor, setOrder, finishOrder, isMilitary,
 } from './common.js';
-import { performAttack, findTarget, canTarget, attackReach } from './combat.js';
+import { performAttack, findTarget, canTarget, attackReach, applyDamage, killEntity } from './combat.js';
 import { findDropOff, findNodeNear, findFarmSlot } from './econ.js';
 
 const STUCK_SAMPLE = 20; // toutes les secondes on vérifie qu'une unité qui marche avance vraiment
@@ -22,8 +22,10 @@ export function updateUnit(world, u) {
   if (u.cd > 0) u.cd--;
   const st = world.stat(u.owner, u.type);
   const o = u.order;
+  if (u.climbing && !(o && o.t === 'climb' && o.phase === 'up')) u.climbing = false;
   if (o) {
     switch (o.t) {
+      case 'climb': doClimb(world, u, o, st); break;
       case 'move': doMove(world, u, o, st); break;
       case 'attack': doAttack(world, u, o, st); break;
       case 'gather': doGather(world, u, o, st); break;
@@ -78,7 +80,7 @@ function followPath(world, u, st) {
     u.pathVer = world.blockVersion;
     if (!pathStillClear(world, u)) { u.path = null; u.repathAt = 0; return 'none'; }
   }
-  let speed = st.speed;
+  let speed = st.speed * (1 + world.auraOf(u, 'speed'));
   if (u.speedCap && u.speedCap < speed) speed = u.speedCap;
   let remaining = speed * DT;
   const sx = u.x;
@@ -112,7 +114,7 @@ function followPath(world, u, st) {
 
 /** Marche droit vers un point, sans chemin (approche finale d'une cible mobile). */
 function steer(world, u, st, x, y) {
-  let speed = st.speed;
+  let speed = st.speed * (1 + world.auraOf(u, 'speed'));
   if (u.speedCap && u.speedCap < speed) speed = u.speedCap;
   const dx = x - u.x;
   const dy = y - u.y;
@@ -257,13 +259,96 @@ function doAttack(world, u, o, st) {
     u.path = null;
     u.face = Math.atan2(t.y - u.y, t.x - u.x);
     u.anim = ANIM.fight;
+    const sui = DEFS[u.type].suicide;
+    if (sui) { sapperBlast(world, u, sui); return; }
     if (u.cd <= 0) performAttack(world, u, t);
     return;
   }
   const r = approach(world, u, st, t, reach);
   if (r === 'failed') {
     o.fails = (o.fails || 0) + 1;
-    if (o.fails > 2) retargetAttack(world, u, o, st);
+    if (o.fails > 2 && !tryClimbFallback(world, u, o)) retargetAttack(world, u, o, st);
+  }
+}
+
+/** Le sapeur se fait sauter contre un bâtiment : gros dégâts de zone aux bâtiments, peu aux unités. */
+function sapperBlast(world, u, sui) {
+  const victims = [];
+  for (const b of world.buildings) if (!b.dead && b.owner !== u.owner && b.owner >= 0 && distEdge(u.x, u.y, b) <= sui.r) victims.push(b);
+  world.forUnitsNear(u.x, u.y, sui.r, (v) => { if (v.owner !== u.owner && v.owner >= 0 && !v.dead) victims.push(v); });
+  world.emit({ k: 'hit', x: u.x, y: u.y, big: true });
+  world.emit({ k: 'hit', x: u.x + 0.4, y: u.y - 0.3, big: true });
+  for (const v of victims) applyDamage(world, v, v.cls === 'building' ? sui.dmg : sui.dmg * 0.1, u);
+  killEntity(world, u, null);
+}
+
+/** Le fantassin bloqué par une muraille (et qui a les échelles) l'escalade plutôt que d'abandonner. */
+function tryClimbFallback(world, u, o) {
+  const pl = world.players[u.owner];
+  const d = DEFS[u.type];
+  if (!pl || !pl.techs.has('ladders') || !d.tags.includes('infantry') || d.tags.includes('siege')) return false;
+  let best = null;
+  let bd = 7;
+  for (const b of world.buildings) {
+    if (b.dead || b.owner === u.owner || b.owner < 0 || !(DEFS[b.type].wall || DEFS[b.type].gate)) continue;
+    const dd = distEdge(u.x, u.y, b);
+    if (dd < bd) { bd = dd; best = b; }
+  }
+  if (!best) return false;
+  const again = { t: 'attack', target: o.target, auto: o.auto };
+  const rest = u.queue.slice();
+  u.order = { t: 'climb', target: best.id, phase: 'go' };
+  u.queue = [again, ...rest];
+  u.path = null;
+  u.pathGoal = null;
+  return true;
+}
+
+/** Escalade d'une muraille ennemie avec des échelles : on s'approche, on grimpe (exposé), on redescend de l'autre côté. */
+function doClimb(world, u, o, st) {
+  const t = world.get(o.target);
+  if (!t || t.dead) { finishOrder(u); return; }
+  if (o.phase === 'go') {
+    const r = approach(world, u, st, t, REACH.climb);
+    if (r === 'failed') { finishOrder(u); return; }
+    if (r !== 'reached') return;
+    const dx = u.x - t.x;
+    const dy = u.y - t.y;
+    const sx = Math.abs(dx) * t.h > Math.abs(dy) * t.w ? Math.sign(dx) : 0;
+    const sy = sx ? 0 : Math.sign(dy) || 1;
+    const blocked = world.blockedOf(u);
+    const S = world.S;
+    let dest = null;
+    for (let k = 0; k < 5 && !dest; k++) {
+      const px = t.x - sx * (t.w / 2 + 0.6 + k);
+      const py = t.y - sy * (t.h / 2 + 0.6 + k);
+      const cx = Math.floor(px) | 0;
+      const cy = Math.floor(py) | 0;
+      if (cx < 0 || cy < 0 || cx >= S || cy >= S) break;
+      if (!blocked[cy * S + cx]) dest = { x: sx ? px : u.x, y: sy ? py : u.y };
+    }
+    if (!dest) { finishOrder(u); return; }
+    const tags = DEFS[t.type].tags;
+    let time = tags.includes('great') ? CLIMB_TIME.great : tags.includes('stone') ? CLIMB_TIME.stone : CLIMB_TIME.wood;
+    let assisted = false;
+    world.forUnitsNear(u.x, u.y, 3.5, (v) => { if (v.type === 'siegetower' && v.owner === u.owner && !v.dead) assisted = true; });
+    if (assisted) time = CLIMB_TIME.towerAssist;
+    o.phase = 'up';
+    o.left = time;
+    o.dest = dest;
+    u.path = null;
+  }
+  u.climbing = true;
+  u.anim = ANIM.work;
+  u.work = WORK.climb;
+  u.face = Math.atan2(-(u.y - t.y), -(u.x - t.x));
+  o.left -= DT;
+  if (o.left <= 0) {
+    u.x = o.dest.x;
+    u.y = o.dest.y;
+    u.climbing = false;
+    world.emit({ k: 'hit', x: u.x, y: u.y, big: false });
+    finishOrder(u);
   }
 }
 
@@ -303,7 +388,7 @@ function doHeal(world, u, o, st) {
     u.healAcc += DT;
     if (u.healAcc >= heal.every) {
       u.healAcc = 0;
-      t.hp = Math.min(t.maxHp, t.hp + heal.amount);
+      t.hp = Math.min(t.maxHp, t.hp + heal.amount * (1 + world.auraOf(u, 'heal')));
       world.emit({ k: 'heal', x: t.x, y: t.y, id: t.id });
     }
   } else if (r === 'failed') {
@@ -511,7 +596,7 @@ function gatherWork(world, u, o, st, pl) {
   u.work = kindWork(kind);
   u.face = Math.atan2(t.y - u.y, t.x - u.x);
   const cap = st.carry;
-  u.gatherAcc += GATHER_BASE[kind] * st.gather[kind] * DT;
+  u.gatherAcc += GATHER_BASE[kind] * st.gather[kind] * (1 + world.auraOf(u, 'gather')) * DT;
   while (u.gatherAcc >= 1 && u.carryAmt < cap) {
     u.gatherAcc -= 1;
     if (isFarm) {
@@ -612,7 +697,7 @@ export function separateUnits(world) {
 /** Repousse une unité hors des cases infranchissables (cercle contre carré). */
 function resolveStatic(world, u) {
   const S = world.S;
-  const blocked = u.naval ? world.blockedW : world.blocked;
+  const blocked = world.blockedOf(u);
   const r = u.radius * 0.9;
   for (let pass = 0; pass < 2; pass++) {
     const tx = Math.floor(u.x);

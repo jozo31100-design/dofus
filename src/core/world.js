@@ -17,7 +17,6 @@ import { recalcPop } from './common.js';
 import { updateProjectiles } from './combat.js';
 import { computeVision } from './vision.js';
 import { applyCommand } from './commands.js';
-import { HERO_AURA } from './defs.js';
 import { createBot } from './ai.js';
 
 const CELL = 2;
@@ -47,6 +46,9 @@ export class World {
     this.pf = new PathGrid(S, this.blocked);
     this.pfw = new PathGrid(S, this.blockedW);
     this.blockVersion = 0;
+    // grilles par joueur : les portes achevées de son camp sont ouvertes pour lui seul
+    this.blockedP = [];
+    this.pfp = [];
 
     this.entities = new Map();
     this.units = [];
@@ -71,6 +73,10 @@ export class World {
 
     const pcfg = cfg.players || [{ name: 'Joueur 1', civ: 'franks' }, { name: 'Joueur 2', civ: 'gauls', ai: 'moyen' }];
     this.players = pcfg.map((p, i) => this._makePlayer(i, p, cfg.startRes || 'standard'));
+    for (let i = 0; i < this.players.length; i++) {
+      this.blockedP.push(Uint8Array.from(this.blocked));
+      this.pfp.push(new PathGrid(S, this.blockedP[i]));
+    }
     this._populate();
     for (const pl of this.players) {
       if (pl.ai) this.bots.push(createBot(this, pl.idx, pl.ai));
@@ -111,6 +117,7 @@ export class World {
       researched: 0,
       prices: { food: 1, wood: 1, stone: 1 }, // prix relatifs du marché (1 = 100 unités contre 100 d'or)
       traded: 0,
+      chosen: {}, // choix par âge : { '2hero': 'brennus', ... }
     };
   }
 
@@ -135,7 +142,14 @@ export class World {
 
   /** Grille de chemins d'une unité : l'eau pour les bateaux, la terre pour les autres. */
   gridOf(u) {
-    return u.naval ? this.pfw : this.pf;
+    if (u.naval) return this.pfw;
+    return (u.owner >= 0 && this.pfp[u.owner]) || this.pf;
+  }
+
+  /** Cases bloquantes vues par une unité (les portes de son camp sont ouvertes). */
+  blockedOf(u) {
+    if (u.naval) return this.blockedW;
+    return (u.owner >= 0 && this.blockedP[u.owner]) || this.blocked;
   }
 
   stat(owner, type) {
@@ -236,6 +250,7 @@ export class World {
     this.buildings.push(b);
     this._occupy(b, def.walkable ? 0 : 1);
     if (!def.walkable) this.blockVersion++;
+    if (done && def.gate) this.openGate(b);
     if (done) recalcPop(this, this.players[owner]);
     return b;
   }
@@ -333,7 +348,10 @@ export class World {
     for (let y = e.ty; y < e.ty + e.h; y++) {
       for (let x = e.tx; x < e.tx + e.w; x++) {
         this.occ[y * S + x] = e.id;
-        if (block) { this.blocked[y * S + x] = 1; this.blockedW[y * S + x] = 1; }
+        if (block) {
+          this.blocked[y * S + x] = 1; this.blockedW[y * S + x] = 1;
+          for (const g of this.blockedP) g[y * S + x] = 1;
+        }
       }
     }
   }
@@ -346,8 +364,18 @@ export class World {
         if (this.occ[y * S + x] === e.id) this.occ[y * S + x] = 0;
         this.blocked[y * S + x] = this.terrainBlock[y * S + x];
         this.blockedW[y * S + x] = this.terrainBlockW[y * S + x];
+        for (const g of this.blockedP) g[y * S + x] = this.terrainBlock[y * S + x];
       }
     }
+  }
+
+  /** Une porte achevée laisse passer son propriétaire (et lui seul). */
+  openGate(b) {
+    const S = this.S;
+    const g = this.blockedP[b.owner];
+    if (!g) return;
+    for (let y = b.ty; y < b.ty + b.h; y++) for (let x = b.tx; x < b.tx + b.w; x++) g[y * S + x] = 0;
+    this.blockVersion++;
   }
 
   /** Marque une entité comme détruite ; elle est retirée des listes à la fin du pas. */
@@ -483,14 +511,28 @@ export class World {
     }
   }
 
-  /** Les héros galvanisent les alliés proches (+15 % d'attaque, réévalué deux fois par seconde). */
+  /** Auras des héros, unités spéciales et bâtiments : réévaluées deux fois par seconde (valeur max par type d'aura). */
   updateAuras() {
-    for (const h of this.units) {
-      if (h.dead || h.inside || !DEFS[h.type].tags.includes('hero')) continue;
-      this.forUnitsNear(h.x, h.y, HERO_AURA.range, (v) => {
-        if (v.owner === h.owner && !v.dead) v.auraUntil = this.tick + 14;
+    const until = this.tick + 14;
+    const apply = (src) => {
+      const a = DEFS[src.type].aura;
+      if (!a) return;
+      this.forUnitsNear(src.x, src.y, a.r, (v) => {
+        if (v.owner !== src.owner || v.dead) return;
+        if (!v.au) v.au = {};
+        const cur = v.au[a.kind];
+        if (!cur || cur.until < this.tick || cur.v < a.v) v.au[a.kind] = { v: a.v, until };
+        else cur.until = Math.max(cur.until, until);
       });
-    }
+    };
+    for (const h of this.units) if (!h.dead && !h.inside && DEFS[h.type].aura) apply(h);
+    for (const b of this.buildings) if (!b.dead && b.done && DEFS[b.type].aura) apply(b);
+  }
+
+  /** Valeur courante d'une aura sur une unité (0 si aucune). */
+  auraOf(u, kind) {
+    const a = u.au && u.au[kind];
+    return a && a.until >= this.tick ? a.v : 0;
   }
 
   /** Merveilles achevées : annonces du compte à rebours et victoire. */
@@ -518,7 +560,13 @@ export class World {
       if (!pl.alive) continue;
       if (pl.resigned) { pl.alive = false; continue; }
       let hasBuilding = false;
-      for (const b of this.buildings) if (b.owner === pl.idx && !b.dead) { hasBuilding = true; break; }
+      for (const b of this.buildings) {
+        if (b.owner !== pl.idx || b.dead) continue;
+        const d = DEFS[b.type];
+        if (d.wall || d.gate || b.type === 'outpost') continue;
+        hasBuilding = true;
+        break;
+      }
       let hasVillager = false;
       if (!hasBuilding) for (const u of this.units) if (u.owner === pl.idx && u.type === 'villager' && !u.dead) { hasVillager = true; break; }
       if (!hasBuilding && !hasVillager) pl.alive = false;

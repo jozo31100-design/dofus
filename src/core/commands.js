@@ -2,8 +2,8 @@
 // l'IA et les tests. Une commande est un objet simple : { c: 'move', ids: [...], x, y, q?: true }.
 
 import { UNITS, BUILDINGS, DEFS, RESOURCES } from './defs.js';
-import { setOrder, resetMove, freeSpotAround, isMilitary } from './common.js';
-import { queueUnit, queueTech, cancelQueue, startBuilding, findFarmSlot, trade } from './econ.js';
+import { setOrder, resetMove, freeSpotAround, isMilitary, wallLine } from './common.js';
+import { queueUnit, queueTech, cancelQueue, startBuilding, findFarmSlot, trade, applyChoice, placementError } from './econ.js';
 import { killEntity, canTarget } from './combat.js';
 
 const num = (v, d = 0) => (Number.isFinite(v) ? v : d);
@@ -135,6 +135,41 @@ function cmdBuild(world, pi, cmd) {
   if (err) world.say(pi, err, 'warn');
 }
 
+/** Mur ou palissade posés en ligne : une commande, plusieurs chantiers (les villageois les enchaînent). */
+function cmdBuildLine(world, pi, cmd) {
+  const pl = world.players[pi];
+  const def = BUILDINGS[cmd.type];
+  if (!def || !(def.wall || def.gate)) return;
+  const cells = wallLine(def.size, Math.floor(num(cmd.x0)), Math.floor(num(cmd.y0)), Math.floor(num(cmd.x1)), Math.floor(num(cmd.y1)));
+  let first = true;
+  let n = 0;
+  for (const [tx, ty] of cells) {
+    if (placementError(world, pl, cmd.type, tx, ty)) continue;
+    const err = startBuilding(world, pl, cmd.type, tx, ty, cmd.ids || [], !first || !!cmd.q);
+    if (err) { world.say(pi, err, 'warn'); break; }
+    first = false;
+    n++;
+  }
+  if (!n) world.say(pi, 'Impossible de bâtir ici.', 'warn');
+}
+
+function cmdChoose(world, pi, cmd) {
+  const err = applyChoice(world, world.players[pi], num(cmd.age), String(cmd.cat), String(cmd.id));
+  if (err) world.say(pi, err, 'warn');
+}
+
+function cmdClimb(world, pi, cmd) {
+  const t = world.get(cmd.tid);
+  const pl = world.players[pi];
+  if (!t || t.dead || t.cls !== 'building' || t.owner === pi || !(DEFS[t.type].wall || DEFS[t.type].gate)) return;
+  if (!pl.techs.has('ladders')) { world.say(pi, 'Il faut d\'abord rechercher les échelles d\'assaut (maison des guerriers).', 'warn'); return; }
+  for (const u of ownUnits(world, pi, cmd.ids)) {
+    const d = DEFS[u.type];
+    if (d.tags.includes('infantry') && !d.tags.includes('siege')) setOrder(u, { t: 'climb', target: t.id, phase: 'go' }, !!cmd.q);
+    else setOrder(u, { t: 'attack', target: t.id }, !!cmd.q);
+  }
+}
+
 function cmdRepair(world, pi, cmd) {
   const b = ownBuilding(world, pi, cmd.tid);
   if (!b) return;
@@ -244,6 +279,9 @@ export function applyCommand(world, pi, cmd) {
     case 'gather': cmdGather(world, pi, cmd); break;
     case 'build': cmdBuild(world, pi, cmd); break;
     case 'repair': cmdRepair(world, pi, cmd); break;
+    case 'buildline': cmdBuildLine(world, pi, cmd); break;
+    case 'choose': cmdChoose(world, pi, cmd); break;
+    case 'climb': cmdClimb(world, pi, cmd); break;
     case 'train': cmdTrain(world, pi, cmd); break;
     case 'research': cmdResearch(world, pi, cmd); break;
     case 'cancel': cmdCancel(world, pi, cmd); break;

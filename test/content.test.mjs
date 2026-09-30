@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { World } from '../src/core/world.js';
 import { DT, computeStats, tradeFee, tradeQuote, WONDER_TIME } from '../src/core/defs.js';
-import { placementError, queueUnit, trade } from '../src/core/econ.js';
+import { placementError, queueUnit, trade, applyChoice } from '../src/core/econ.js';
 import { canTarget } from '../src/core/combat.js';
 import { generateMap, checkMap, WATER } from '../src/core/mapgen.js';
 
@@ -100,15 +100,18 @@ test('un seul héros à la fois, et il galvanise les alliés proches', () => {
   const pl = w.players[0];
   pl.age = 3;
   pl.ai = true;
-  const castle = w.addBuilding('castle', 0, 30, 55, true);
-  assert.equal(queueUnit(w, pl, castle, 'clovis'), null);
-  assert.match(queueUnit(w, pl, castle, 'clovis') || '', /seul/);
+  const hall = w.playerBuildings(0, 'hall')[0];
+  assert.match(queueUnit(w, pl, hall, 'clovis') || '', /ne peut pas/, 'un héros non choisi ne se forme pas');
+  assert.equal(applyChoice(w, pl, 3, 'hero', 'clovis'), null);
+  pl.res.food = 2000; pl.res.gold = 2000;
+  assert.equal(queueUnit(w, pl, hall, 'clovis'), null);
+  assert.match(queueUnit(w, pl, hall, 'clovis') || '', /seul/);
   const hero = w.addUnit('clovis', 0, 40, 40);
   const friend = w.addUnit('swordsman', 0, 41, 40);
   const far = w.addUnit('swordsman', 0, 70, 70);
   run(w, 2);
-  assert.ok(friend.auraUntil > w.tick, 'l\'allié proche est galvanisé');
-  assert.ok(!(far.auraUntil > w.tick), 'l\'allié éloigné ne l\'est pas');
+  assert.ok(w.auraOf(friend, 'atk') > 0, 'l\'allié proche est galvanisé');
+  assert.ok(!(w.auraOf(far, 'atk') > 0), 'l\'allié éloigné ne l\'est pas');
   assert.equal(hero.type, 'clovis');
 });
 

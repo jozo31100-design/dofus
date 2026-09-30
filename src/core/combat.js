@@ -1,6 +1,6 @@
 // Combat : dégâts, projectiles, tir des bâtiments, choix des cibles, mort des entités.
 
-import { DT, DEFS, ANIMALS, UNITS, BUILDINGS, HERO_AURA } from './defs.js';
+import { DT, DEFS, ANIMALS, UNITS, BUILDINGS, CLIMB_VULN } from './defs.js';
 import { distEdge, isMilitary, recalcPop, setOrder } from './common.js';
 
 /**
@@ -18,7 +18,7 @@ export function calcDamage(attSt, defSt, defDef) {
 
 /** Bonus d'attaque d'un allié qui se trouve près d'un héros de son camp. */
 function auraMul(world, att) {
-  return att.auraUntil > world.tick ? 1 + HERO_AURA.atk : 1;
+  return 1 + world.auraOf(att, 'atk');
 }
 
 /** Une unité peut-elle attaquer cette cible ? */
@@ -80,6 +80,11 @@ export function performAttack(world, att, t) {
 
 export function applyDamage(world, t, dmg, att) {
   if (t.dead || t.hp <= 0) return;
+  if (t.cls === 'unit') {
+    const ar = world.auraOf(t, 'armor');
+    if (ar) dmg = Math.max(1, dmg - ar);
+    if (t.climbing) dmg *= CLIMB_VULN;
+  }
   t.hp -= dmg;
   onDamaged(world, t, att);
   if (t.hp <= 0) killEntity(world, t, att);
@@ -228,7 +233,8 @@ export function findTarget(world, u, radius) {
 /** Tir des bâtiments armés (salle, tour, château) sur les ennemis à portée. */
 export function buildingFire(world, b) {
   const def = BUILDINGS[b.type];
-  if (!def.arrows || !b.done) return;
+  if (!def.atk || !b.done) return;
+  if (!def.arrows && !(def.garrison && b.garrison.length)) return;
   if (b.cd > 0) { b.cd--; return; }
   const st = world.stat(b.owner, b.type);
   const targets = [];
@@ -246,6 +252,7 @@ export function buildingFire(world, b) {
     if (g && isMilitary(DEFS[g.type])) garr++;
   }
   const n = Math.min(st.arrows + garr, 14);
+  if (n <= 0) { b.cd = 6; return; }
   const def2 = DEFS[b.type];
   for (let i = 0; i < n; i++) {
     const t = targets[i % targets.length].v;

@@ -1,15 +1,15 @@
 // Aides partagées par les modules de la simulation (ordres, distances, emprises).
 // Ce module n'importe rien du moteur : il évite les dépendances circulaires.
 
-import { BUILDINGS, MAX_POP } from './defs.js';
+import { BUILDINGS, DEFS, MAX_POP } from './defs.js';
 import { distToRect } from './path.js';
 
 /** Ce que fait visuellement une unité (envoyé aux clients pour les animations). */
 export const ANIM = { idle: 0, walk: 1, work: 2, fight: 3 };
-export const WORK = { none: 0, wood: 1, mine: 2, farm: 3, forage: 4, build: 5, repair: 6, hunt: 7, butcher: 8, heal: 9, fish: 10 };
+export const WORK = { none: 0, wood: 1, mine: 2, farm: 3, forage: 4, build: 5, repair: 6, hunt: 7, butcher: 8, heal: 9, fish: 10, climb: 11 };
 
 /** Distances d'interaction (en cases, mesurées depuis le bord de la cible). */
-export const REACH = { gather: 0.9, build: 0.9, deposit: 0.9, garrison: 0.9, farm: 0.6 };
+export const REACH = { gather: 0.9, build: 0.9, deposit: 0.9, garrison: 0.9, farm: 0.6, climb: 0.75 };
 
 export const CARRY_CODE = { food: 1, wood: 2, gold: 3, stone: 4 };
 
@@ -108,7 +108,7 @@ export function ejectFromRect(world, x0, y0, x1, y1) {
 
 /** Point libre autour d'un bâtiment, de préférence du côté du point (px, py). */
 export function freeSpotAround(world, b, px, py, naval = false) {
-  const grid = naval ? world.pfw : world.pf;
+  const grid = naval ? world.pfw : (world.pfp && world.pfp[b.owner]) || world.pf;
   const cx = b.x;
   const cy = b.y;
   const half = b.w / 2;
@@ -146,3 +146,43 @@ export function freeSpotAround(world, b, px, py, naval = false) {
 export function isMilitary(def) {
   return !!def && !def.worker && !(def.tags && def.tags.includes('healer')) && ((def.atk && (def.atk.melee > 0 || def.atk.pierce > 0)) || false);
 }
+
+/**
+ * Tracé d'une ligne de murs : positions (coin haut-gauche) des éléments de `size` cases entre deux points (en cases).
+ * Les éléments de 1 case suivent un tracé à 4 voisins (pas de passage en diagonale) ; les éléments plus grands
+ * suivent l'axe dominant, par pas de `size`. Partagé par le client (aperçu) et le serveur (construction).
+ */
+export function wallLine(size, x0, y0, x1, y1, max = 60) {
+  const out = [];
+  let x = Math.floor(x0);
+  let y = Math.floor(y0);
+  const ex = Math.floor(x1);
+  const ey = Math.floor(y1);
+  if (size > 1) {
+    const horiz = Math.abs(ex - x) >= Math.abs(ey - y);
+    const n = Math.floor((horiz ? Math.abs(ex - x) : Math.abs(ey - y)) / size);
+    const sx = horiz ? Math.sign(ex - x) || 1 : 0;
+    const sy = horiz ? 0 : Math.sign(ey - y) || 1;
+    for (let i = 0; i <= n && out.length < max; i++) out.push([x + sx * size * i, y + sy * size * i]);
+    return out;
+  }
+  const dx = Math.abs(ex - x);
+  const dy = Math.abs(ey - y);
+  const sx = x < ex ? 1 : -1;
+  const sy = y < ey ? 1 : -1;
+  let err = dx - dy;
+  out.push([x, y]);
+  while ((x !== ex || y !== ey) && out.length < max) {
+    if (err * 2 > -dy && x !== ex) { err -= dy; x += sx; out.push([x, y]); }
+    else if (y !== ey) { err += dx; y += sy; out.push([x, y]); }
+    else { err -= dy; x += sx; out.push([x, y]); }
+  }
+  return out;
+}
+
+/** Une définition de bâtiment est-elle une muraille ou une porte (elles ne comptent pas pour rester en vie) ? */
+export function isWallDef(def) {
+  return !!def && !!(def.wall || def.gate);
+}
+
+export { DEFS };
