@@ -56,7 +56,7 @@ const AIM_MAX = 1.25;
 
 const OUTLINE = ['#1b120a', 0.6];
 /** Rendu peint des sprites (liseré de soleil, contour teinté, saturation, ombre froide) : cf. bakeSprite. */
-const PAINT = { sat: 1.12, rim: 0.3, shadow: [16, 24, 40] };
+const PAINT = { sat: 1.08, rim: 0.3, shadow: [16, 24, 40] };
 
 const specs = new Map();
 function specOf(type, civ, team) {

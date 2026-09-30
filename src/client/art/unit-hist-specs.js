@@ -26,7 +26,7 @@ const BRAIES = [
   ['#6f7f3a', '#a8763a'],
   ['#8a3e2c', '#d2a24e'],
   ['#3f6580', '#cfc49a'],
-  ['#5e6a3a', '#8d6a3a'],
+  ['#5e6a3a', '#b59a4c'],
 ];
 
 // Sagum (manteau de laine) : teintes naturelles
@@ -64,6 +64,7 @@ function frank(tm, z, o = {}) {
   sp.hairStyle = o.hairStyle || 'bowl';
   sp.beard = null;
   sp.moustache = o.moustache || tone(sp.hair, -0.05);
+  sp.moustacheShort = true;
   sp.hem = o.hem || 5.2;
   sp.legs = { kind: 'wrap', c1: o.legs || '#857d66', c2: '#4a3a2a' };
   sp.belt = '#3e2c1e';

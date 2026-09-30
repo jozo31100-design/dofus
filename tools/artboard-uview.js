@@ -8,7 +8,7 @@ const C = Object.assign({ types: ['villager', 'militia', 'spearman', 'swordsman'
 const cw = Math.round(72 * C.zoom);
 const ch = Math.round(84 * C.zoom);
 const cells = [];
-for (const type of C.types) for (const team of C.teams) for (const anim of C.anims) for (const t of C.t) cells.push({ type, team, anim, t });
+for (const type of C.types) for (const team of C.teams) for (const anim of C.anims) for (const w of anim === 'work' && C.works ? C.works : [undefined]) for (const t of C.t) cells.push({ type, team, anim, t, work: w });
 const rows = Math.ceil(cells.length / C.cols);
 const W = C.cols * cw;
 const H = rows * ch;
@@ -33,13 +33,13 @@ cells.forEach((c, i) => {
   g.translate(x, y);
   g.scale(C.zoom, C.zoom);
   const civ = C.civ;
-  drawUnit(g, { type: c.type, civ, team: c.team, sx: 0, sy: 0, t: c.t, anim: c.anim, dir: C.dir, aim: 0.2, work: c.work, carry: null, deathT: 0.1 });
+  drawUnit(g, { type: c.type, civ, team: c.team, sx: 0, sy: 0, t: c.t, anim: c.anim, dir: C.dir, aim: 0.2, work: c.work, carry: c.carry || null, deathT: 0.1 });
   g.restore();
   g.font = '11px sans-serif';
   g.fillStyle = '#fff';
   g.strokeStyle = 'rgba(0,0,0,.6)';
   g.lineWidth = 3;
-  const lab = c.type + (c.anim !== 'idle' ? ' ' + c.anim : '') + ' t' + c.team;
+  const lab = c.type + (c.anim !== 'idle' ? ' ' + c.anim : '') + (c.work ? ' ' + c.work : '') + ' t' + c.team;
   g.strokeText(lab, x - cw / 2 + 3, y + 12 * C.zoom);
   g.fillText(lab, x - cw / 2 + 3, y + 12 * C.zoom);
 });

@@ -88,7 +88,16 @@ function finishUnit(u) {
   };
 }
 
+// Les bâtiments sont plus fragiles qu'au départ (moins de points de vie et d'armure : les sièges aboutissent), murs et portes un peu moins.
+const BUILDING_HP_MUL = 0.7;
+const WALL_HP_MUL = 0.8;
+const BUILDING_ARMOR_MUL = 0.75;
+
 function finishBuilding(b) {
+  const frail = !b.capture;
+  const hpMul = !frail ? 1 : (b.wall || b.gate) ? WALL_HP_MUL : BUILDING_HP_MUL;
+  const am = frail ? BUILDING_ARMOR_MUL : 1;
+  b = { ...b, hp: frail ? Math.round(b.hp * hpMul / 5) * 5 : b.hp, armor: { melee: Math.round((b.armor ? b.armor.melee || 0 : 0) * am), pierce: Math.round((b.armor ? b.armor.pierce || 0 : 0) * am) } };
   return {
     cls: 'building',
     los: 6,
@@ -399,7 +408,7 @@ const BUILDING_LIST = [
     armor: { melee: 3, pierce: 10 }, cost: { wood: 275, stone: 100 }, time: 100, age: 2, los: 10, pop: 10,
     drop: ['food', 'wood', 'gold', 'stone'],
     trains: ['villager', 'brennus', 'ambiorix', 'vercingetorix', 'camulogene', 'divico', 'commios', 'childeric', 'clotilde', 'clovis', 'charles_martel', 'charlemagne', 'roland'],
-    atk: { pierce: 6 }, range: 7, rof: 2, arrows: 1, projectile: 'arrow', projSpeed: 14, garrison: 15,
+    atk: { pierce: 12 }, range: 7, rof: 2, arrows: 1, projectile: 'arrow', projSpeed: 14, garrison: 15,
     desc: 'Cœur de votre peuple : forme les villageois et vos héros, reçoit toutes les ressources, fait progresser les âges.',
   },
   {
@@ -451,7 +460,7 @@ const BUILDING_LIST = [
   {
     id: 'tower', names: { franks: 'Tour de guet', gauls: 'Tour de guet' }, page: 'mil', size: 2, hp: 850,
     armor: { melee: 5, pierce: 9 }, cost: { wood: 50, stone: 100 }, time: 35, age: 2, los: 10,
-    atk: { pierce: 6 }, range: 8, rof: 2, arrows: 1, projectile: 'arrow', projSpeed: 15, garrison: 5, tags: ['building', 'tower', 'stone'],
+    atk: { pierce: 15 }, range: 8, rof: 2, arrows: 1, projectile: 'arrow', projSpeed: 15, garrison: 5, tags: ['building', 'tower', 'stone'],
     desc: 'Tour de défense : tire des flèches sur les ennemis proches. Chaque soldat à l\'intérieur ajoute une flèche. Clic droit sur un ennemi : cible prioritaire.',
   },
   {
@@ -473,7 +482,7 @@ const BUILDING_LIST = [
   {
     id: 'castle', names: { franks: 'Château', gauls: 'Citadelle' }, page: 'mil', size: 5, hp: 3600,
     armor: { melee: 8, pierce: 12 }, cost: { stone: 400 }, time: 110, age: 3, los: 11,
-    trains: ['francisque', 'gesate'], atk: { pierce: 10 }, range: 9, rof: 1.8, arrows: 3, projectile: 'arrow', projSpeed: 16,
+    trains: ['francisque', 'gesate'], atk: { pierce: 22 }, range: 9, rof: 1.8, arrows: 3, projectile: 'arrow', projSpeed: 16,
     garrison: 20,
     desc: 'Forteresse imprenable : forme votre guerrier unique, tire une volée de flèches et abrite 20 soldats.',
   },
@@ -522,31 +531,31 @@ const BUILDING_LIST = [
   {
     id: 'wall', names: { franks: 'Mur de pierre', gauls: 'Murus gallicus' }, page: 'def', size: 1, hp: 2200,
     armor: { melee: 6, pierce: 18 }, cost: { stone: 28 }, time: 12, age: 2, los: 3, wall: true, garrison: 4, walk: true,
-    atk: { pierce: 4 }, range: 7, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 14, tags: ['building', 'wall', 'stone'],
+    atk: { pierce: 9 }, range: 7, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 14, tags: ['building', 'wall', 'stone'],
     desc: 'Muraille de pierre : difficile à détruire. Deux soldats peuvent y prendre position et tirer depuis le chemin de ronde.',
   },
   {
     id: 'gate', names: { franks: 'Porte fortifiée', gauls: 'Porte fortifiée' }, page: 'def', size: 1, hp: 1800,
     armor: { melee: 6, pierce: 18 }, cost: { stone: 45, wood: 25 }, time: 18, age: 2, los: 4, gate: true, garrison: 4, walk: true,
-    atk: { pierce: 4 }, range: 7, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 14, tags: ['building', 'gate', 'wall', 'stone'],
+    atk: { pierce: 9 }, range: 7, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 14, tags: ['building', 'gate', 'wall', 'stone'],
     desc: 'Porte de pierre : vos unités passent, celles de l\'ennemi doivent la détruire ou escalader la muraille.',
   },
   {
     id: 'rampart', names: { franks: 'Grande muraille', gauls: 'Grand rempart' }, page: 'def', size: 2, hp: 6500,
     armor: { melee: 10, pierce: 25 }, cost: { stone: 110, gold: 20 }, time: 30, age: 3, los: 4, wall: true, garrison: 10, walk: true,
-    atk: { pierce: 5 }, range: 8, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 15, tags: ['building', 'wall', 'stone', 'great'],
+    atk: { pierce: 12 }, range: 8, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 15, tags: ['building', 'wall', 'stone', 'great'],
     desc: 'Immense muraille : très chère, presque indestructible sans machines de siège. Quatre soldats y tirent du haut du chemin de ronde.',
   },
   {
     id: 'great_gate', names: { franks: 'Grande porte', gauls: 'Grande porte' }, page: 'def', size: 2, hp: 4500,
     armor: { melee: 10, pierce: 25 }, cost: { stone: 140, wood: 60, gold: 30 }, time: 40, age: 3, los: 5, gate: true, garrison: 6, walk: true,
-    atk: { pierce: 5 }, range: 8, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 15, tags: ['building', 'gate', 'wall', 'stone', 'great'],
+    atk: { pierce: 12 }, range: 8, rof: 2, arrows: 0, projectile: 'arrow', projSpeed: 15, tags: ['building', 'gate', 'wall', 'stone', 'great'],
     desc: 'Porte monumentale de la Grande muraille : passage large pour vos armées.',
   },
   {
     id: 'bastion', names: { franks: 'Bastion', gauls: 'Bastion' }, page: 'def', size: 3, hp: 3600,
     armor: { melee: 8, pierce: 16 }, cost: { stone: 320, wood: 60 }, time: 70, age: 3, los: 11, garrison: 16, walk: true,
-    atk: { pierce: 9 }, range: 10, rof: 1.8, arrows: 3, projectile: 'arrow', projSpeed: 16, tags: ['building', 'tower', 'stone', 'great'],
+    atk: { pierce: 20 }, range: 10, rof: 1.8, arrows: 3, projectile: 'arrow', projSpeed: 16, tags: ['building', 'tower', 'stone', 'great'],
     desc: 'Tour massive à poser aux angles des murailles : volées de flèches à longue portée, abrite 10 soldats.',
   },
   {

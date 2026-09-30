@@ -757,7 +757,7 @@ function drawHead(ctx, sp, R) {
   if (sp.moustache) {
     // Longue moustache tombante gauloise
     const c = sp.moustache;
-    const ml = sp.moustacheLong ? 2.6 : 0;
+    const ml = sp.moustacheLong ? 2.6 : sp.moustacheShort ? -1.1 : 0;
     ctx.beginPath();
     ctx.moveTo(2.0, 1.25);
     ctx.quadraticCurveTo(3.1, 0.85, 3.95, 1.3);

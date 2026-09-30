@@ -305,7 +305,7 @@ export function buildingFire(world, b) {
     if (!pick) continue;
     const t = pick.v;
     const gd = DEFS[sh.g.type];
-    shoot(t, gd.projectile || 'arrow', sh.ust, calcDamage(sh.ust, world.stat(t.owner, t.type), DEFS[t.type]) * 1.15, gd.projSpeed, sh.ust.splash, 'b');
+    shoot(t, gd.projectile || 'arrow', sh.ust, (calcDamage(sh.ust, world.stat(t.owner, t.type), DEFS[t.type]) * 1.15 + 0.5 * calcDamage(st, world.stat(t.owner, t.type), DEFS[t.type])), gd.projSpeed, sh.ust.splash, 'b');
   }
   b.cd = Math.max(1, Math.round(st.rof / DT));
 }
