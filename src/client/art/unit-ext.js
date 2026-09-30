@@ -6,8 +6,11 @@
 import * as G from './unit-ext-gauls.js';
 import * as F from './unit-ext-franks.js';
 import * as C from './unit-ext-common.js';
+import * as SPARTA from './unit-ext-sparta.js';
+import * as VIKINGS from './unit-ext-vikings.js';
+import * as EGYPT from './unit-ext-egypt.js';
 
-const MODS = [G, F, C];
+const MODS = [G, F, C, SPARTA, VIKINGS, EGYPT];
 export const EXT_TYPES = MODS.flatMap((m) => m.TYPES);
 export const EXT_METRICS = Object.assign({}, ...MODS.map((m) => m.METRICS));
 export const EXT_KINDS = Object.assign({}, ...MODS.map((m) => m.KINDS));

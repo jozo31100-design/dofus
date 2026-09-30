@@ -22,6 +22,8 @@ const HULLS = {
   'fish/franks': { L: 52, B: 6.0, H: 5.0, hb: 9.0, hs: 4.2, wl: 0.56, pe: 2.3, pq: 0.72, ph: 2.6, strakes: 3, light: '#a37848', dark: '#6b4626' },
   'fish/gauls': { L: 46, B: 7.4, H: 4.4, hb: 4.6, hs: 4.2, wl: 0.78, pe: 3.4, pq: 0.5, ph: 2.4, strakes: 3, light: '#8a6238', dark: '#654322' },
   'war/franks': { L: 88, B: 7.4, H: 6.4, hb: 13, hs: 9.5, wl: 0.5, pe: 2.4, pq: 0.72, ph: 2.8, strakes: 4, light: '#cfa76c', dark: '#6a4527' },
+  'fish/vikings': { L: 50, B: 6.4, H: 5.0, hb: 10.5, hs: 6.5, wl: 0.56, pe: 2.3, pq: 0.72, ph: 2.6, strakes: 3, light: '#7a5634', dark: '#33231a' },
+  'war/vikings': { L: 92, B: 7.0, H: 6.0, hb: 16, hs: 12, wl: 0.46, pe: 2.4, pq: 0.72, ph: 2.6, strakes: 4, light: '#8a6440', dark: '#2c1e14' },
   'war/gauls': { L: 78, B: 10.6, H: 10.5, hb: 9.5, hs: 10.5, wl: 0.62, pe: 3.0, pq: 0.55, ph: 2.6, strakes: 5, light: '#7d5735', dark: '#4f3620' },
 };
 const sampleCache = new Map();
@@ -697,8 +699,8 @@ export function hullOf(S) {
 const DECK = -1;
 
 /** Rangée de boucliers ronds accrochés au bordé (drakkar). */
-function shieldRow(ctx, hd, S, tm) {
-  const cols = [tm.main, CREAM, tm.main, '#c9a24a', tm.main, CREAM, tm.main, '#2f4058'];
+function shieldRow(ctx, hd, S, tm, colFn) {
+  const cols = colFn ? colFn(tm) : [tm.main, CREAM, tm.main, '#c9a24a', tm.main, CREAM, tm.main, '#2f4058'];
   let i = 0;
   for (let u = -35; u <= 35.1; u += 8.75, i++) {
     const s = u / (hd.L / 2);
@@ -933,7 +935,8 @@ export function drawBoat(ctx, S, P) {
   } else {
     // Archers à bord (2 ou 3), sur le pont ou les plates-formes d'extrémité
     const spots = gaul ? [[-30, 8.5], [-2, 4.5], [31, 8.5]] : [[-31, 4.5], [19, 0.5], [33, 6]];
-    if (crewOn) {
+    if (S.deck && crewOn) S.deck(ctx, S, P, pr);
+    if (crewOn && !S.deck) {
       spots.forEach(([u, h], i) => {
         const [x, y] = pr(u, gaul ? -0.5 : 0.4, h + DECK);
         let Pa;
@@ -992,7 +995,8 @@ export function drawBoat(ctx, S, P) {
       ctx.stroke();
     } else {
       const st = [];
-      for (let k = 0; k < 9; k++) st.push(k % 2 ? CREAM : tm.main);
+      const sc = S.sailCols ? S.sailCols(tm) : [tm.main, CREAM];
+      for (let k = 0; k < 9; k++) st.push(sc[k % sc.length]);
       drawSail(ctx, u0, w, h0, h1, belly, st, false);
       sailBand(ctx, u0, w, h0, h1, h1 - 2.2, h1, belly, tone(tm.main, -0.1));
     }
@@ -1016,7 +1020,7 @@ export function drawBoat(ctx, S, P) {
     if (gaul) gaulWarDetails(ctx, hd, SM, tm);
     else {
       oars(ctx, hd, tm, anim, q, dying);
-      shieldRow(ctx, hd, SM, tm);
+      shieldRow(ctx, hd, SM, tm, S.shieldCols);
     }
   }
 
@@ -1054,9 +1058,12 @@ export function drawBoat(ctx, S, P) {
     pennant(ctx, st[0], st[1] - 11, tm.main, flap, 9);
   } else if (!gaul) {
     const bp = pr(uB + 1.5, 0, Hb - 1);
-    dragonHead(ctx, bp[0] - 1, bp[1] + 2, 1.22, GOLD);
     const sp = pr(-uB - 0.5, 0, Hs - 1);
-    sternCurl(ctx, sp[0], sp[1] + 1, 1.2, hd.dark);
+    if (S.prow) S.prow(ctx, bp, sp, hd, tm, flap);
+    else {
+      dragonHead(ctx, bp[0] - 1, bp[1] + 2, 1.22, GOLD);
+      sternCurl(ctx, sp[0], sp[1] + 1, 1.2, hd.dark);
+    }
   } else {
     const bp = pr(uB + 0.5, 0, Hb + 0.5);
     boarHead(ctx, bp[0] - 1, bp[1] + 0.5, 1.12, tm.main);

@@ -514,7 +514,7 @@ export function prewarmUnit(type, civ, team, anims = ['idle', 'walk', 'attack'],
   picker.stable(zoom);
   try {
     for (const anim of anims) {
-      const ship = type === 'fishingboat' || type === 'warship';
+      const ship = type === 'fishingboat' || type === 'warship' || specOf(type, civ, team & 7).kind === 'boat';
       // Sans objet : les barques ne « combattent » pas, les navires de guerre ne pêchent pas
       if ((anim === 'attack' && type === 'fishingboat') || (anim === 'work' && type !== 'villager' && type !== 'fishingboat')) continue;
       const T = anim === 'walk' ? WALK_T : anim === 'attack' ? ATTACK_T : anim === 'die' ? (ship ? SHIP_DIE_T : DIE_T) : IDLE_T;
