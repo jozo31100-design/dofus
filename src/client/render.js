@@ -65,7 +65,7 @@ export class Renderer {
     const total = this.combos().length * types.length;
     for (const [civ, team] of this.combos()) {
       for (const t of types) {
-        art.getBuildingSprite(t, civ, team, 3);
+        if (!BUILDINGS[t].wonder) art.getBuildingSprite(t, civ, team, 3); // la merveille, rare et lourde, est dessinée à la demande
         if (++n % 4 === 0) {
           onProgress(0.4 + 0.5 * (n / total), 'Préparation des bâtiments…');
           await tick();

@@ -35,13 +35,14 @@ test('le point de ralliement envoie les nouvelles unités récolter', () => {
 
 test('l\'attaque en marchant combat ce qui se trouve sur la route puis continue', () => {
   const w = two();
+  const hall = w.playerBuildings(0, 'hall')[0]; // le sol autour de la salle est dégagé (pas d'arbre, pas d'eau)
   const soldiers = [];
-  for (let i = 0; i < 5; i++) soldiers.push(w.addUnit('swordsman', 0, 44, 23 + i * 0.8));
-  for (let i = 0; i < 3; i++) w.addUnit('militia', 1, 52, 24 + i);
-  w.enqueue(0, { c: 'amove', ids: soldiers.map((s) => s.id), x: 60, y: 25 });
+  for (let i = 0; i < 5; i++) soldiers.push(w.addUnit('swordsman', 0, hall.x - 6, hall.y - 7 + i * 0.8));
+  for (let i = 0; i < 3; i++) w.addUnit('militia', 1, hall.x + 1, hall.y - 7 + i);
+  w.enqueue(0, { c: 'amove', ids: soldiers.map((s) => s.id), x: hall.x + 6, y: hall.y - 6 });
   run(w, 40);
   assert.equal(w.playerUnits(1, 'militia').length, 0, 'les miliciens rencontrés doivent tomber');
-  const far = soldiers.filter((s) => !s.dead && s.x > 56);
+  const far = soldiers.filter((s) => !s.dead && s.x > hall.x + 3);
   assert.ok(far.length >= 3, `les soldats reprennent la route : ${far.length} arrivés`);
 });
 

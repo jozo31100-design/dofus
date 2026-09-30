@@ -22,7 +22,7 @@ for (let ty = 0; ty < S; ty++) for (let tx = 0; tx < S; tx++) {
   const t = map.terrain[ty * S + tx];
   fill(tx, ty, t === WATER ? [40, 100, 170] : t === FORD ? [140, 200, 200] : (tx + ty) % 2 ? [110, 160, 80] : [104, 154, 76]);
 }
-const col = { tree: [30, 90, 40], berries: [200, 40, 90], gold: [240, 200, 40], stone: [150, 150, 150] };
+const col = { tree: [30, 90, 40], berries: [200, 40, 90], gold: [240, 200, 40], stone: [150, 150, 150], fish: [200, 240, 255] };
 for (const n of map.nodes) fill(n.x, n.y, col[n.type], n.type === 'tree' ? 0 : 1);
 for (const a of map.animals) fill(Math.floor(a.x), Math.floor(a.y), a.type === 'deer' ? [180, 120, 60] : [255, 255, 255], 2);
 map.starts.forEach((s, i) => {

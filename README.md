@@ -1,7 +1,7 @@
 # Terres de Gaule
 
 Jeu de stratégie en temps réel façon *Age of Empires*, **Francs contre Gaulois**, à jouer **à deux en réseau local**
-(deux PC sur la même box ou le même Wi-Fi) ou seul contre l'ordinateur. Une seule carte : *La Rivière des Carnutes*.
+(deux PC sur la même box ou le même Wi-Fi) ou seul contre l'ordinateur. Une seule carte (120 x 120 cases) : *La Rivière des Carnutes*.
 
 - 2 peuples aux bonus et unités uniques différents (Francs : cavalerie lourde et francisque ; Gaulois : bûcherons, hordes de fantassins et gésates)
 - 3 âges, 19 unités, 18 bâtiments, 37 technologies : villageois, récolte (bois, nourriture, or, pierre), fermes, chasse, pêche,

@@ -11,8 +11,16 @@ const run = (w, s) => { for (let i = 0; i < s / DT; i++) w.step(); };
 
 /** Premier emplacement de port valide (joueur 1) autour de l'étang de son camp. */
 function dockSpot(w, pl) {
-  for (let ty = 20; ty < 40; ty++) for (let tx = 50; tx < 72; tx++) if (!placementError(w, pl, 'dock', tx, ty)) return [tx, ty];
-  return null;
+  const hall = w.playerBuildings(pl.idx, 'hall')[0];
+  let best = null;
+  let bd = Infinity;
+  for (let ty = 0; ty < w.S - 3; ty++) {
+    for (let tx = 0; tx < w.S - 3; tx++) {
+      const d = Math.hypot(tx - hall.x, ty - hall.y);
+      if (d < bd && !placementError(w, pl, 'dock', tx, ty)) { bd = d; best = [tx, ty]; }
+    }
+  }
+  return best;
 }
 
 test('la carte contient des bancs de poissons sur l\'eau, en miroir, et reste équitable', () => {

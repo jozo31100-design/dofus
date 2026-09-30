@@ -12,6 +12,9 @@ import { mulberry32, fbm } from './util.js';
 
 const S = MAP_SIZE;
 const HALF = S / 2;
+// La carte a été dessinée pour 96 x 96 cases. Agrandie, les camps s'éloignent (F) mais gardent leur disposition locale :
+// `loc` déplace ce qui appartient au camp, `mid` étire ce qui se trouve entre les camps.
+const F = S / 96;
 
 export const GRASS = 0;
 export const FORD = 1;
@@ -33,7 +36,7 @@ function riverHalfWidth(s) {
   return 2.5 + 0.7 * Math.cos(6 * Math.PI * t);
 }
 
-const FORD_CENTERS = [S - 40, S, S + 40]; // positions le long de la diagonale (x + y)
+const FORD_CENTERS = [S - 40 * F, S, S + 40 * F]; // positions le long de la diagonale (x + y)
 const FORD_HALF_LEN = 5;
 
 function terrainAt(tx, ty) {
@@ -54,13 +57,17 @@ function terrainAt(tx, ty) {
   return GRASS;
 }
 
+const HALL_TL = [Math.round(S / 2 + (72 - 48) * F), Math.round(S / 2 + (19 - 48) * F)]; // coin haut-gauche de l'emprise 4x4 du camp du haut
+const SHIFT = [HALL_TL[0] - 72, HALL_TL[1] - 19];
+const loc = (x, y) => [x + SHIFT[0], y + SHIFT[1]];
+const mid = (x, y) => [S / 2 + (x - 48) * F, S / 2 + (y - 48) * F];
+
 const PONDS = [
-  { x: 62.5, y: 30.5, r: 3.1 },
-  { x: 20.5, y: 40.5, r: 2.8 },
+  { x: 62.5 + SHIFT[0], y: 30.5 + SHIFT[1], r: 3.1 },
+  { x: mid(20.5, 40.5)[0], y: mid(20.5, 40.5)[1], r: 2.8 },
 ];
 
 // Positions de départ (moitié haute = joueur 1, côté droit de l'écran ; joueur 0 = miroir).
-const HALL_TL = [72, 19]; // coin haut-gauche de l'emprise 4x4 -> centre (74, 21)
 
 export function generateMap(seed = DEFAULT_SEED) {
   const rng = mulberry32(seed);
@@ -169,16 +176,21 @@ export function generateMap(seed = DEFAULT_SEED) {
   // Moutons près de la salle
   for (const [ox, oy] of [[-5.5, -4.5], [-7, -2.5], [-4, -7], [-7.5, -6]]) addAnimal('sheep', hallCx + ox, hallCy + oy);
   // Baies : à gauche/bas de la salle
-  cluster('berries', 67, 27, 6, { jitter: 1.3 });
+  cluster('berries', ...loc(67, 27), 6, { jitter: 1.3 });
   // Or et pierre
-  cluster('gold', 82, 31, 7, { jitter: 1.4 });
-  cluster('stone', 65, 11, 5, { jitter: 1.4 });
+  cluster('gold', ...loc(82, 31), 7, { jitter: 1.4 });
+  cluster('stone', ...loc(65, 11), 5, { jitter: 1.4 });
 
   // Ressources d'expansion et du milieu (posées avant les arbres pour rester dégagées)
-  cluster('gold', 55, 38, 4, { jitter: 1.2 });
-  cluster('berries', 88, 24, 5, { jitter: 1.2 });
-  cluster('stone', 50, 17, 4, { jitter: 1.2 });
-  cluster('gold', 42, 13, 4, { jitter: 1.2 });
+  cluster('gold', ...mid(55, 38), 4, { jitter: 1.2 });
+  cluster('berries', ...loc(88, 24), 5, { jitter: 1.2 });
+  cluster('stone', ...mid(50, 17), 4, { jitter: 1.2 });
+  cluster('gold', ...mid(42, 13), 4, { jitter: 1.2 });
+  // la carte agrandie offre aussi des gisements au large : ils valent le déplacement
+  cluster('gold', ...mid(66, 24), 5, { jitter: 1.3 });
+  cluster('stone', ...mid(70, 40), 4, { jitter: 1.2 });
+  cluster('berries', ...mid(30, 14), 5, { jitter: 1.2 });
+  cluster('stone', ...mid(24, 28), 4, { jitter: 1.2 });
 
   // Halo : aucune forêt ne doit enfermer une mine ou des baies (deux cases de dégagement)
   const halo = new Uint8Array(S * S);
@@ -194,12 +206,15 @@ export function generateMap(seed = DEFAULT_SEED) {
 
   // --- Forêts -------------------------------------------------------------------------
   // Bosquet de départ derrière la salle, autre bosquet sur le flanc
+  const gv = (x, y, rx, ry, p, local = true) => { const [gx, gy] = local ? loc(x, y) : mid(x, y); return { x: gx, y: gy, rx, ry, p }; };
   const groves = [
-    { x: 87, y: 12, rx: 6.5, ry: 6.5, p: 0.85 },
-    { x: 82, y: 16, rx: 3.6, ry: 4, p: 0.8 },
-    { x: 78, y: 6, rx: 5, ry: 3.5, p: 0.8 },
-    { x: 60, y: 19, rx: 4.5, ry: 4, p: 0.8 },
-    { x: 90, y: 30, rx: 3.5, ry: 6, p: 0.7 },
+    gv(87, 12, 6.5, 6.5, 0.85),
+    gv(82, 16, 3.6, 4, 0.8),
+    gv(78, 6, 5, 3.5, 0.8),
+    gv(60, 19, 4.5, 4, 0.8),
+    gv(90, 30, 3.5, 6, 0.7),
+    gv(68, 34, 5, 4.5, 0.75, false),
+    gv(34, 20, 5.5, 5, 0.75, false),
   ];
   const treeSeed = seed * 7 + 3;
   for (let ty = 0; ty < HALF; ty++) {
@@ -228,7 +243,7 @@ export function generateMap(seed = DEFAULT_SEED) {
   }
 
   // --- Gibier ------------------------------------------------------------------------
-  for (const [hx, hy] of [[58, 9], [89, 39], [70, 42], [40, 20]]) {
+  for (const [hx, hy] of [loc(58, 9), loc(89, 39), mid(70, 42), mid(40, 20), mid(56, 24), mid(28, 34)]) {
     for (let i = 0; i < 4; i++) addAnimal('deer', hx + (rng() - 0.5) * 3, hy + (rng() - 0.5) * 3);
   }
 
@@ -271,7 +286,7 @@ export function generateMap(seed = DEFAULT_SEED) {
     }
   }
   for (const p of PONDS) fishCluster(p.x, p.y, 4, 3);
-  for (const sPos of [24, 42, 74]) {
+  for (const sPos of [24 * F, 42 * F, 74 * F]) {
     const d = riverCenter(sPos);
     fishCluster((sPos + d) / 2, (sPos - d) / 2, 3, 4);
   }

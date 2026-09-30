@@ -3,7 +3,7 @@
 
 export const TICK_RATE = 20; // pas de simulation par seconde de jeu
 export const DT = 1 / TICK_RATE;
-export const MAP_SIZE = 96; // la carte est un carré de 96 x 96 cases
+export const MAP_SIZE = 120; // la carte est un carré de 120 x 120 cases
 export const MAX_POP = 150;
 
 export const RESOURCES = ['food', 'wood', 'gold', 'stone'];

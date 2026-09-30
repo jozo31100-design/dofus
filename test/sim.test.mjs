@@ -111,8 +111,9 @@ test('annuler une production rembourse et libère la place de population', () =>
 test('combat : les lanciers écrasent la cavalerie, qui écrase les archers', () => {
   const duel = (typeA, nA, typeB, nB) => {
     const w = two();
-    for (let i = 0; i < nA; i++) w.addUnit(typeA, 0, 46, 20 + i * 0.8);
-    for (let i = 0; i < nB; i++) w.addUnit(typeB, 1, 50, 20 + i * 0.8);
+    const h = w.playerBuildings(0, 'hall')[0]; // sol dégagé autour de la salle
+    for (let i = 0; i < nA; i++) w.addUnit(typeA, 0, h.x - 2, h.y - 7 + i * 0.8);
+    for (let i = 0; i < nB; i++) w.addUnit(typeB, 1, h.x + 2, h.y - 7 + i * 0.8);
     run(w, 60);
     const left = (owner, type) => w.playerUnits(owner, type).length;
     return [left(0, typeA), left(1, typeB)];
@@ -127,8 +128,9 @@ test('combat : les lanciers écrasent la cavalerie, qui écrase les archers', ()
 
 test('les unités auto-ripostent, poursuivent puis reviennent au repos', () => {
   const w = two();
-  const a = w.addUnit('militia', 0, 46, 20);
-  const b = w.addUnit('militia', 1, 49, 20);
+  const h = w.playerBuildings(0, 'hall')[0];
+  const a = w.addUnit('militia', 0, h.x - 2, h.y - 7);
+  const b = w.addUnit('militia', 1, h.x + 1, h.y - 7);
   run(w, 5);
   assert.ok(a.hp < a.maxHp || b.hp < b.maxHp, 'aucun coup porté');
   run(w, 60);
