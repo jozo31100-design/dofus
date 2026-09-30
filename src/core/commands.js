@@ -5,6 +5,7 @@ import { UNITS, BUILDINGS, DEFS, RESOURCES } from './defs.js';
 import { setOrder, resetMove, freeSpotAround, isMilitary, wallLine } from './common.js';
 import { queueUnit, queueTech, cancelQueue, startBuilding, findFarmSlot, trade, applyChoice, placementError } from './econ.js';
 import { killEntity, canTarget } from './combat.js';
+import { unloadCargo } from './units.js';
 
 const num = (v, d = 0) => (Number.isFinite(v) ? v : d);
 
@@ -240,6 +241,28 @@ function cmdClimb(world, pi, cmd) {
   }
 }
 
+/** Des fantassins montent dans une tour de siège alliée. */
+function cmdBoard(world, pi, cmd) {
+  const t = world.get(cmd.tid);
+  if (!t || t.dead || t.owner !== pi || !t.cargo) return;
+  for (const u of ownUnits(world, pi, cmd.ids)) {
+    const d = DEFS[u.type];
+    if (d.tags.includes('infantry') && !d.tags.includes('siege') && !u.cargo) setOrder(u, { t: 'board', target: t.id }, !!cmd.q);
+  }
+}
+
+/** La tour de siège va se coller au mur visé et y déverse ses fantassins. */
+function cmdDeploy(world, pi, cmd) {
+  const t = world.get(cmd.tid);
+  if (!t || t.dead || t.cls !== 'building' || t.owner === pi || !(DEFS[t.type].wall || DEFS[t.type].gate)) return;
+  for (const u of ownUnits(world, pi, cmd.ids)) if (u.cargo) setOrder(u, { t: 'deploy', target: t.id }, !!cmd.q);
+}
+
+/** Les passagers sortent sur place. */
+function cmdUnload(world, pi, cmd) {
+  for (const u of ownUnits(world, pi, cmd.ids)) if (u.cargo && u.cargo.length) unloadCargo(world, u, null);
+}
+
 function cmdRepair(world, pi, cmd) {
   const b = ownBuilding(world, pi, cmd.tid);
   if (!b) return;
@@ -353,6 +376,9 @@ export function applyCommand(world, pi, cmd) {
     case 'buildline': cmdBuildLine(world, pi, cmd); break;
     case 'choose': cmdChoose(world, pi, cmd); break;
     case 'climb': cmdClimb(world, pi, cmd); break;
+    case 'board': cmdBoard(world, pi, cmd); break;
+    case 'deploy': cmdDeploy(world, pi, cmd); break;
+    case 'unload': cmdUnload(world, pi, cmd); break;
     case 'train': cmdTrain(world, pi, cmd); break;
     case 'research': cmdResearch(world, pi, cmd); break;
     case 'cancel': cmdCancel(world, pi, cmd); break;

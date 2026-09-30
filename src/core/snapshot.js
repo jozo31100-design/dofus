@@ -86,7 +86,7 @@ export function decodeRecord(r) {
   if (kind === K_UNIT) {
     return {
       id: r[0], cls: 'unit', type: DEF_IDS[r[2]], owner: r[3], x: r[4] / 32, y: r[5] / 32, hp: r[6], maxHp: r[7],
-      anim: r[8], face: faceFrom64(r[9]), carry: Math.floor(r[10] / 100), carryAmt: r[10] % 100, work: r[11],
+      anim: r[8], face: faceFrom64(r[9]), carry: Math.floor(r[10] / 100), carryAmt: r[10] % 100, work: r[11], cargo: r[12] || 0,
     };
   }
   if (kind === K_BUILDING) {
@@ -175,7 +175,7 @@ export class SnapshotBuilder {
       if (u.dead || u.inside) continue;
       if (u.owner !== idx && !w.visibleTo(idx, u.x, u.y)) continue;
       const carry = u.carryAmt > 0 && u.carryRes ? CARRY_CODE[u.carryRes] * 100 + Math.min(99, u.carryAmt) : 0;
-      push(u.id, [u.id, K_UNIT, DEF_INDEX[u.type], u.owner, q32(u.x), q32(u.y), Math.ceil(u.hp), Math.round(u.maxHp), u.anim, face64(u.face), carry, u.work]);
+      push(u.id, [u.id, K_UNIT, DEF_INDEX[u.type], u.owner, q32(u.x), q32(u.y), Math.ceil(u.hp), Math.round(u.maxHp), u.anim, face64(u.face), carry, u.work, u.cargo ? u.cargo.length : 0]);
     }
     for (const b of w.buildings) {
       if (b.dead) continue;

@@ -123,6 +123,7 @@ export function killEntity(world, e, killer) {
   const pl = e.owner >= 0 ? world.players[e.owner] : null;
   const kpl = killer && killer.owner >= 0 && killer.owner !== e.owner ? world.players[killer.owner] : null;
   if (e.cls === 'unit') {
+    if (e.cargo && e.cargo.length) world.ejectCargo(e);
     world.emit({ k: 'die', id: e.id, type: e.type, owner: e.owner, x: e.x, y: e.y, face: e.face });
     if (pl) { pl.pop--; pl.losses++; }
     if (kpl) kpl.kills++;

@@ -211,6 +211,7 @@ export class World {
       healAcc: 0,
       lastAtk: -100,
       moving: false,
+      cargo: def.cargo ? [] : null,
     };
     this.entities.set(u.id, u);
     this.units.push(u);
@@ -612,6 +613,20 @@ export class World {
       if (Math.hypot(x - c.x, y - c.y) <= d.r + c.w / 2) m = Math.min(m, d.mul);
     }
     return m;
+  }
+
+  /** La tour de siège est détruite : ses passagers sortent, éprouvés. */
+  ejectCargo(tower) {
+    for (const id of tower.cargo) {
+      const g = this.get(id);
+      if (!g || g.dead) continue;
+      g.inside = 0;
+      g.x = tower.x + (this.rng() - 0.5) * 1.6;
+      g.y = tower.y + (this.rng() - 0.5) * 1.6;
+      g.hp = Math.max(1, g.hp * 0.6);
+      g.order = null;
+    }
+    tower.cargo = [];
   }
 
   /** Valeur courante d'une aura sur une unité (0 si aucune). */

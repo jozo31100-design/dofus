@@ -286,6 +286,7 @@ export class GameUI {
       const [wx, wy] = this.renderer.screenToWorld(x, y);
       if (this.mode.t === 'amove') { this.doAmove(wx, wy); return; }
       if (this.mode.t === 'rally') { this.doRally(x, y, wx, wy); return; }
+      if (this.mode.t === 'climb') { this.doClimbMode(x, y); return; }
     }
     const e = this.renderer.pick(x, y);
     const now = performance.now();
@@ -374,11 +375,21 @@ export class GameUI {
     const vIds = villagers.map((u) => u.id);
     const oIds = others.map((u) => u.id);
     if (target && target.cls === 'building' && target.owner >= 0 && target.owner !== this.state.myIdx
-      && (BUILDINGS[target.type].wall || BUILDINGS[target.type].gate) && this.state.me.techs.has('ladders')) {
-      this.cmd({ c: 'climb', ids: allIds, tid: target.id, q });
-      fx.marker(target.x, target.y, 'attack', now);
-      audio.play('click', { gain: 0.4 });
+      && (BUILDINGS[target.type].wall || BUILDINGS[target.type].gate)
+      && (this.state.me.techs.has('ladders') || units.some((u) => u.type === 'siegetower'))) {
+      this.assaultWall(target, q);
       return;
+    }
+    if (target && target.cls === 'unit' && target.type === 'siegetower' && this.isOwn(target) && target.cargo < 8) {
+      // des fantassins montent dans la tour de siège
+      const inf = units.filter((u) => DEFS[u.type].tags.includes('infantry') && !DEFS[u.type].tags.includes('siege')).map((u) => u.id);
+      if (inf.length) {
+        this.cmd({ c: 'board', ids: inf, tid: target.id, q });
+        const others = units.filter((u) => !inf.includes(u.id)).map((u) => u.id);
+        if (others.length) this.cmd({ c: 'move', ids: others, x: target.x, y: target.y, q });
+        fx.marker(target.x, target.y, 'rally', now);
+        return;
+      }
     }
     if (target && target.owner >= 0 && target.owner !== this.state.myIdx && (target.cls === 'unit' || target.cls === 'building')) {
       this.cmd({ c: 'attack', ids: allIds, tid: target.id, q });
@@ -418,6 +429,34 @@ export class GameUI {
     // sol : déplacement en formation
     this.cmd({ c: 'move', ids: allIds, x: wx, y: wy, q });
     fx.marker(wx, wy, 'move', now);
+  }
+
+  /** Mode « Escalader » : le clic sur un mur ou une porte ennemie envoie les fantassins (ou la tour de siège) à l'assaut. */
+  doClimbMode(x, y) {
+    const t = this.renderer.pick(x, y);
+    if (!t || t.cls !== 'building' || t.owner < 0 || t.owner === this.state.myIdx || !(BUILDINGS[t.type].wall || BUILDINGS[t.type].gate)) {
+      this.toast('Cliquez sur un mur ou une porte ennemie (clic droit : annuler).', 'warn');
+      return;
+    }
+    this.assaultWall(t, false);
+    this.cancelModes();
+  }
+
+  /** Ordres d'assaut contre un mur : tours de siège → déploiement du pont ; fantassins → échelles (ou attaque sans échelles). */
+  assaultWall(t, q) {
+    const units = this.ents().filter((e) => this.isOwn(e) && e.cls === 'unit');
+    const towers = units.filter((u) => u.type === 'siegetower').map((u) => u.id);
+    const rest = units.filter((u) => u.type !== 'siegetower').map((u) => u.id);
+    if (towers.length) this.cmd({ c: 'deploy', ids: towers, tid: t.id, q });
+    if (rest.length) {
+      if (this.state.me.techs.has('ladders')) this.cmd({ c: 'climb', ids: rest, tid: t.id, q });
+      else {
+        this.cmd({ c: 'attack', ids: rest, tid: t.id, q });
+        this.toast('Pour escalader : rechercher « Échelles d\'assaut » à la maison des guerriers, ou utilisez une tour de siège.', 'info');
+      }
+    }
+    this.renderer.fx.marker(t.x, t.y, 'attack', performance.now());
+    audio.play('click', { gain: 0.4 });
   }
 
   doAmove(wx, wy) {
@@ -726,6 +765,9 @@ export class GameUI {
     const common = (withUnits) => {
       put(8, { id: 'stop', icon: iconURL('ui', 'stop', civ, 0, 44), title: 'Arrêter', desc: 'Les unités cessent ce qu\'elles font.', enabled: true, onClick: () => this.cmd({ c: 'stop', ids: list.map((e) => e.id) }) });
       put(9, { id: 'delete', icon: iconURL('ui', 'delete', civ, 0, 44), title: 'Supprimer', desc: 'Détruit la sélection (Suppr, à confirmer).', enabled: true, onClick: () => this.deleteSelection() });
+      if (withUnits && (me.techs.has('ladders') || list.some((e) => e.type === 'siegetower'))) put(7, { id: 'climb', icon: iconURL('ui', 'climb', civ, 0, 44), title: 'Escalader', desc: 'Cliquez ensuite sur un mur ou une porte ennemie : les fantassins l\'escaladent avec des échelles (lent, très exposé). Une tour de siège sélectionnée colle son pont au mur.', enabled: true, onClick: () => { this.mode = { t: 'climb' }; this.canvas.style.cursor = 'crosshair'; this.toast('Cliquez sur un mur ou une porte ennemie (clic droit : annuler).', 'info'); } });
+      const towers = list.filter((e) => e.cls === 'unit' && e.type === 'siegetower');
+      if (towers.length) put(6, { id: 'unload', icon: iconURL('ui', 'ungarrison', civ, 0, 44), title: 'Faire descendre les soldats', desc: 'Les fantassins transportés sortent de la tour de siège sur place.', enabled: towers.some((t) => t.cargo > 0), onClick: () => this.cmd({ c: 'unload', ids: towers.map((t) => t.id) }) });
       if (withUnits) put(10, { id: 'amove', icon: iconURL('ui', 'attack', civ, 0, 44), title: 'Attaquer en marchant', desc: 'Les soldats avancent vers le point cliqué en attaquant tout ce qu\'ils croisent.', enabled: true, onClick: () => { this.mode = { t: 'amove' }; this.canvas.style.cursor = 'crosshair'; this.toast('Cliquez sur la carte pour attaquer en marchant (clic droit : annuler).', 'info'); } });
     };
     if (this.placing) {
@@ -952,6 +994,7 @@ export class GameUI {
         if (atk) body.append(this.statRow('Attaque', `${atk}${stt.bonus && Object.keys(stt.bonus).length ? ' (+bonus)' : ''}${stt.range ? ` · portée ${stt.range}` : ''}`));
         body.append(this.statRow('Armure', `${stt.armor.melee} mêlée · ${stt.armor.pierce} tirs`), this.statRow('Vitesse', stt.speed.toFixed(1)));
       }
+      if (own && e.type === 'siegetower') body.append(this.statRow('Passagers', `${e.cargo || 0}/8`));
       if (own && e.carryAmt > 0) body.append(this.statRow('Transporte', `${e.carryAmt} ${CARRY_TEXT[e.carry]}`));
       if (own && WORK_TEXT[e.work] && e.anim >= 2) body.append(h('div', { class: 'work', text: WORK_TEXT[e.work] }));
       body.append(h('div', { class: 'desc', text: def.desc || '' }));
@@ -1233,7 +1276,7 @@ export class GameUI {
       ['Choix d\'âge (K)', 'À chaque âge : 1 héros, 1 unité spéciale et 1 bonus parmi deux (comme Age of Mythology)'],
       ['Points stratégiques', 'Trésor (or et pierre) et deux collines (vue, nourriture, bois, +10 % d\'attaque) : tenez-les avec des soldats, sans ennemi à côté, pour les capturer'],
       ['Contre-siège', 'Bâtiment très coûteux (Murailles et défenses) : −40 % de dégâts de siège aux bâtiments voisins, les machines ennemies proches brûlent'],
-      ['Murailles', 'Menu « Murailles et défenses » : glissez pour tracer un mur ; portes pour laisser passer vos troupes ; échelles d\'assaut (maison des guerriers) puis clic droit sur un mur ennemi pour l\'escalader ; sapeurs et tours de siège pour les briser'],
+      ['Murailles', 'Menu « Murailles et défenses » : glissez pour tracer un mur ; portes pour laisser passer vos troupes ; échelles d\'assaut (maison des guerriers) puis clic droit sur un mur ennemi pour l\'escalader (ou bouton Escalader) ; tour de siège : clic droit d\'un fantassin sur elle pour monter, puis clic droit sur un mur pour y coller son pont ; sapeurs, béliers et catapultes pour le briser'],
       ['Héros', 'Un seul à la fois (choisi à l\'âge II, III ou IV) : son aura profite aux alliés proches'],
       ['A Z E R / Q S D F / W X C V*', 'Commandes du panneau en bas à droite (selon la disposition de votre clavier)'],
       ['Ctrl + 1…9 / 1…9', 'Créer un groupe / rappeler un groupe (deux fois : centrer)'],

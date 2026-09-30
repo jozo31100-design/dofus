@@ -348,8 +348,8 @@ const UNIT_LIST = [
   },
   {
     id: 'siegetower', name: 'Tour de siège', age: 3, from: 'siege', cost: { wood: 260, gold: 40 }, time: 45,
-    hp: 750, speed: 0.8, los: 6, radius: 0.9, atk: {}, rof: 2, armor: { melee: 4, pierce: 18 }, tags: ['siege', 'tower'],
-    desc: 'Collée à une muraille ennemie, elle permet à vos fantassins de l\'escalader en quelques secondes, à l\'abri.',
+    hp: 750, speed: 0.8, los: 6, radius: 0.9, atk: {}, rof: 2, armor: { melee: 4, pierce: 18 }, tags: ['siege', 'tower'], cargo: 8,
+    desc: 'Transporte 8 fantassins à l\'abri (clic droit d\'un fantassin sur la tour pour monter). Collée à un mur ennemi (clic droit sur le mur), elle abaisse son pont et les fait passer de l\'autre côté ; elle accélère aussi les échelles proches.',
   },
   {
     id: 'vercingetorix', name: 'Vercingétorix', civ: 'gauls', age: 3, from: 'hall', cost: { food: 250, gold: 350 }, time: 60, limit: 1, choice: true,

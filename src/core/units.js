@@ -26,6 +26,8 @@ export function updateUnit(world, u) {
   if (o) {
     switch (o.t) {
       case 'climb': doClimb(world, u, o, st); break;
+      case 'board': doBoard(world, u, o, st); break;
+      case 'deploy': doDeploy(world, u, o, st); break;
       case 'move': doMove(world, u, o, st); break;
       case 'attack': doAttack(world, u, o, st); break;
       case 'gather': doGather(world, u, o, st); break;
@@ -304,6 +306,79 @@ function tryClimbFallback(world, u, o) {
   return true;
 }
 
+/** Point de l'autre côté d'un mur, en face du point (fx, fy) : null s'il n'y a pas de place libre. */
+function crossDest(world, u, t, fx, fy) {
+  const dx = fx - t.x;
+  const dy = fy - t.y;
+  const sx = Math.abs(dx) * t.h > Math.abs(dy) * t.w ? Math.sign(dx) : 0;
+  const sy = sx ? 0 : Math.sign(dy) || 1;
+  const blocked = world.blockedOf(u);
+  const S = world.S;
+  for (let k = 0; k < 5; k++) {
+    const px = t.x - sx * (t.w / 2 + 0.6 + k);
+    const py = t.y - sy * (t.h / 2 + 0.6 + k);
+    const cx = Math.floor(px) | 0;
+    const cy = Math.floor(py) | 0;
+    if (cx < 0 || cy < 0 || cx >= S || cy >= S) break;
+    if (!blocked[cy * S + cx]) return { x: sx ? px : fx, y: sy ? py : fy };
+  }
+  return null;
+}
+
+/** Embarque dans une tour de siège (elle transporte des fantassins à l'abri jusqu'au pied d'un mur). */
+function doBoard(world, u, o, st) {
+  const t = world.get(o.target);
+  if (!t || t.dead || t.owner !== u.owner || !t.cargo || t.cargo.length >= DEFS[t.type].cargo) { finishOrder(u); return; }
+  const r = approach(world, u, st, t, 0.9);
+  if (r === 'failed') { finishOrder(u); return; }
+  if (r !== 'reached') return;
+  u.inside = t.id;
+  t.cargo.push(u.id);
+  u.path = null;
+  finishOrder(u);
+}
+
+/** Tour de siège : s'approche du mur, abaisse son pont, et ses fantassins passent de l'autre côté (à l'abri des flèches un instant). */
+function doDeploy(world, u, o, st) {
+  const t = world.get(o.target);
+  if (!t || t.dead) { finishOrder(u); return; }
+  if (o.phase !== 'drop') {
+    const r = approach(world, u, st, t, 1.3);
+    if (r === 'failed') { finishOrder(u); return; }
+    if (r !== 'reached') return;
+    o.phase = 'drop';
+    o.left = 1.6;
+    u.path = null;
+  }
+  u.anim = ANIM.fight; // le pont s'abat
+  u.face = Math.atan2(t.y - u.y, t.x - u.x);
+  o.left -= DT;
+  if (o.left > 0) return;
+  unloadCargo(world, u, t);
+  finishOrder(u);
+}
+
+/** Débarque la cargaison d'une tour de siège : de l'autre côté du mur `wall`, ou sur place si `wall` est nul. */
+export function unloadCargo(world, tower, wall) {
+  const ids = tower.cargo || [];
+  tower.cargo = [];
+  let k = 0;
+  for (const id of ids) {
+    const g = world.get(id);
+    if (!g || g.dead) continue;
+    g.inside = 0;
+    let dest = wall ? crossDest(world, g, wall, tower.x, tower.y) : null;
+    if (!dest) dest = { x: tower.x + 1.4, y: tower.y };
+    g.x = dest.x + (k % 3) * 0.45 - 0.45;
+    g.y = dest.y + Math.floor(k / 3) * 0.45;
+    if (world.blockedOf(g)[Math.floor(g.y) * world.S + Math.floor(g.x)]) { g.x = dest.x; g.y = dest.y; }
+    k++;
+    g.order = null;
+    g.path = null;
+    world.emit({ k: 'hit', x: g.x, y: g.y, big: false });
+  }
+}
+
 /** Escalade d'une muraille ennemie avec des échelles : on s'approche, on grimpe (exposé), on redescend de l'autre côté. */
 function doClimb(world, u, o, st) {
   const t = world.get(o.target);
@@ -312,21 +387,7 @@ function doClimb(world, u, o, st) {
     const r = approach(world, u, st, t, REACH.climb);
     if (r === 'failed') { finishOrder(u); return; }
     if (r !== 'reached') return;
-    const dx = u.x - t.x;
-    const dy = u.y - t.y;
-    const sx = Math.abs(dx) * t.h > Math.abs(dy) * t.w ? Math.sign(dx) : 0;
-    const sy = sx ? 0 : Math.sign(dy) || 1;
-    const blocked = world.blockedOf(u);
-    const S = world.S;
-    let dest = null;
-    for (let k = 0; k < 5 && !dest; k++) {
-      const px = t.x - sx * (t.w / 2 + 0.6 + k);
-      const py = t.y - sy * (t.h / 2 + 0.6 + k);
-      const cx = Math.floor(px) | 0;
-      const cy = Math.floor(py) | 0;
-      if (cx < 0 || cy < 0 || cx >= S || cy >= S) break;
-      if (!blocked[cy * S + cx]) dest = { x: sx ? px : u.x, y: sy ? py : u.y };
-    }
+    const dest = crossDest(world, u, t, u.x, u.y);
     if (!dest) { finishOrder(u); return; }
     const tags = DEFS[t.type].tags;
     let time = tags.includes('great') ? CLIMB_TIME.great : tags.includes('stone') ? CLIMB_TIME.stone : CLIMB_TIME.wood;

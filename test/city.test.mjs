@@ -4,6 +4,7 @@ import { World } from '../src/core/world.js';
 import { DT, CHOICES, computeStats } from '../src/core/defs.js';
 import { applyCommand } from '../src/core/commands.js';
 import { applyChoice, queueUnit, placementError } from '../src/core/econ.js';
+import { killEntity } from '../src/core/combat.js';
 
 const two = () => new World({ seed: 3, players: [{ name: 'A', civ: 'franks' }, { name: 'B', civ: 'gauls' }], startRes: 'riche', revealMap: true });
 const run = (w, s) => { for (let i = 0; i < s / DT; i++) w.step(); };
@@ -192,4 +193,34 @@ test('tour lance-pierres : tir de zone sur un groupe', () => {
   run(w, 8);
   const hurt = grp.filter((u, i) => u.hp < hp0[i]).length;
   assert.ok(hurt >= 2, `la pierre touche plusieurs soldats (${hurt})`);
+});
+
+test('tour de siège : des fantassins montent, la tour se colle au mur et les dépose de l\'autre côté', () => {
+  const w = two();
+  const pl = w.players[0];
+  pl.age = 3;
+  const wall = w.addBuilding('wall', 1, 50, 50, true);
+  const tower = w.addUnit('siegetower', 0, 46, 50.5);
+  const men = [0, 1, 2].map((i) => w.addUnit('swordsman', 0, 45.2, 49.5 + i * 0.6));
+  applyCommand(w, 0, { c: 'board', ids: men.map((m) => m.id), tid: tower.id });
+  run(w, 6);
+  assert.equal(tower.cargo.length, 3, 'trois passagers');
+  assert.ok(men.every((m) => m.inside === tower.id));
+  applyCommand(w, 0, { c: 'deploy', ids: [tower.id], tid: wall.id });
+  run(w, 14);
+  assert.equal(tower.cargo.length, 0, 'cargaison débarquée');
+  assert.ok(men.every((m) => !m.inside && m.x > 51), `de l'autre côté (x=${men.map((m) => m.x.toFixed(1))})`);
+});
+
+test('tour de siège détruite : les passagers ressortent', () => {
+  const w = two();
+  const tower = w.addUnit('siegetower', 0, 60, 60);
+  const m = w.addUnit('swordsman', 0, 60.5, 60);
+  applyCommand(w, 0, { c: 'board', ids: [m.id], tid: tower.id });
+  run(w, 3);
+  assert.equal(m.inside, tower.id);
+  killEntity(w, tower, null);
+  w.sweepDead();
+  assert.equal(m.inside, 0);
+  assert.ok(!m.dead);
 });
