@@ -12,6 +12,7 @@ import { drawHuman } from './unit-human.js';
 import { idlePose, walkPose, attackPose, workPose, diePose, full, WORK } from './unit-poses.js';
 import { drawHorse, gallopPose, standPose, fallPose } from './unit-horse.js';
 import { drawRam, drawCatapult } from './unit-siege.js';
+import { climbPose, drawLadder } from './unit-ladder.js';
 import { unitSpec, METRICS } from './unit-specs.js';
 import { drawBoat, drawWater, hullOf } from './unit-naval.js';
 import { EXT_TYPES, EXT_KINDS } from './unit-ext.js';
@@ -70,7 +71,7 @@ export function unitMetrics(type) {
   return METRICS[type] || METRICS.villager;
 }
 
-const RANGED = { bow: 1, xbow: 1 };
+const RANGED = { bow: 1, xbow: 1, sling: 1 };
 
 /** Image d'animation à afficher (quantifiée) pour un état d'unité. */
 function frameOf(o, S) {
@@ -150,6 +151,13 @@ function humanFrame(ctx, S, fr) {
   const vil = S.type === 'villager';
   if (fr.anim === 2) {
     const w = WORKS[fr.work - 1];
+    if (w === 'climb') {
+      // Escalade : échelle derrière le grimpeur, bouclier passé dans le dos, mains et pieds calés sur les barreaux
+      const csp = sp.shield ? Object.assign({}, sp, { shield: null, back: 'shield', shieldFace: sp.shield.face }) : sp;
+      drawLadder(ctx, sp, fr.q);
+      drawHuman(ctx, csp, climbPose(sp, fr.q), { weapon: null });
+      return;
+    }
     const r = workPose(w, fr.q);
     P = r[0];
     Object.assign(opt, r[1]);
@@ -180,6 +188,8 @@ function humanFrame(ctx, S, fr) {
     drawHuman(ctx, sp, P, opt);
     ctx.restore();
   } else drawHuman(ctx, sp, P, opt);
+  // Effets propres à un costume (ex. poussière de l'explosion du sapeur) : sp.fx(ctx, fr)
+  if (sp.fx) sp.fx(ctx, fr);
 }
 
 /** Pose du cavalier (bassin sur la selle, jambe proche pendante). */
@@ -302,12 +312,12 @@ function siegeFrame(ctx, S, fr) {
 }
 
 /** Anneau doré au sol des héros (moitié lointaine derrière les jambes : l'anneau entier est un calque sous le sujet). */
-function heroRing(ctx, fr) {
+function heroRing(ctx, fr, k = 1) {
   const pulse = 0.5 + 0.5 * Math.sin(fr.q * TAU);
   const fade = fr.anim === 4 ? 1 - smooth(clamp(fr.q * 1.2)) : 1;
   if (fade <= 0.01) return;
-  const rx = 12.6;
-  const ry = 4.6;
+  const rx = 12.6 * k;
+  const ry = 4.6 * k;
   ctx.save();
   ctx.translate(0.6, 0.6);
   ctx.scale(1, ry / rx);
@@ -376,13 +386,18 @@ function shadowOf(S, fr) {
 }
 
 function bakeFrame(S, fr, b) {
-  const [l, t, r, bt] = S.box;
+  let [l, t, r, bt] = S.box;
+  // L'échelle de l'escalade dépasse au-dessus de la tête
+  if (S.kind === 'human' && fr.anim === 2 && WORKS[fr.work - 1] === 'climb') {
+    t = Math.min(t, -64);
+    r = Math.max(r, 32);
+  }
   const box = fr.dir > 0 ? [l, t, r, bt] : [-r, t, -l, bt];
   let under = null;
   if (S.hero) {
     under = (ctx) => {
       ctx.scale(fr.dir, 1);
-      heroRing(ctx, fr);
+      heroRing(ctx, fr, S.ringScale || 1);
     };
   } else if (S.kind === 'boat') {
     const hd = hullOf(S);

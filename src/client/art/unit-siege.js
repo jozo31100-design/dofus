@@ -573,3 +573,6 @@ export function drawCatapult(ctx, S, P) {
   }
   ctx.restore();
 }
+
+// Aides de dessin partagées avec les autres engins (tour de siège, unit-tower.js).
+export { quad, beamU, beamV, post, strut, wheel, pennant, piece };

@@ -30,7 +30,7 @@ const KNEEL = { nT: 0.12, nS: -1.5, fT: 1.35, fS: 0.02 };
 const CROUCH = { nT: 0.55, nS: -0.35, fT: 0.75, fS: -0.1 };
 
 // Positions de repos des bras selon la manière de tenir l'arme.
-const REST = {
+export const REST = {
   tool: { nU: 0.12, nF: 0.42, wA: 0.5, fU: 0.08, fF: 0.3 },
   sword: { nU: 0.28, nF: 1.15, wA: 2.25, fU: 0.2, fF: 1.3 },
   spear: { nU: 0.32, nF: 2.05, wA: 3.08, fU: 0.2, fF: 1.3 },
@@ -38,6 +38,9 @@ const REST = {
   xbow: { ik: 3, aim: 2.3 },
   staff: { nU: 0.34, nF: 1.95, wA: 3.04, fU: 0.14, fF: 0.75 },
   fury: { nU: 0.5, nF: 1.45, wA: 2.1, fU: 0.35, fF: 1.1, lean: 0.1 },
+  // Armes à deux mains des unités franques d'extension : maillet de guerre, bâton ferré
+  maul: { nU: 0.42, nF: 1.75, wA: 2.78, two: 1, grip: 3.2, lean: 0.02 },
+  pole: { nU: 0.36, nF: 1.7, wA: 2.92, two: 1, grip: 4.2 },
 };
 
 /** Pose d'attente (respiration, arme qui balance légèrement). p = phase 0..1 du cycle de respiration. */
@@ -137,8 +140,29 @@ const BLESS = [
   [1.0, { nU: 0.34, nF: 1.95, wA: 3.04, fU: 0.14, fF: 0.75, ...STANCE }],
 ];
 
+// Maillet de guerre à deux mains : grand geste par-dessus la tête puis écrasement
+const MAUL = [
+  [0.0, { nU: 0.42, nF: 1.75, wA: 2.78, two: 1, grip: 3.2, lean: 0.02, ...STANCE }],
+  [0.42, { nU: 3.5, nF: 3.95, wA: 4.15, two: 1, grip: 3.2, lean: -0.16, head: -0.08, ...WIDE, nT: -0.2 }],
+  [0.58, { nU: 1.25, nF: 1.0, wA: 0.85, two: 1, grip: 3.2, lean: 0.3, head: 0.14, bx: 1.1, ...WIDE }],
+  [0.78, { nU: 1.15, nF: 0.9, wA: 0.75, two: 1, grip: 3.2, lean: 0.24, bx: 0.9, ...WIDE }],
+  [1.0, { nU: 0.42, nF: 1.75, wA: 2.78, two: 1, grip: 3.2, lean: 0.02, bx: 0, ...STANCE }],
+];
+
+// Bâton ferré à deux mains : moulinet puis estoc et coup d'extrémité
+const POLEJAB = [
+  [0.0, { nU: 0.36, nF: 1.7, wA: 2.92, two: 1, grip: 4.2, ...STANCE }],
+  [0.3, { nU: 2.3, nF: 2.7, wA: 3.7, two: 1, grip: 4.2, lean: -0.1, head: -0.06, ...WIDE }],
+  [0.52, { nU: 1.2, nF: 1.15, wA: 1.35, two: 1, grip: 4.2, lean: 0.26, bx: 1.0, ...WIDE }],
+  [0.74, { nU: 1.1, nF: 1.2, wA: 1.5, two: 1, grip: 4.2, lean: 0.2, bx: 0.8, ...WIDE }],
+  [1.0, { nU: 0.36, nF: 1.7, wA: 2.92, two: 1, grip: 4.2, bx: 0, ...STANCE }],
+];
+
 /** Pose d'attaque. hold = manière de tenir l'arme, q = avancement 0..1, aimA = visée (convention des membres). */
+/** Attaques ajoutées par les modules d'extension : { hold: (q, aimA) => pose complète }. */
+export const ATTACK_EXT = {};
 export function attackPose(hold, q, aimA) {
+  if (ATTACK_EXT[hold]) return ATTACK_EXT[hold](q, aimA);
   if (hold === 'bow') {
     // Lever l'arc, bander, décocher, garder la pose
     const up = smooth(clamp(q / 0.18));
@@ -167,6 +191,7 @@ export function attackPose(hold, q, aimA) {
   if (hold === 'spear') return full(keyPose(THRUST, q));
   if (hold === 'throw') return full(keyPose(THROW, q));
   if (hold === 'staff') return full(keyPose(BLESS, q));
+  if (hold === 'maul' || hold === 'pole') return full(keyPose(hold === 'maul' ? MAUL : POLEJAB, q));
   const o = full(keyPose(SWING, q));
   if (hold === 'fury') {
     o.lean += 0.1;

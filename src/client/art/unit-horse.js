@@ -178,7 +178,7 @@ export function drawHorse(ctx, H, P, mid) {
     ctx.beginPath();
     hem.forEach(([x, y], i) => (i ? ctx.lineTo(x * z, (y - 1.0) * z) : ctx.moveTo((x + 0.4) * z, (y - 1.0) * z)));
     ctx.stroke();
-    if (H.capPattern !== 'check') {
+    if (H.capPattern !== 'check' && H.capPattern !== 'plain') {
       // Fleurs de lys dorées
       ctx.fillStyle = H.capTrim || '#e8c050';
       for (const [lx, ly] of [[-9, 2], [-3, 3], [3, 2], [-6, -3.4], [0, -3], [6.5, -2.5]]) {
@@ -224,10 +224,13 @@ export function drawHorse(ctx, H, P, mid) {
   }
   // Sangle
   if (!H.caparison) line(ctx, 1.4 * z, -6.8 * z, 1.0 * z, 5.6 * z, 'rgba(60,36,18,0.85)', 1.0 * z);
+  // Barde ou harnachement d'extension sur le corps (repère du corps, unités z incluses)
+  if (H.hooks && H.hooks.body) H.hooks.body(ctx, H, R, P);
   ctx.restore();
 
   // Encolure et tête
   drawNeckHead(ctx, H, R, P);
+  if (H.hooks && H.hooks.head) H.hooks.head(ctx, H, R, P);
 
   // Cavalier (et tout ce qui se place au-dessus du corps)
   if (mid) mid(ctx, R);

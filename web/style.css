@@ -217,3 +217,23 @@ input[type=range] { width: 200px; accent-color: #d9a13a; }
   .version { display: none; }
 }
 .version { position: absolute; right: 14px; bottom: 10px; color: var(--ink-dim); font-size: 12px; opacity: .7; z-index: 2; }
+
+/* choix d'âge */
+#btn-choices { margin-right: 6px; }
+#btn-choices.pending { color: #2a1a05; background: linear-gradient(#ffe08a, #d9a638); animation: pend 1.2s ease-in-out infinite; }
+@keyframes pend { 50% { box-shadow: 0 0 12px rgba(255,214,107,.9); } }
+.dialog.choices { min-width: 0; width: min(1040px, 94vw); gap: 8px; }
+.choice-row { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--gold-dim); padding-top: 6px; }
+.choice-row.locked { opacity: .45; }
+.choice-age { color: var(--gold); font-weight: bold; }
+.choice-cells { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.choice-cat { display: flex; flex-direction: column; gap: 4px; }
+.choice-head { font-size: 12px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 1px; }
+.choice-card { display: grid; grid-template-columns: 44px 1fr; gap: 0 8px; text-align: left; background: rgba(0,0,0,.3); color: var(--ink, #f2e6cc); border: 2px solid var(--gold-dim); border-radius: 6px; padding: 5px 7px; cursor: pointer; font: inherit; }
+.choice-card img { grid-row: span 2; width: 44px; height: 44px; }
+.choice-card b { font-size: 13px; color: var(--gold); }
+.choice-card span { font-size: 11px; line-height: 1.25; color: var(--ink-dim); }
+.choice-card:hover:not([disabled]) { border-color: var(--gold); background: rgba(255,214,107,.12); }
+.choice-card.chosen { border-color: #8fe07a; background: rgba(120,220,100,.15); }
+.choice-card.off { opacity: .35; }
+.choice-card[disabled] { cursor: default; }

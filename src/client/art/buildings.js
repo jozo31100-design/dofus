@@ -19,10 +19,12 @@ import { DOCK } from './building-dock.js';
 import { MARKET } from './building-market.js';
 import { ACADEMY } from './building-academy.js';
 import { WONDER } from './building-wonder.js';
+import { WALLS } from './building-walls.js';
+import { DEFENSE } from './building-defense.js';
 
 const DESIGNS = {
-  gauls: { ...GAULS, farm, dock: DOCK.gauls, market: MARKET.gauls, academy: ACADEMY.gauls, wonder: WONDER.gauls },
-  franks: { ...FRANKS, farm, dock: DOCK.franks, market: MARKET.franks, academy: ACADEMY.franks, wonder: WONDER.franks },
+  gauls: { ...GAULS, farm, dock: DOCK.gauls, market: MARKET.gauls, academy: ACADEMY.gauls, wonder: WONDER.gauls, ...WALLS.gauls, ...DEFENSE.gauls },
+  franks: { ...FRANKS, farm, dock: DOCK.franks, market: MARKET.franks, academy: ACADEMY.franks, wonder: WONDER.franks, ...WALLS.franks, ...DEFENSE.franks },
 };
 
 /**
@@ -33,7 +35,12 @@ const HEIGHT = {
   hall: 150, house: 68, farm: 54, mill: 94, lumber: 67, mining: 67, barracks: 114, archery: 112,
   stable: 108, forge: 107, tower: 168, temple: 137, siege: 141, castle: 220,
   dock: 101, market: 84, academy: 143, wonder: 224,
+  palisade: 60, palisade_gate: 70, wall: 100, gate: 110, rampart: 150, great_gate: 150, bastion: 160, outpost: 130,
+  infirmary: 100, great_house: 110, monument: 120,
 };
+
+/** Types dont le dessin dépend des voisins (masque de connexion). */
+const CONNECTED = new Set(['palisade', 'palisade_gate', 'wall', 'gate', 'rampart', 'great_gate']);
 
 const cache = new Map();
 
@@ -126,18 +133,21 @@ function workCanvas(n, hMax) {
  * Sprite d'un bâtiment. stage : 0 fondations, 1 charpente et murs à 40 %, 2 presque fini, 3 terminé.
  * Renvoie { canvas, ax, ay, h } : (ax, ay) = centre de l'emprise au sol dans le canvas, h = hauteur du sommet (px).
  */
-export function getBuildingSprite(typeId, civ, teamIdx, stage = 3) {
+export function getBuildingSprite(typeId, civ, teamIdx, stage = 3, mask = 0) {
   const st = Number.isFinite(stage) ? Math.max(0, Math.min(3, Math.round(stage))) : 3;
   const cv = civ === 'franks' ? 'franks' : 'gauls';
   const tm = teamIdx | 0;
-  const key = `${typeId}|${cv}|${tm}|${st}`;
+  // le masque de voisinage (bits 1 = +x, 2 = +y, 4 = −x, 8 = −y) ne concerne que les murs et les portes
+  const mk = CONNECTED.has(typeId) ? (mask | 0) & 15 : 0;
+  const key = mk ? `${typeId}|${cv}|${tm}|${st}|${mk}` : `${typeId}|${cv}|${tm}|${st}`;
   let s = cache.get(key);
   if (s) return s;
   const def = BUILDINGS[typeId];
   const n = def ? def.size : 2;
   const design = DESIGNS[cv][typeId];
   const W = workCanvas(n, (HEIGHT[typeId] || 100) + 30);
-  const g = new Gfx(W.ctx, W.ax, W.ay, { stage: st, civ: cv, team: tm, size: n, seed: hash(typeId, cv) });
+  const g = new Gfx(W.ctx, W.ax, W.ay, { stage: st, civ: cv, team: tm, size: n, seed: hash(typeId, cv, mk) });
+  g.mask = mk;
   if (!design) {
     // type inconnu : simple tas de caisses pour ne jamais échouer
     g.box(-0.3, -0.3, 0.3, 0.3, 0, 12, { col: '#9a7a56' });
@@ -147,7 +157,7 @@ export function getBuildingSprite(typeId, civ, teamIdx, stage = 3) {
     paintShadows(g);
     g.mode = 'draw';
     design(g);
-    if (st < 3) siteFlag(g);
+    if (st < 3 && !design.noFlag) siteFlag(g);
   } else {
     g.mode = 'plan';
     design(g);

@@ -1,6 +1,7 @@
 // Contrôle de robustesse du dessin : toutes les combinaisons doivent se dessiner sans erreur ni valeur invalide.
 import * as art from '../src/client/art/index.js';
 import { UNITS, BUILDINGS, TECHS, ANIMALS, NODES, CIV_IDS } from '../src/core/defs.js';
+import { ICON_NAMES, TECH_ICON_IDS } from '../src/client/art/icons.js';
 
 (async () => {
   const c = document.createElement('canvas');
@@ -14,7 +15,7 @@ import { UNITS, BUILDINGS, TECHS, ANIMALS, NODES, CIV_IDS } from '../src/core/de
     try { fn(); count++; } catch (e) { problems.push(`${label} : ${e.message}`); }
   };
   const anims = ['idle', 'walk', 'work', 'attack', 'die'];
-  const works = [undefined, 'wood', 'mine', 'farm', 'forage', 'build', 'repair', 'hunt', 'butcher', 'fish', 'heal'];
+  const works = [undefined, 'wood', 'mine', 'farm', 'forage', 'build', 'repair', 'hunt', 'butcher', 'fish', 'heal', 'climb'];
   const carries = [null, 'wood', 'food', 'gold', 'stone'];
   for (const type of Object.keys(UNITS)) {
     for (const civ of CIV_IDS) {
@@ -57,6 +58,45 @@ import { UNITS, BUILDINGS, TECHS, ANIMALS, NODES, CIV_IDS } from '../src/core/de
   for (const name of ['food', 'wood', 'gold', 'stone', 'pop', 'attack', 'stop', 'delete', 'repair', 'garrison', 'ungarrison', 'cancel', 'rally', 'build-eco', 'build-mil', 'age', 'hammer', 'sword', 'shield', 'bow', 'flag', 'menu', 'pause', 'idle-villager', 'clock', 'heal', 'check', 'lock', 'axe', 'pickaxe', 'meat', 'berries', 'wheat', 'house', 'castle', 'fish', 'coin', 'crown', 'ship', 'hero', 'buy-food', 'buy-wood', 'buy-stone', 'sell-food', 'sell-wood', 'sell-stone']) {
     attempt(`icône ${name}`, () => art.drawIcon(ctx, name, 32));
   }
+  // Contrôles de contenu : le dessin doit laisser des pixels (pas d'image vide) et chaque id doit avoir son art
+  const inked = (label, fn, min = 40) => attempt(label, () => {
+    ctx.clearRect(0, 0, 400, 300);
+    fn();
+    const d = ctx.getImageData(0, 0, 400, 300).data;
+    let n = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 20) n++;
+    if (n < min) throw new Error(`dessin vide (${n} pixels)`);
+  });
+  for (const type of ['sapper', 'siegetower']) for (const civ of CIV_IDS) for (const team of [0, 1]) {
+    for (const anim of anims) inked(`vide ${type}/${civ}/${team}/${anim}`, () => art.drawUnit(ctx, { type, civ, team, sx: 200, sy: 220, t: 0.2, anim, dir: 1, deathT: 0.2, aim: 0.3 }), 150);
+    attempt(`métriques dédiées ${type}`, () => { const m = art.unitMetrics(type); if (m.h < 30 || (type === 'siegetower' && m.h < 90)) throw new Error('métriques par défaut'); });
+  }
+  for (const civ of CIV_IDS) for (const type of ['villager', 'militia', 'spearman', 'swordsman', 'champion', 'archer', 'crossbow', 'francisque', 'gesate', 'sapper']) {
+    for (const t of [0, 0.1, 0.25, 0.4, 0.55, 0.7, 0.85]) {
+      inked(`escalade ${type}/${civ}/${t}`, () => art.drawUnit(ctx, { type, civ, team: 0, sx: 200, sy: 220, t, anim: 'work', work: 'climb', dir: t > 0.5 ? -1 : 1 }), 300);
+    }
+  }
+  for (const id of Object.keys(UNITS)) attempt(`id unité ${id}`, () => {
+    const m = art.unitMetrics(id);
+    if (id !== 'villager' && m === art.unitMetrics('villager')) throw new Error('métriques par défaut (type non dessiné)');
+    for (const civ of CIV_IDS) {
+      if (UNITS[id].civ && UNITS[id].civ !== civ) continue;
+      ctx.clearRect(0, 0, 400, 300);
+      art.drawUnit(ctx, { type: id, civ, team: 0, sx: 200, sy: 220, t: 0.3, anim: 'idle', dir: 1 });
+      const d = ctx.getImageData(0, 0, 400, 300).data;
+      let n = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 20) n++;
+      if (n < 80) throw new Error(`rien de dessiné (${civ})`);
+    }
+  });
+  for (const id of Object.keys(TECHS)) {
+    attempt(`art de la tech ${id}`, () => { if (!TECH_ICON_IDS.includes(id)) throw new Error('pas d\'icône dédiée (point d\'interrogation)'); });
+    for (const size of [20, 32, 64]) inked(`icône tech ${id}/${size}`, () => art.drawTechIcon(ctx, id, size), 200);
+  }
+  for (const name of ['star', 'choice', 'wall', 'gate', 'ladder', 'unit-special', 'build-civ', 'build-def', 'choices', 'climb', 'hero']) {
+    attempt(`icône ${name} connue`, () => { if (!ICON_NAMES.includes(name)) throw new Error('icône inconnue'); });
+    for (const size of [20, 44, 64]) inked(`icône ${name}/${size}`, () => art.drawIcon(ctx, name, size), 100);
+  }
   const tt = performance.now();
   const size = 96;
   const terrain = new Uint8Array(size * size);
@@ -82,6 +122,6 @@ import { UNITS, BUILDINGS, TECHS, ANIMALS, NODES, CIV_IDS } from '../src/core/de
   const perFrame = pass();
   console.log(`${count} dessins vérifiés, ${problems.length} problème(s), durée totale ${Math.round(performance.now() - t0)} ms`);
   console.log(`terrain 96x96 : ${Math.round(terrMs)} ms ; 400 unités par image : ${coldMs.toFixed(1)} ms à froid, ${perFrame.toFixed(1)} ms à chaud`);
-  for (const p of problems.slice(0, 30)) console.error('PROBLÈME', p);
-  if (problems.length > 30) console.error(`… et ${problems.length - 30} autres`);
+  for (const p of problems.slice(0, 120)) console.error('PROBLÈME', p);
+  if (problems.length > 120) console.error(`… et ${problems.length - 120} autres`);
 })();

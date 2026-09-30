@@ -17,14 +17,14 @@ const COMP = {
   barracks: [['militia', 1, 1], ['spearman', 3, 2], ['swordsman', 2, 2], ['champion', 5, 3]],
   archery: [['archer', 4, 2], ['crossbow', 5, 3]],
   stable: [['cavalry', 3, 2], ['knight', 5, 3]],
-  siege: [['ram', 2, 3], ['catapult', 1, 3]],
-  castle: [['francisque', 4, 3], ['gesate', 4, 3], ['clovis', 7, 3], ['vercingetorix', 7, 3]],
+  siege: [['ram', 2, 3], ['catapult', 1, 3], ['sapper', 2, 3]],
+  castle: [['francisque', 4, 3], ['gesate', 4, 3]],
   temple: [['healer', 1, 2]],
 };
 
 const ECO_TECHS = ['axe1', 'plow1', 'baskets', 'pick1', 'carry1', 'hunt1', 'axe2', 'plow2', 'pick2', 'carry2', 'nets1', 'nets2'];
 const WAR_TECHS = ['atk_inf1', 'arm_inf1', 'atk_arch1', 'arm_arch1', 'atk_cav1', 'arm_cav1', 'bloodlines',
-  'atk_inf2', 'arm_inf2', 'atk_arch2', 'atk_cav2', 'arm_cav2', 'frank_axe', 'gaul_fury'];
+  'atk_inf2', 'arm_inf2', 'atk_arch2', 'atk_cav2', 'arm_cav2', 'frank_axe', 'gaul_fury', 'ladders', 'fire_arrows'];
 
 class Bot {
   constructor(world, idx, levelName) {
@@ -145,7 +145,8 @@ class Bot {
   // ------------------------------------------------------------------------------------
 
   ageUp(world, pl, S) {
-    if (pl.age >= 3) return;
+    if (pl.age >= 4) return;
+    if (pl.age === 3 && (this.levelName === 'facile' || world.tick < 20 * 60 * 14 || S.vills.length < 36)) return;
     const next = pl.age + 1;
     const techId = 'age' + next;
     const need = this.lv.ageVill[pl.age - 1];
@@ -560,20 +561,31 @@ class Bot {
     const armyPop = S.army.length + S.queuedUnits - S.queuedVills;
     // on garde la place pour les villageois tant que l'économie n'est pas au niveau visé
     const vBudget = S.vills.length + S.queuedVills < this.lv.villagers && pl.age === 1;
-    for (const bType of Object.keys(COMP)) {
+    // héros et unités spéciales choisis aux changements d'âge : ajoutés à la composition de leur bâtiment
+    const comp = {};
+    for (const k of Object.keys(COMP)) comp[k] = COMP[k].slice();
+    for (const id of Object.values(pl.chosen || {})) {
+      const d = UNITS[id];
+      if (!d || !d.choice || !d.from) continue;
+      (comp[d.from] = comp[d.from] || []).push([id, d.tags.includes('hero') ? 7 : 4, d.age]);
+    }
+    let enemyWalls = 0;
+    for (const b of world.buildings) if (b.owner !== this.idx && b.owner >= 0 && !b.dead && (DEFS[b.type].wall || DEFS[b.type].gate)) enemyWalls++;
+    for (const bType of Object.keys(comp)) {
       for (const b of S.byType[bType] || []) {
         if (!b.done || b.queue.length >= 2) continue;
         if (pl.pop + S.queuedUnits >= pl.popCap) return;
         // rallye vers l'avant de la base
-        if (!b.rally) {
+        if (!b.rally && bType !== 'hall') {
           const f = this.frontPoint(world, S.hall, 8);
           this.cmd(world, { c: 'rally', bids: [b.id], x: f.x, y: f.y });
         }
-        const trainable = trainableAt(bType, pl.civ);
+        const trainable = trainableAt(bType, pl.civ, new Set(Object.values(pl.chosen || {})));
         let best = null;
         let bs = -1;
-        for (const [type, weight, minAge] of COMP[bType]) {
+        for (const [type, weight, minAge] of comp[bType]) {
           if (!trainable.includes(type) || pl.age < minAge) continue;
+          if (type === 'sapper' && (enemyWalls < 3 || (counts.sapper || 0) >= 4)) continue;
           if (bType === 'barracks' && type === 'militia' && (pl.age >= 2 || armyPop >= 6)) continue;
           if (type === 'ram' && (counts.ram || 0) >= Math.max(2, Math.floor(S.army.length / 8))) continue;
           if (type === 'catapult' && (counts.catapult || 0) >= Math.max(1, Math.floor(S.army.length / 12))) continue;

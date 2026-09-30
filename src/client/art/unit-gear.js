@@ -525,6 +525,7 @@ export function shield(ctx, cx, cy, z, kind, face, s = 1, tilt = 0, deco = 'boss
       ctx.fill();
     }
   }
+  if (typeof deco === 'function') deco(ctx, k, kind);
   ctx.restore();
 }
 

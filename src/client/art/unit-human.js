@@ -556,6 +556,8 @@ function drawTorso(ctx, sp, R, P) {
     ell(ctx, -1.6, -7.6, 0.4, 0.4);
     ctx.fill();
   }
+  // Décor propre à une unité d'extension (repère du torse, unités z = 1)
+  if (sp.hooks && sp.hooks.torso) sp.hooks.torso(ctx, sp, R, P);
   ctx.restore();
 }
 
@@ -722,8 +724,9 @@ function drawHead(ctx, sp, R) {
     paint(ctx, tone(c, 0.05), edge(c, 0.8), lw);
   }
   drawHair(ctx, sp, r, lw);
-  if (sp.helmet) drawHelmet(ctx, sp, r, lw);
+  if (sp.helmet && !(sp.hooks && sp.hooks.helmet && sp.hooks.helmet(ctx, sp, r, lw))) drawHelmet(ctx, sp, r, lw);
   if (sp.hood) drawHood(ctx, sp, r, lw);
+  if (sp.hooks && sp.hooks.head) sp.hooks.head(ctx, sp, r, lw);
   ctx.restore();
 }
 
@@ -1028,7 +1031,10 @@ export function drawHuman(ctx, sp, P, opt = {}) {
     const [qx, qy] = rot(-3.4 * z, -7.2 * z, P.lean);
     G.loadGold(ctx, R.hx + qx, R.hy + qy + R.lift, z);
   }
+  if (sp.hooks && sp.hooks.back) sp.hooks.back(ctx, sp, R, P);
   drawBackHair(ctx, sp, R);
+  // Objet de dos propre à un costume (ex. tonnelet du sapeur) : sp.backItem(ctx, R, P, z)
+  if (sp.backItem) sp.backItem(ctx, R, P, z);
 
   // 2. Bras lointain (derrière le torse)
   drawArm(ctx, sp, R.shF, R.elF, R.handF, true);
@@ -1063,7 +1069,7 @@ export function drawHuman(ctx, sp, P, opt = {}) {
   if (sp.shield && !opt.noShield) {
     const ex = R.elF[0] + (R.handF[0] - R.elF[0]) * 0.55 + 0.6 * z;
     const ey = R.elF[1] + (R.handF[1] - R.elF[1]) * 0.55;
-    G.shield(ctx, ex, ey, z, sp.shield.kind, sp.shield.face, sp.shield.s || 1, sp.shield.tilt || 0, sp.shield.deco);
+    if (sp.hooks && sp.hooks.shield && sp.hooks.shield(ctx, sp, ex, ey, z, P)) { /* bouclier d'extension dessiné */ } else G.shield(ctx, ex, ey, z, sp.shield.kind, sp.shield.face, sp.shield.s || 1, sp.shield.tilt || 0, sp.shield.deco);
   }
   if (weapon === 'bow') {
     let pull = null;
@@ -1078,8 +1084,12 @@ export function drawHuman(ctx, sp, P, opt = {}) {
     G.loadWood(ctx, R.hx + qx, R.hy + qy + R.lift, z);
   }
 
+  if (sp.hooks && sp.hooks.front) sp.hooks.front(ctx, sp, R, P);
+
   // 7. Arme et bras proche
-  if (weapon === 'crossbow') {
+  if (sp.hooks && sp.hooks.weapon && sp.hooks.weapon(ctx, sp, R, P, weapon)) {
+    // arme d'extension dessinée par le costume
+  } else if (weapon === 'crossbow') {
     G.crossbow(ctx, R.handN[0], R.handN[1], P.aim, z, P.shot < 0.5, P.shot > 0.5 ? 0.6 * (1 - P.pull) : 0);
   } else if (!ranged && weapon && !(P.shot > 0.5)) {
     drawWeapon(ctx, sp, R, P, weapon);

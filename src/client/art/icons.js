@@ -8,6 +8,7 @@ import { getNodeSprite, drawAnimal } from './nature.js';
 import { TAU, PI, tone, rgba, capsule, ell, poly, line } from './unit-kit.js';
 import * as I from './icon-glyphs.js';
 import * as J from './icon-glyphs2.js';
+import * as K from './icon-glyphs3.js';
 
 const INK = '#23170e';
 const iconCache = new Map();
@@ -147,6 +148,20 @@ const ICONS = {
   'build-mil'(g) {
     I.gTower(g, 26, 34, 0.95);
     I.gSword(g, 46, 44, -PI / 4, 0.6);
+  },
+  'build-civ'(g) {
+    K.gForum(g, 26, 34, 0.95);
+    I.gHammer(g, 47, 44, -PI / 4, 0.62);
+  },
+  'build-def'(g) {
+    K.gWallIcon(g);
+    I.gHammer(g, 47, 46, -PI / 4, 0.62);
+  },
+  choices(g) {
+    K.gChoices(g);
+  },
+  climb(g) {
+    K.gClimbIcon(g);
   },
   age(g) {
     // Marches montantes et étoile dorée
@@ -322,6 +337,24 @@ const ICONS = {
   'sell-stone'(g) {
     J.gTrade(g, 'stone', 'sell');
   },
+  star(g) {
+    K.gStar(g, 32, 33, 29);
+  },
+  choice(g) {
+    K.gScrollStar(g);
+  },
+  wall(g) {
+    K.gWallIcon(g);
+  },
+  gate(g) {
+    K.gGateIcon(g);
+  },
+  ladder(g) {
+    K.gLadder(g, 32, 32, 1.05, 0.32);
+  },
+  'unit-special'(g) {
+    K.gSpecialUnit(g);
+  },
 };
 
 /** Noms d'icônes disponibles. */
@@ -330,7 +363,8 @@ export const ICON_NAMES = Object.keys(ICONS);
 /**
  * Icône générique dans le carré (0,0)-(size,size) du contexte (ressources : food, wood, gold, stone, pop ;
  * actions : attack stop delete repair garrison ungarrison cancel rally build-eco build-mil age hammer sword
- * shield bow flag menu pause idle-villager clock ; en plus : heal check lock axe pickaxe meat berries wheat
+ * shield bow flag menu pause idle-villager clock build-civ build-def choices climb star choice wall gate ladder
+ * unit-special ; en plus : heal check lock axe pickaxe meat berries wheat
  * house castle fish coin crown ship hero ; marché : buy-food buy-wood buy-stone sell-food sell-wood sell-stone
  * = la pièce d'or et le symbole de la ressource reliés par une flèche : « buy » = or → ressource (flèche verte),
  * « sell » = ressource → or (flèche orange)).
@@ -444,6 +478,24 @@ const TECH_ART = {
   scout1: { cat: 'eco', draw: (g) => J.gSpyglass(g, 32, 34, 0.98) },
   eco1: { cat: 'eco', draw: (g) => J.gCalendar(g, 32, 34, 0.98) },
   strat1: { cat: 'mil', draw: (g) => J.gStrat(g, 32, 34, 0.98) },
+  // Extension 2 : siège, maçonnerie, âge impérial, bonus de choix
+  age4: { cat: 'age', draw: (g) => K.gImperial(g) },
+  ladders: { cat: 'mil', draw: (g) => K.gLadder(g, 32, 32, 1.0, 0.3) },
+  fire_arrows: { cat: 'mil', draw: (g) => K.gFireArrow(g) },
+  mason1: { cat: 'eco', lvl: 1, draw: (g) => K.gTrowelWall(g) },
+  mason2: { cat: 'eco', lvl: 2, draw: (g) => K.gRampart(g) },
+  g2a: { cat: 'unique', draw: (g) => K.gOakAxe(g) },
+  g2b: { cat: 'unique', draw: (g) => K.gClans(g) },
+  g3a: { cat: 'unique', draw: (g) => K.gAnvilSword(g) },
+  g3b: { cat: 'unique', draw: (g) => K.gOppidum(g) },
+  g4a: { cat: 'unique', draw: (g) => K.gAssembly(g) },
+  g4b: { cat: 'unique', draw: (g) => { glow(g, '#ff5030'); K.gBoarRoar(g); } },
+  f2a: { cat: 'unique', draw: (g) => K.gSealWheat(g) },
+  f2b: { cat: 'unique', draw: (g) => K.gLeudes(g) },
+  f3a: { cat: 'unique', draw: (g) => K.gCarolForge(g) },
+  f3b: { cat: 'unique', draw: (g) => K.gMarches(g) },
+  f4a: { cat: 'unique', draw: (g) => K.gEmpire(g) },
+  f4b: { cat: 'unique', draw: (g) => K.gTwelve(g) },
 };
 
 const FRAME = {

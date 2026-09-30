@@ -3,7 +3,9 @@
 import {
   BUILDINGS, UNITS, DEFS, TECHS, RESOURCES, RES_LABEL, AGE_NAMES, TEAM_COLORS,
   nameOf, trainableAt, techsAt, techForCiv, costText, tradeFee, tradeQuote, TRADE_RES, TRADE_LOT,
+  CHOICE_CATS, CHOICE_AGES, CHOICE_LABEL, choiceOptions, choiceKey,
 } from '../core/defs.js';
+import { wallLine } from '../core/common.js';
 import { Renderer } from './render.js';
 import { Minimap, MINI_W, MINI_H } from './minimap.js';
 import { iconURL } from './icons.js';
@@ -67,6 +69,7 @@ export class GameUI {
     this.menuOpen = false;
     this.overShown = false;
     this.idleIdx = 0;
+    this._pendSeen = 0;
     this.fpsAcc = { n: 0, t: 0, fps: 0 };
     this.buildDom();
     this.renderer = new Renderer(this.canvas, this.state, { speed: session.speed || opts.speed || 1, civs: opts.civs });
@@ -96,9 +99,11 @@ export class GameUI {
     this.clockEl = h('div', { id: 'clock', text: '00:00' });
     this.fpsEl = h('div', { id: 'fps', style: 'display:none' });
     this.wonderEl = h('div', { id: 'wonder-clock', style: 'display:none' });
+    this.choiceBtn = h('button', { id: 'btn-choices', class: 'btn small', text: 'Choix', title: 'Héros, unités spéciales et bonus d\'âge (K)', onclick: () => this.showChoices() });
     this.top = h('div', { id: 'topbar', class: 'panel' },
       resBox('food', RES_LABEL.food), resBox('wood', RES_LABEL.wood), resBox('gold', RES_LABEL.gold), resBox('stone', RES_LABEL.stone),
       this.popEl, h('div', { class: 'spacer' }), this.wonderEl, this.ageEl, this.clockEl, this.fpsEl,
+      this.choiceBtn,
       h('button', { id: 'btn-menu', class: 'btn small', text: 'Menu', title: 'Menu (F10)', onclick: () => this.openMenu() }));
     this.toasts = h('div', { id: 'toasts' });
     this.banner = h('div', { id: 'banner' });
@@ -191,6 +196,7 @@ export class GameUI {
     }
     if (e.button !== 0) return;
     if (this.placing) {
+      if (BUILDINGS[this.placing.type].wall) { this.updatePlacing(); this.placing.anchor = { tx: this.placing.tx, ty: this.placing.ty }; return; }
       this.placeHere(e.shiftKey);
       return;
     }
@@ -220,6 +226,7 @@ export class GameUI {
     if (e.button === 1) { this.panDrag = null; return; }
     if (e.button !== 0) return;
     this.mmDrag = false;
+    if (this.placing && this.placing.anchor) { this.finishWallLine(e.shiftKey); return; }
     const d = this.drag;
     this.drag = null;
     if (!d) return;
@@ -367,6 +374,13 @@ export class GameUI {
     const allIds = units.map((u) => u.id);
     const vIds = villagers.map((u) => u.id);
     const oIds = others.map((u) => u.id);
+    if (target && target.cls === 'building' && target.owner >= 0 && target.owner !== this.state.myIdx
+      && (BUILDINGS[target.type].wall || BUILDINGS[target.type].gate) && this.state.me.techs.has('ladders')) {
+      this.cmd({ c: 'climb', ids: allIds, tid: target.id, q });
+      fx.marker(target.x, target.y, 'attack', now);
+      audio.play('click', { gain: 0.4 });
+      return;
+    }
     if (target && target.owner >= 0 && target.owner !== this.state.myIdx && (target.cls === 'unit' || target.cls === 'building')) {
       this.cmd({ c: 'attack', ids: allIds, tid: target.id, q });
       fx.marker(target.x, target.y, 'attack', now);
@@ -511,6 +525,33 @@ export class GameUI {
     p.valid = r.valid;
     p.bad = r.bad;
     p.reason = r.reason;
+    p.line = null;
+    if (p.anchor) {
+      // tracé d'un mur : chaque tronçon est validé séparément (les cases invalides sont simplement sautées)
+      const cells = wallLine(n, p.anchor.tx, p.anchor.ty, p.tx, p.ty);
+      const cost = this.state.statOf(p.type).cost;
+      p.line = cells.map(([tx, ty]) => ({ tx, ty, ok: this.checkPlacement(p.type, tx, ty).valid }));
+      let okCount = 0;
+      for (const c of p.line) if (c.ok) okCount++;
+      p.lineCount = okCount;
+      p.lineCost = Object.fromEntries(Object.entries(cost).map(([k, v]) => [k, v * okCount]));
+    }
+  }
+
+  finishWallLine(shift) {
+    const p = this.placing;
+    const line = p && p.line;
+    p.anchor = null;
+    if (!line || !line.some((c) => c.ok)) { this.toast(p.reason || 'Emplacement impossible.', 'warn'); audio.play('error'); return; }
+    const ids = this.ents().filter((e) => this.isOwn(e) && e.type === 'villager').map((e) => e.id);
+    if (!ids.length) { this.cancelModes(); return; }
+    const first = line[0];
+    const last = line[line.length - 1];
+    if (line.length === 1) this.cmd({ c: 'build', type: p.type, tx: first.tx, ty: first.ty, ids, q: false });
+    else this.cmd({ c: 'buildline', type: p.type, x0: first.tx, y0: first.ty, x1: last.tx, y1: last.ty, ids, q: false });
+    audio.play('place');
+    this._occTick = -1;
+    if (!shift) this.cancelModes();
   }
 
   placeHere(shift) {
@@ -547,6 +588,7 @@ export class GameUI {
     if (e.code === 'F10') { this.openMenu(); e.preventDefault(); return; }
     if (e.code === 'F1') { this.showHelp(); e.preventDefault(); return; }
     if (this.menuOpen || this.state.over) return;
+    if (e.code === 'KeyK' && !e.ctrlKey) { this.showChoices(); return; }
     if (e.code === 'F3') { this.showFps = !this.showFps; this.fpsEl.style.display = this.showFps ? '' : 'none'; return; }
     const digit = /^(Digit|Numpad)(\d)$/.exec(e.code);
     if (digit) {
@@ -704,6 +746,8 @@ export class GameUI {
         if (this.page === 'root') {
           put(0, { id: 'eco', icon: iconURL('ui', 'build-eco', civ, 0, 44), title: 'Bâtiments civils', desc: 'Maisons, fermes, moulins, camps…', enabled: true, onClick: () => { this.page = 'eco'; this.slotSig = ''; } });
           put(1, { id: 'mil', icon: iconURL('ui', 'build-mil', civ, 0, 44), title: 'Bâtiments militaires', desc: 'Casernes, tours, château…', enabled: true, onClick: () => { this.page = 'mil'; this.slotSig = ''; } });
+          put(2, { id: 'civ', icon: iconURL('ui', 'build-civ', civ, 0, 44), title: 'Monuments et savoir', desc: 'Marché, académie, infirmerie, monument, merveille…', enabled: true, onClick: () => { this.page = 'civ'; this.slotSig = ''; } });
+          put(3, { id: 'def', icon: iconURL('ui', 'build-def', civ, 0, 44), title: 'Murailles et défenses', desc: 'Palissades, murs, portes, bastions, postes de guet. Glissez la souris pour tracer un mur.', enabled: true, onClick: () => { this.page = 'def'; this.slotSig = ''; } });
         } else {
           const ids = Object.keys(BUILDINGS).filter((id) => BUILDINGS[id].page === this.page);
           ids.forEach((id, i) => {
@@ -751,7 +795,7 @@ export class GameUI {
           });
           i = 6;
         }
-        for (const id of trainableAt(b.type, civ)) {
+        for (const id of trainableAt(b.type, civ, new Set(Object.values(me.chosen)))) {
           const u = UNITS[id];
           const cost = st.statOf(id).cost;
           const ageOk = me.age >= u.age;
@@ -1000,6 +1044,13 @@ export class GameUI {
     this.resEls.pop.el.classList.toggle('full', me.pop >= me.cap);
     const age = AGE_NAMES[me.age];
     if (this.ageEl.textContent !== age) this.ageEl.textContent = age;
+    const pend = this.pendingChoices();
+    this.choiceBtn.textContent = pend ? `Choix (${pend})` : 'Choix';
+    this.choiceBtn.classList.toggle('pending', pend > 0);
+    if (pend > (this._pendSeen || 0)) {
+      if (me.age >= 2) { this.toast('Nouvel âge : choisissez vos héros, unités et bonus (touche K).', 'info'); audio.play('age'); }
+      this._pendSeen = pend;
+    } else if (pend < (this._pendSeen || 0)) this._pendSeen = pend;
     this.clockEl.textContent = fmtTime(st.tick / 20);
     const idle = this.idleVillagers().length;
     const ic = this.idleBtn.querySelector('#idle-count');
@@ -1119,6 +1170,45 @@ export class GameUI {
     this.menuOpen = true;
   }
 
+  pendingChoices() {
+    const me = this.state.me;
+    let n = 0;
+    for (const age of CHOICE_AGES) if (me.age >= age) for (const cat of CHOICE_CATS) if (!me.chosen[choiceKey(age, cat)]) n++;
+    return n;
+  }
+
+  /** Les choix d'âge (comme les dieux mineurs d'Age of Mythology) : un héros, une unité spéciale, un bonus parmi deux. */
+  showChoices() {
+    if (this.state.over) return;
+    const st = this.state;
+    const civ = st.civ;
+    const me = st.me;
+    const rows = [];
+    for (const age of CHOICE_AGES) {
+      const open = me.age >= age;
+      const cells = CHOICE_CATS.map((cat) => {
+        const key = choiceKey(age, cat);
+        const taken = me.chosen[key];
+        const cards = choiceOptions(civ, age, cat).map((id) => {
+          const isTech = cat === 'bonus';
+          const d = isTech ? TECHS[id] : UNITS[id];
+          const icon = isTech ? iconURL('tech', id, civ, st.myIdx, 52) : iconURL('portrait', id, civ, st.myIdx, 52);
+          const cls = `choice-card${taken === id ? ' chosen' : ''}${taken && taken !== id ? ' off' : ''}`;
+          const name = isTech ? d.name : nameOf(id, civ);
+          return h('button', {
+            class: cls, disabled: !open || !!taken ? 'disabled' : false,
+            onclick: () => { this.cmd({ c: 'choose', age, cat, id }); audio.play('click'); this.closeOverlay(); setTimeout(() => this.showChoices(), 250); },
+          }, h('img', { src: icon, alt: '' }), h('b', { text: name }), h('span', { text: d.desc || '' }));
+        });
+        return h('div', { class: 'choice-cat' }, h('div', { class: 'choice-head', text: CHOICE_LABEL[cat] }), ...cards);
+      });
+      rows.push(h('div', { class: `choice-row${open ? '' : ' locked'}` }, h('div', { class: 'choice-age', text: `${AGE_NAMES[age]}${open ? '' : ' (verrouillé)'}` }), h('div', { class: 'choice-cells' }, ...cells)));
+    }
+    this.openOverlay(h('div', { class: 'dialog wide choices' }, h('h2', { text: 'Choix d\'âge' }),
+      h('p', { class: 'note', text: 'À chaque âge, un héros, une unité spéciale et un bonus parmi deux. Les héros et unités choisis se forment à la salle principale / aux bâtiments militaires.' }),
+      ...rows, h('button', { class: 'btn big', text: 'Fermer', onclick: () => this.closeOverlay() })));
+  }
+
   openMenu() {
     if (this.state.over) return;
     const slider = (label, value, onInput) => h('label', { class: 'row' }, h('span', { text: label }),
@@ -1151,7 +1241,9 @@ export class GameUI {
       ['Port et bateaux', 'Le port se construit au bord de l\'eau : barques de pêche (clic droit sur un banc de poissons) et navires de guerre'],
       ['Marché', 'Vendre ou acheter 100 ressources contre de l\'or ; les cours suivent l\'offre et la demande (Maj + clic : ×5)'],
       ['Merveille', 'Bâtiment de l\'Âge de la Forteresse : si elle tient 10 minutes après son achèvement, son propriétaire gagne'],
-      ['Héros', 'Formé au château (un seul) : +15 % d\'attaque aux soldats proches'],
+      ['Choix d\'âge (K)', 'À chaque âge : 1 héros, 1 unité spéciale et 1 bonus parmi deux (comme Age of Mythology)'],
+      ['Murailles', 'Menu « Murailles et défenses » : glissez pour tracer un mur ; portes pour laisser passer vos troupes ; échelles d\'assaut (maison des guerriers) puis clic droit sur un mur ennemi pour l\'escalader ; sapeurs et tours de siège pour les briser'],
+      ['Héros', 'Un seul à la fois (choisi à l\'âge II, III ou IV) : son aura profite aux alliés proches'],
       ['A Z E R / Q S D F / W X C V*', 'Commandes du panneau en bas à droite (selon la disposition de votre clavier)'],
       ['Ctrl + 1…9 / 1…9', 'Créer un groupe / rappeler un groupe (deux fois : centrer)'],
       ['. ou ,', 'Aller au villageois inoccupé suivant'],

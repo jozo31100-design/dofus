@@ -258,12 +258,12 @@ export class Renderer {
     return e.prog >= 100 ? 3 : e.prog < 25 ? 0 : e.prog < 55 ? 1 : 2;
   }
 
-  ghostSprite(e, stage) {
+  ghostSprite(e, stage, mask = 0) {
     const civ = this.civOf(e.owner);
-    const key = `${e.type}|${civ}|${e.owner}|${stage}`;
+    const key = `${e.type}|${civ}|${e.owner}|${stage}|${mask}`;
     let g = this.ghostCache.get(key);
     if (!g) {
-      const s = art.getBuildingSprite(e.type, civ, e.owner, stage);
+      const s = art.getBuildingSprite(e.type, civ, e.owner, stage, mask);
       const c = document.createElement('canvas');
       c.width = s.canvas.width;
       c.height = s.canvas.height;
@@ -276,12 +276,41 @@ export class Renderer {
     return g;
   }
 
+  /** Masque de voisinage d'un mur ou d'une porte (bits : 1 +x, 2 +y, 4 −x, 8 −y) pour que les tronçons se raccordent. */
+  wallMask(e) {
+    const st = this.state;
+    const S = st.S;
+    const stamp = st.tick >> 2;
+    if (this._wcStamp !== stamp) {
+      this._wcStamp = stamp;
+      const m = this._wc || (this._wc = new Int8Array(S * S));
+      m.fill(-1);
+      const mark = (b) => {
+        const d = BUILDINGS[b.type];
+        if (!d || !(d.wall || d.gate)) return;
+        for (let y = b.ty; y < b.ty + b.h; y++) for (let x = b.tx; x < b.tx + b.w; x++) m[y * S + x] = b.owner;
+      };
+      for (const b of st.ents.values()) if (b.cls === 'building') mark(b);
+      for (const g of st.ghosts.values()) mark(g);
+    }
+    const m = this._wc;
+    const at = (x, y) => x >= 0 && y >= 0 && x < S && y < S && m[y * S + x] === e.owner;
+    let mask = 0;
+    for (let k = 0; k < e.h; k++) if (at(e.tx + e.w, e.ty + k)) mask |= 1;
+    for (let k = 0; k < e.w; k++) if (at(e.tx + k, e.ty + e.h)) mask |= 2;
+    for (let k = 0; k < e.h; k++) if (at(e.tx - 1, e.ty + k)) mask |= 4;
+    for (let k = 0; k < e.w; k++) if (at(e.tx + k, e.ty - 1)) mask |= 8;
+    return mask;
+  }
+
   drawBuildingSprite(d, now) {
     const e = d.e;
     const ctx = this.ctx;
     const z = this.zoom;
     const stage = this.buildingStage(e);
-    const s = d.ghost ? this.ghostSprite(e, stage) : art.getBuildingSprite(e.type, this.civOf(e.owner), e.owner, stage);
+    const bd = BUILDINGS[e.type];
+    const mask = bd && (bd.wall || bd.gate) ? this.wallMask(e) : 0;
+    const s = d.ghost ? this.ghostSprite(e, stage, mask) : art.getBuildingSprite(e.type, this.civOf(e.owner), e.owner, stage, mask);
     ctx.drawImage(s.canvas, d.sx - s.ax * z, d.sy - s.ay * z, s.canvas.width * z, s.canvas.height * z);
     if (!d.ghost) this.fx.damageSmoke(e, now, s.h);
     return s;
@@ -543,6 +572,25 @@ export class Renderer {
     const z = this.zoom;
     const def = BUILDINGS[p.type];
     const n = def.size;
+    if (p.line) {
+      const civ = this.civOf(this.state.myIdx);
+      const s = art.getBuildingSprite(p.type, civ, this.state.myIdx, 3);
+      for (const c of p.line) {
+        const [ax, ay] = this.worldToScreen(c.tx, c.ty);
+        const [bx, by] = this.worldToScreen(c.tx + n, c.ty);
+        const [cx2, cy2] = this.worldToScreen(c.tx + n, c.ty + n);
+        const [dx2, dy2] = this.worldToScreen(c.tx, c.ty + n);
+        ctx.fillStyle = c.ok ? 'rgba(80,255,110,0.32)' : 'rgba(255,70,50,0.45)';
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx2, cy2); ctx.lineTo(dx2, dy2); ctx.closePath(); ctx.fill();
+        if (c.ok) {
+          const [sx, sy] = this.worldToScreen(c.tx + n / 2, c.ty + n / 2);
+          ctx.globalAlpha = 0.6;
+          ctx.drawImage(s.canvas, sx - s.ax * z, sy - s.ay * z, s.canvas.width * z, s.canvas.height * z);
+          ctx.globalAlpha = 1;
+        }
+      }
+      return;
+    }
     const cx = p.tx + n / 2;
     const cy = p.ty + n / 2;
     // cases : vert si libre, rouge sinon

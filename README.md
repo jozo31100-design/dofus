@@ -4,7 +4,13 @@ Jeu de stratégie en temps réel façon *Age of Empires*, **Francs contre Gauloi
 (deux PC sur la même box ou le même Wi-Fi) ou seul contre l'ordinateur. Une seule carte (120 x 120 cases) : *La Rivière des Carnutes*.
 
 - 2 peuples aux bonus et unités uniques différents (Francs : cavalerie lourde et francisque ; Gaulois : bûcherons, hordes de fantassins et gésates)
-- 3 âges, 19 unités, 18 bâtiments, 37 technologies : villageois, récolte (bois, nourriture, or, pierre), fermes, chasse, pêche,
+- **4 âges** avec des **choix à la Age of Mythology** : à chaque âge (II, III, IV) on choisit 1 héros, 1 unité spéciale et 1 bonus parmi deux
+  (touche `K`) ; 12 héros, 12 unités spéciales et 12 bonus propres aux deux peuples
+- La **cité** : palissades, murs de pierre, grands remparts et portes (qu'on trace en glissant la souris), bastions, postes de guet,
+  infirmerie, grande maison, monument. Les murs sont chers et très solides ; on les franchit avec des **échelles d'assaut** (lent et exposé),
+  des **tours de siège**, on les mine avec des **sapeurs** ou on les abat avec béliers et catapultes. Les **portes** ne s'ouvrent que pour leur propriétaire,
+  et les soldats postés dans un rempart tirent sur les assaillants
+- Environ 35 unités, 28 bâtiments, 60 technologies : villageois, récolte (bois, nourriture, or, pierre), fermes, chasse, pêche,
   construction, armées, béliers et catapultes, tours et château, brouillard de guerre
 - Le **port** et les **bateaux** (barques de pêche, drakkars et navires vénètes qui se battent sur la rivière), le **marché**
   (achat et vente de ressources aux cours variables), le **Scriptorium / Cercle des druides** (recherches de médecine, de
@@ -78,7 +84,9 @@ Menu principal → **Jouer contre l'ordinateur** : choisissez votre peuple, le n
 |---|---|
 | Sélectionner | clic gauche, ou cadre en glissant ; double-clic = tous les mêmes à l'écran |
 | Ordre (déplacer, attaquer, récolter, réparer…) | **clic droit** ; **Maj + clic droit** pour enchaîner les ordres |
-| Construire | sélectionner un villageois → *Bâtiments civils / militaires* → choisir → clic sur la carte (Maj : en poser plusieurs) |
+| Construire | sélectionner un villageois → *Bâtiments civils / militaires / Monuments / Murailles* → choisir → clic sur la carte (Maj : en poser plusieurs ; murs : **glisser** pour tracer une ligne) |
+| Choix d'âge | `K` ou bouton **Choix** en haut |
+| Escalader une muraille | rechercher *Échelles d'assaut* (maison des guerriers), sélectionner des fantassins, clic droit sur le mur ennemi |
 | Former une unité / rechercher | sélectionner le bâtiment → bouton (Maj + clic : en former 5) |
 | Point de ralliement | bâtiment sélectionné → clic droit sur la carte ou sur une ressource |
 | Attaque en marchant | soldats sélectionnés → bouton « Attaquer en marchant » |
