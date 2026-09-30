@@ -767,9 +767,10 @@ export function updateAnimal(world, a) {
     const m = Math.hypot(dx, dy) || 1;
     dx /= m;
     dy /= m;
-    if (!animalStep(world, a, dx, dy, def.fleeSpeed * DT)) {
+    const fs = def.fleeSpeed * (a.hp < a.maxHp ? 0.45 : 1) * DT; // un animal blessé est ralenti : on peut le rattraper
+    if (!animalStep(world, a, dx, dy, fs)) {
       // obstacle : on tourne à 90°
-      animalStep(world, a, -dy, dx, def.fleeSpeed * DT);
+      animalStep(world, a, -dy, dx, fs);
     }
     a.face = Math.atan2(dy, dx);
     a.moving = true;

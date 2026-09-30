@@ -34,8 +34,6 @@ export const FARM_MAX_WORKERS = 3;
 export const TRADE_LOT = 100;
 export const TRADE_FEE = 0.3; // commission de base (réduite par les technologies)
 export const TRADE_RES = ['food', 'wood', 'stone'];
-// Merveille : le propriétaire gagne si elle reste debout pendant ce temps (secondes de jeu).
-export const WONDER_TIME = 600;
 // Aura des héros : bonus d'attaque des alliés proches.
 export const HERO_AURA = { range: 6, atk: 0.15 }; // (valeur par défaut : chaque héros définit sa propre aura)
 // Escalade des murailles : secondes pour franchir une pièce, sans et avec l'aide d'une tour de siège
@@ -53,6 +51,16 @@ export const START_RESOURCES = {
 
 const cost = (o) => ({ food: 0, wood: 0, gold: 0, stone: 0, ...o });
 
+// Tout coûte 40 % de plus (unités, bâtiments, technologies), sauf l'essentiel pour démarrer : villageois, ferme, maison.
+export const COST_MUL = 1.4;
+const COST_EXEMPT = new Set(['villager', 'farm', 'house']);
+const scaled = (id, o) => {
+  const c = cost(o || {});
+  if (COST_EXEMPT.has(id)) return c;
+  for (const r of ['food', 'wood', 'gold', 'stone']) c[r] = Math.round((c[r] * COST_MUL) / 5) * 5;
+  return c;
+};
+
 function finishUnit(u) {
   return {
     cls: 'unit',
@@ -68,7 +76,7 @@ function finishUnit(u) {
     ...u,
     atk: { melee: 0, pierce: 0, ...(u.atk || {}) },
     armor: { melee: 0, pierce: 0, ...(u.armor || {}) },
-    cost: cost(u.cost || {}),
+    cost: scaled(u.id, u.cost),
   };
 }
 
@@ -85,7 +93,7 @@ function finishBuilding(b) {
     size: b.size,
     atk: { melee: 0, pierce: 0, ...(b.atk || {}) },
     armor: { melee: 0, pierce: 0, ...(b.armor || {}) },
-    cost: cost(b.cost || {}),
+    cost: scaled(b.id, b.cost),
   };
 }
 
@@ -439,6 +447,12 @@ const BUILDING_LIST = [
     desc: 'Tour de défense : tire des flèches sur les ennemis proches. Chaque soldat à l\'intérieur ajoute une flèche.',
   },
   {
+    id: 'slingtower', names: { franks: 'Tour à mangonneau', gauls: 'Tour lance-pierres' }, page: 'mil', size: 2, hp: 1100,
+    armor: { melee: 6, pierce: 12 }, cost: { wood: 120, stone: 300, gold: 220 }, time: 60, age: 3, los: 10,
+    atk: { pierce: 24 }, range: 10, rof: 4, splash: 1.7, arrows: 1, projectile: 'stone', projSpeed: 9, garrison: 5, tags: ['building', 'tower', 'stone'],
+    desc: 'Très coûteuse. Lance de lourdes pierres qui frappent toute une zone : redoutable contre les groupes de soldats. Deux soldats abrités ajoutent un tir.',
+  },
+  {
     id: 'temple', names: { franks: 'Chapelle', gauls: 'Nemeton' }, page: 'mil', size: 3, hp: 1000,
     armor: { melee: 3, pierce: 9 }, cost: { wood: 120, stone: 100 }, time: 45, age: 2, los: 7, trains: ['healer', 'barde', 'moine'],
     desc: 'Lieu sacré : forme les guérisseurs qui soignent vos soldats.',
@@ -472,19 +486,14 @@ const BUILDING_LIST = [
     desc: 'Lieu de savoir : recherches de médecine, de cartographie, d\'organisation et de stratégie.',
   },
   {
-    id: 'wonder', names: { franks: 'Palais d\'Aix-la-Chapelle', gauls: 'Sanctuaire de Bibracte' }, page: 'civ', size: 6, hp: 5000,
-    armor: { melee: 6, pierce: 12 }, cost: { wood: 400, stone: 500, gold: 500 }, time: 240, age: 4, los: 12, wonder: true,
-    desc: 'Chef-d\'œuvre de l\'Âge Impérial. S\'il reste debout 10 minutes après son achèvement, vous remportez la partie.',
-  },
-  {
     id: 'great_house', names: { franks: 'Grande maison', gauls: 'Grande hutte' }, page: 'eco', size: 3, hp: 900,
     armor: { melee: 2, pierce: 9 }, cost: { wood: 130 }, time: 30, age: 2, los: 5, pop: 12,
     desc: 'Loge 12 habitants : moins encombrante que trois maisons, pour bâtir une vraie cité.',
   },
   {
     id: 'infirmary', names: { franks: 'Hôtel-Dieu', gauls: 'Maison des guérisseurs' }, page: 'civ', size: 3, hp: 1000,
-    armor: { melee: 2, pierce: 8 }, cost: { wood: 130, gold: 40 }, time: 40, age: 2, los: 6, aura: { kind: 'heal', v: 1.5, r: 6 },
-    desc: 'Les soldats blessés qui se trouvent à proximité récupèrent peu à peu des points de vie.',
+    armor: { melee: 2, pierce: 8 }, cost: { wood: 130, gold: 40 }, time: 40, age: 2, los: 6, aura: { kind: 'heal', v: 1.5, r: 6 }, regen: { hp: 3, r: 7, garrison: 8 }, garrison: 10,
+    desc: 'Soigne les unités blessées à proximité (3 PV par seconde) et bien plus vite celles qui s\'y abritent (jusqu\'à 10).',
   },
   {
     id: 'monument', names: { franks: 'Croix monumentale', gauls: 'Menhir sculpté' }, page: 'civ', size: 2, hp: 1200,
@@ -581,7 +590,7 @@ const TECH_LIST = [
   {
     id: 'age4', name: 'Âge Impérial', building: 'hall', age: 3, ageUp: 4, cost: { food: 1100, gold: 650, stone: 250 }, time: 80,
     requires: { count: 3, among: ['castle', 'siege', 'academy', 'market', 'forge', 'temple', 'bastion', 'infirmary'], label: '3 bâtiments : château, atelier de siège, académie, marché, forge, temple, bastion ou infirmerie' },
-    desc: 'Débloque la merveille, un troisième choix de héros, d\'unité spéciale et de bonus.',
+    desc: 'Débloque un troisième choix de héros, d\'unité spéciale et de bonus.',
   },
   {
     id: 'carry1', name: 'Sacs de portage', building: 'hall', age: 1, cost: { food: 100, wood: 100 }, time: 30,
@@ -1033,7 +1042,7 @@ for (const u of Object.values(UNITS)) {
   if (b && !b.trains.includes(u.id)) b.trains.push(u.id);
 }
 export const TECHS = {};
-for (const t of TECH_LIST) TECHS[t.id] = { effects: [], ...t, cost: cost(t.cost) };
+for (const t of TECH_LIST) TECHS[t.id] = { effects: [], ...t, cost: scaled(t.id, t.cost) };
 
 /** Toutes les définitions par identifiant. */
 export const DEFS = { ...UNITS, ...ANIMALS, ...NODES, ...BUILDINGS };

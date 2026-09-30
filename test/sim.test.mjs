@@ -174,7 +174,7 @@ test('la recherche d\'un âge exige les bâtiments et les ressources, puis débl
   w.enqueue(0, { c: 'research', bid: hall.id, tech: 'age2' });
   run(w, 60);
   assert.equal(pl.age, 2);
-  assert.equal(pl.res.food, 1500);
+  assert.equal(pl.res.food, 2000 - 700); // âge II : 500 x 1,4
   // une écurie devient constructible (on cherche un emplacement libre et exploré près de la salle)
   const ids = w.playerUnits(0, 'villager').map((u) => u.id);
   let spot = null;
@@ -285,7 +285,7 @@ test('partie complète IA contre IA : pas d\'erreur, économie et armées se dé
   }
   for (const p of w.players) {
     assert.ok(p.age >= 2, `${p.name} est resté à l'âge 1`);
-    assert.ok(p.trained > 30, `${p.name} n'a formé que ${p.trained} unités`);
+    assert.ok(p.trained > 20, `${p.name} n'a formé que ${p.trained} unités`);
   }
   assert.ok(worst < 120, `un pas de simulation a pris ${worst.toFixed(0)} ms`);
 });

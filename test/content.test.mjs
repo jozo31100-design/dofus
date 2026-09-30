@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { World } from '../src/core/world.js';
-import { DT, computeStats, tradeFee, tradeQuote, WONDER_TIME } from '../src/core/defs.js';
+import { DT, computeStats, tradeFee, tradeQuote } from '../src/core/defs.js';
 import { placementError, queueUnit, trade, applyChoice } from '../src/core/econ.js';
 import { canTarget } from '../src/core/combat.js';
 import { generateMap, checkMap, WATER } from '../src/core/mapgen.js';
@@ -113,26 +113,6 @@ test('un seul héros à la fois, et il galvanise les alliés proches', () => {
   assert.ok(w.auraOf(friend, 'atk') > 0, 'l\'allié proche est galvanisé');
   assert.ok(!(w.auraOf(far, 'atk') > 0), 'l\'allié éloigné ne l\'est pas');
   assert.equal(hero.type, 'clovis');
-});
-
-test('la merveille : compte à rebours, victoire de son propriétaire, annulée si elle tombe', () => {
-  const w = two();
-  const b = w.addBuilding('wonder', 0, 20, 50, true);
-  b.wonderEnds = w.tick + WONDER_TIME * 20; // achevée à l'instant
-  run(w, 5);
-  assert.ok(!w.over);
-  b.wonderEnds = w.tick + 40; // plus que deux secondes
-  run(w, 4);
-  assert.ok(w.over && w.winner === 0, 'le propriétaire de la merveille gagne');
-  // merveille détruite : plus de compte à rebours
-  const w2 = two();
-  const b2 = w2.addBuilding('wonder', 0, 20, 50, true);
-  b2.wonderEnds = w2.tick + 200;
-  b2.hp = 0;
-  w2.removeEntity(b2);
-  w2.sweepDead();
-  run(w2, 15);
-  assert.ok(!w2.over);
 });
 
 test('les technologies de soin et de vue modifient bien les caractéristiques', () => {

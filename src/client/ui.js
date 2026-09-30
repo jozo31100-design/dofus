@@ -98,11 +98,10 @@ export class GameUI {
     this.ageEl = h('div', { id: 'agebadge', text: AGE_NAMES[1] });
     this.clockEl = h('div', { id: 'clock', text: '00:00' });
     this.fpsEl = h('div', { id: 'fps', style: 'display:none' });
-    this.wonderEl = h('div', { id: 'wonder-clock', style: 'display:none' });
     this.choiceBtn = h('button', { id: 'btn-choices', class: 'btn small', text: 'Choix', title: 'Héros, unités spéciales et bonus d\'âge (K)', onclick: () => this.showChoices() });
     this.top = h('div', { id: 'topbar', class: 'panel' },
       resBox('food', RES_LABEL.food), resBox('wood', RES_LABEL.wood), resBox('gold', RES_LABEL.gold), resBox('stone', RES_LABEL.stone),
-      this.popEl, h('div', { class: 'spacer' }), this.wonderEl, this.ageEl, this.clockEl, this.fpsEl,
+      this.popEl, h('div', { class: 'spacer' }), this.ageEl, this.clockEl, this.fpsEl,
       this.choiceBtn,
       h('button', { id: 'btn-menu', class: 'btn small', text: 'Menu', title: 'Menu (F10)', onclick: () => this.openMenu() }));
     this.toasts = h('div', { id: 'toasts' });
@@ -508,9 +507,6 @@ export class GameUI {
       }
       if (water < 2) { for (let i = 0; i < n * n; i++) bad.add(i); reason = 'Un port se construit au bord de l\'eau profonde.'; }
     }
-    if (bad.size === 0 && def.wonder) {
-      for (const e of st.ents.values()) if (this.isOwn(e) && e.type === type) { for (let i = 0; i < n * n; i++) bad.add(i); reason = 'Une seule merveille à la fois.'; break; }
-    }
     return { valid: bad.size === 0, bad, reason };
   }
 
@@ -746,7 +742,7 @@ export class GameUI {
         if (this.page === 'root') {
           put(0, { id: 'eco', icon: iconURL('ui', 'build-eco', civ, 0, 44), title: 'Bâtiments civils', desc: 'Maisons, fermes, moulins, camps…', enabled: true, onClick: () => { this.page = 'eco'; this.slotSig = ''; } });
           put(1, { id: 'mil', icon: iconURL('ui', 'build-mil', civ, 0, 44), title: 'Bâtiments militaires', desc: 'Casernes, tours, château…', enabled: true, onClick: () => { this.page = 'mil'; this.slotSig = ''; } });
-          put(2, { id: 'civ', icon: iconURL('ui', 'build-civ', civ, 0, 44), title: 'Monuments et savoir', desc: 'Marché, académie, infirmerie, monument, merveille…', enabled: true, onClick: () => { this.page = 'civ'; this.slotSig = ''; } });
+          put(2, { id: 'civ', icon: iconURL('ui', 'build-civ', civ, 0, 44), title: 'Monuments et savoir', desc: 'Marché, académie, infirmerie, monument…', enabled: true, onClick: () => { this.page = 'civ'; this.slotSig = ''; } });
           put(3, { id: 'def', icon: iconURL('ui', 'build-def', civ, 0, 44), title: 'Murailles et défenses', desc: 'Palissades, murs, portes, bastions, postes de guet. Glissez la souris pour tracer un mur.', enabled: true, onClick: () => { this.page = 'def'; this.slotSig = ''; } });
         } else {
           const ids = Object.keys(BUILDINGS).filter((id) => BUILDINGS[id].page === this.page);
@@ -1062,17 +1058,6 @@ export class GameUI {
     if (ic.textContent !== String(idle)) ic.textContent = String(idle);
     this.idleBtn.classList.toggle('active', idle > 0);
     this.pauseEl.style.display = st.paused ? 'block' : 'none';
-    // compte à rebours des merveilles achevées
-    const now = performance.now();
-    const txt = st.wonders.map((w) => {
-      const left = Math.max(0, w.left - (st.paused ? 0 : (now - w.at) / 1000));
-      const who = st.players[w.owner] ? st.players[w.owner].name : '?';
-      return `${w.owner === st.myIdx ? 'Votre merveille' : `Merveille de ${who}`} : ${fmtTime(left)}`;
-    }).join('  ·  ');
-    if (this.wonderEl.textContent !== txt) {
-      this.wonderEl.textContent = txt;
-      this.wonderEl.style.display = txt ? 'block' : 'none';
-    }
   }
 
   toast(text, kind = 'info') {
@@ -1245,7 +1230,6 @@ export class GameUI {
       ['Flèches', 'Déplacer la vue (ou pousser la souris contre le bord de la fenêtre)'],
       ['Port et bateaux', 'Le port se construit au bord de l\'eau : barques de pêche (clic droit sur un banc de poissons) et navires de guerre'],
       ['Marché', 'Vendre ou acheter 100 ressources contre de l\'or ; les cours suivent l\'offre et la demande (Maj + clic : ×5)'],
-      ['Merveille', 'Bâtiment de l\'Âge de la Forteresse : si elle tient 10 minutes après son achèvement, son propriétaire gagne'],
       ['Choix d\'âge (K)', 'À chaque âge : 1 héros, 1 unité spéciale et 1 bonus parmi deux (comme Age of Mythology)'],
       ['Points stratégiques', 'Trésor (or et pierre) et deux collines (vue, nourriture, bois, +10 % d\'attaque) : tenez-les avec des soldats, sans ennemi à côté, pour les capturer'],
       ['Contre-siège', 'Bâtiment très coûteux (Murailles et défenses) : −40 % de dégâts de siège aux bâtiments voisins, les machines ennemies proches brûlent'],

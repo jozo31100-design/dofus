@@ -27,10 +27,11 @@ import { VIKINGS } from './building-vikings.js';
 import { EGYPT } from './building-egypt.js';
 import { POINTS } from './building-points.js';
 import { COUNTERSIEGE } from './building-countersiege.js';
+import { SLINGTOWER } from './building-slingtower.js';
 
 const DESIGNS = {
-  gauls: { ...GAULS, farm, dock: DOCK.gauls, market: MARKET.gauls, academy: ACADEMY.gauls, wonder: WONDER.gauls, ...WALLS.gauls, ...DEFENSE.gauls, ...CITY.gauls, ...POINTS, ...COUNTERSIEGE.gauls },
-  franks: { ...FRANKS, farm, dock: DOCK.franks, market: MARKET.franks, academy: ACADEMY.franks, wonder: WONDER.franks, ...WALLS.franks, ...DEFENSE.franks, ...CITY.franks, ...POINTS, ...COUNTERSIEGE.franks },
+  gauls: { ...GAULS, farm, dock: DOCK.gauls, market: MARKET.gauls, academy: ACADEMY.gauls, wonder: WONDER.gauls, ...WALLS.gauls, ...DEFENSE.gauls, ...CITY.gauls, ...POINTS, ...COUNTERSIEGE.gauls, ...SLINGTOWER.gauls },
+  franks: { ...FRANKS, farm, dock: DOCK.franks, market: MARKET.franks, academy: ACADEMY.franks, wonder: WONDER.franks, ...WALLS.franks, ...DEFENSE.franks, ...CITY.franks, ...POINTS, ...COUNTERSIEGE.franks, ...SLINGTOWER.franks },
   sparta: SPARTA,
   vikings: VIKINGS,
   egypt: EGYPT,
@@ -46,7 +47,7 @@ const HEIGHT = {
   dock: 101, market: 84, academy: 143, wonder: 224,
   // nouveaux types : maximum sur les 16 masques et les deux peuples (h = hauteur du sommet, fanions compris)
   palisade: 53, palisade_gate: 64, wall: 104, gate: 102, rampart: 130, great_gate: 167, bastion: 170, outpost: 130,
-  infirmary: 126, great_house: 133, monument: 125, pt_treasure: 90, pt_hill: 122, countersiege: 124,
+  infirmary: 126, great_house: 133, monument: 125, pt_treasure: 90, pt_hill: 122, countersiege: 124, slingtower: 132,
 };
 
 /** Types dont le dessin dépend des voisins (masque de connexion). */

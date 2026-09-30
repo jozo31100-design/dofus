@@ -12,11 +12,13 @@ Jeu de stratégie en temps réel façon *Age of Empires*, **Francs contre Gauloi
   et les soldats postés dans un rempart tirent sur les assaillants
 - **3 points stratégiques** posés sur la carte (le Trésor des Anciens au milieu du gué, deux Collines sacrées sur les flancs) : on les capture en y tenant des soldats,
   ils rapportent des ressources ou un bonus tant qu'on les garde (indestructibles, mais on peut les reprendre). Le **contre-siège**, très coûteux, protège les bâtiments voisins des machines de siège (−40 % de dégâts) et brûle celles qui approchent
+- **Formation automatique** : un groupe se déplace à la vitesse de son membre le plus lent, avec les plus solides au premier rang, les tireurs derrière et les machines en queue
+- **Tour lance-pierres** (très coûteuse, tir de zone), **infirmerie** qui soigne les unités proches et celles qui s'y abritent ; tout coûte 40 % plus cher qu'avant (hors villageois, fermes et maisons)
 - Environ 35 unités, 28 bâtiments, 60 technologies : villageois, récolte (bois, nourriture, or, pierre), fermes, chasse, pêche,
   construction, armées, béliers et catapultes, tours et château, brouillard de guerre
 - Le **port** et les **bateaux** (barques de pêche, drakkars et navires vénètes qui se battent sur la rivière), le **marché**
   (achat et vente de ressources aux cours variables), le **Scriptorium / Cercle des druides** (recherches de médecine, de
-  cartographie…), les **héros** Clovis et Vercingétorix (aura d'attaque) et la **merveille** (tenez-la 10 minutes pour gagner)
+  cartographie…), les **héros** Clovis et Vercingétorix (aura d'attaque)
 - Application de bureau Windows (un seul `.exe`), tout est dessiné par le code (aucune image externe)
 
 ## Aperçu

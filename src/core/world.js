@@ -6,7 +6,7 @@
 
 import {
   DT, MAP_SIZE, DEFS, UNITS, BUILDINGS, ANIMALS, NODES, START_RESOURCES, MAX_POP, RESOURCES, computeStats,
-  TRADE_RES, WONDER_TIME,
+  TRADE_RES,
 } from './defs.js';
 import { generateMap, WATER, FORD, DEFAULT_SEED } from './mapgen.js';
 import { PathGrid } from './path.js';
@@ -65,7 +65,6 @@ export class World {
     this.over = false;
     this.winner = -1;
     this.revealMap = !!cfg.revealMap;
-    this.wonder = null; // { owner, id, endsAt } : compte à rebours de la merveille
 
     // grille spatiale pour les recherches de voisins
     this.cw = Math.ceil(S / CELL);
@@ -511,7 +510,6 @@ export class World {
     if (this.tick % 20 === 0) {
       this.updatePoints();
       for (const pl of this.players) for (const r of TRADE_RES) pl.prices[r] += (1 - pl.prices[r]) * 0.01; // les prix reviennent vers 1
-      this.checkWonders();
       this.checkVictory();
     }
   }
@@ -579,6 +577,20 @@ export class World {
         }
       }
     }
+    // infirmerie : soigne les unités alliées proches (et bien plus vite celles qui s'y abritent)
+    for (const b of this.buildings) {
+      const rg = DEFS[b.type].regen;
+      if (!rg || b.dead || !b.done || b.owner < 0) continue;
+      this.forUnitsNear(b.x, b.y, rg.r + b.w / 2, (u) => {
+        if (u.owner !== b.owner || u.dead || u.inside || u.hp >= u.maxHp || DEFS[u.type].tags.includes('siege')) return;
+        if (Math.hypot(u.x - b.x, u.y - b.y) > rg.r + b.w / 2) return;
+        u.hp = Math.min(u.maxHp, u.hp + rg.hp);
+      });
+      for (const id of b.garrison) {
+        const g = this.get(id);
+        if (g && !g.dead && g.hp < g.maxHp) g.hp = Math.min(g.maxHp, g.hp + rg.garrison);
+      }
+    }
     // contre-siège : les machines ennemies à portée brûlent
     for (const c of this.counters) {
       const d = DEFS[c.type].counter;
@@ -606,25 +618,6 @@ export class World {
   auraOf(u, kind) {
     const a = u.au && u.au[kind];
     return a && a.until >= this.tick ? a.v : 0;
-  }
-
-  /** Merveilles achevées : annonces du compte à rebours et victoire. */
-  checkWonders() {
-    for (const b of this.buildings) {
-      if (b.dead || !b.done || b.wonderEnds === undefined) continue;
-      const left = Math.round((b.wonderEnds - this.tick) / 20);
-      const pl = this.players[b.owner];
-      if ([300, 60, 30, 10].includes(left)) {
-        this.emit({ k: 'msg', to: -1, kind: 'warn', text: `${pl.name} gagnera dans ${left >= 60 ? `${left / 60} min` : `${left} s`} s'il garde sa merveille !` });
-      }
-      if (this.tick >= b.wonderEnds && !this.over) {
-        this.over = true;
-        this.winner = b.owner;
-        this.wonderWin = true;
-        this.emit({ k: 'over', winner: b.owner });
-        return;
-      }
-    }
   }
 
   checkVictory() {

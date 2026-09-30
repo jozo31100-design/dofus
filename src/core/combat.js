@@ -95,7 +95,7 @@ export function applyDamage(world, t, dmg, att) {
 function onDamaged(world, t, att) {
   if (t.cls === 'animal') {
     t.state = 2;
-    t.until = world.tick + 80;
+    t.until = world.tick + 60;
     t.threat = att ? { x: att.x, y: att.y } : null;
     return;
   }
@@ -253,7 +253,7 @@ export function buildingFire(world, b) {
     const g = world.get(id);
     if (g && isMilitary(DEFS[g.type])) garr++;
   }
-  const n = Math.min(st.arrows + garr, 14);
+  const n = st.splash > 0 ? 1 + Math.floor(garr / 2) : Math.min(st.arrows + garr, 14);
   if (n <= 0) { b.cd = 6; return; }
   const def2 = DEFS[b.type];
   for (let i = 0; i < n; i++) {
@@ -267,10 +267,10 @@ export function buildingFire(world, b) {
     const ox = b.x + (world.rng() - 0.5) * (b.w * 0.4);
     const oy = b.y + (world.rng() - 0.5) * (b.h * 0.4);
     world.projectiles.push({
-      kind: 'arrow', x0: ox, y0: oy, x1: t.x, y1: t.y, t0: world.tick, t1: world.tick + flight,
-      attacker: b.id, owner: b.owner, target: t.id, st, dmg, splash: 0,
+      kind: def2.projectile || 'arrow', x0: ox, y0: oy, x1: t.x, y1: t.y, t0: world.tick, t1: world.tick + flight,
+      attacker: b.id, owner: b.owner, target: st.splash > 0 ? 0 : t.id, st, dmg, splash: st.splash,
     });
-    world.emit({ k: 'proj', kind: 'arrow', x0: ox, y0: oy, x1: t.x, y1: t.y, dur: flight, x: ox, y: oy, from: 'b' });
+    world.emit({ k: 'proj', kind: def2.projectile || 'arrow', x0: ox, y0: oy, x1: t.x, y1: t.y, dur: flight, x: ox, y: oy, from: 'b' });
   }
   b.cd = Math.max(1, Math.round(st.rof / DT));
 }

@@ -16,7 +16,6 @@ export class ClientState {
     this.ents = new Map();
     this.ghosts = new Map();
     this.me = { res: [0, 0, 0, 0], pop: 0, cap: 0, age: 1, techs: new Set(), queued: new Set(), prices: [1, 1, 1], chosen: {} };
-    this.wonders = []; // [{ owner, left }] merveilles achevées et secondes restantes
     this.players = [];
     this.vis = new Uint8Array(this.S * this.S);
     this.explored = new Uint8Array(this.S * this.S);
@@ -73,7 +72,6 @@ export class ClientState {
       if (m.pr) this.me.prices = m.pr;
       this.me.chosen = m.ch || {};
     }
-    if (snap.wd) this.wonders = snap.wd.map((w) => ({ owner: w[0], left: w[1], at: now }));
     // les positions précédentes servent à l'interpolation
     for (const e of this.ents.values()) {
       if (e.cls === 'unit' || e.cls === 'animal') { e.px = e.x; e.py = e.y; }

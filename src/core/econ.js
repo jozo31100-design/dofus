@@ -2,7 +2,7 @@
 
 import {
   DT, DEFS, UNITS, BUILDINGS, TECHS, BUILD_EXPONENT, FARM_RESEED_COST, FARM_MAX_WORKERS, RESOURCES,
-  AGE_NAMES, CHOICE_CATS, CHOICE_AGES, choiceOptions, choiceKey, trainableAt, techForCiv, RES_LABEL, nameOf, TICK_RATE, TRADE_LOT, TRADE_RES, WONDER_TIME, tradeFee, tradeQuote,
+  AGE_NAMES, CHOICE_CATS, CHOICE_AGES, choiceOptions, choiceKey, trainableAt, techForCiv, RES_LABEL, nameOf, TICK_RATE, TRADE_LOT, TRADE_RES, tradeFee, tradeQuote,
 } from './defs.js';
 import { GRASS, WATER } from './mapgen.js';
 import { recalcPop, setOrder, finishOrder, freeSpotAround, ejectFromRect, distEdge, goalFor, REACH } from './common.js';
@@ -44,10 +44,6 @@ function completeBuilding(world, b, pl) {
   recalcPop(world, pl);
   if (BUILDINGS[b.type].gate) world.openGate(b);
   world.emit({ k: 'built', id: b.id, type: b.type, owner: b.owner, x: b.x, y: b.y });
-  if (BUILDINGS[b.type].wonder) {
-    b.wonderEnds = world.tick + WONDER_TIME * TICK_RATE;
-    world.emit({ k: 'msg', to: -1, kind: 'warn', text: `${nameOf(b.type, pl.civ)} de ${pl.name} est achevé : ${pl.name} gagnera dans ${Math.round(WONDER_TIME / 60)} minutes s'il n'est pas détruit !` });
-  }
   for (const u of world.units) {
     if (u.dead || u.owner !== b.owner || !u.order) continue;
     if ((u.order.t === 'build' || u.order.t === 'repair') && u.order.target === b.id) afterBuild(world, u, b);
@@ -313,9 +309,6 @@ export function placementError(world, pl, type, tx, ty) {
       }
     }
     if (water < 2) return 'Un port se construit au bord de l\'eau profonde.';
-  }
-  if (def.wonder) {
-    for (const b of world.buildings) if (b.owner === pl.idx && !b.dead && b.type === type) return 'Vous ne pouvez bâtir qu\'une seule merveille.';
   }
   return null;
 }

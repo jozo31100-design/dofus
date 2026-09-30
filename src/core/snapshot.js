@@ -119,7 +119,6 @@ export class SnapshotBuilder {
     this.pendingEvents = [];
     this.lastMe = '';
     this.lastPl = '';
-    this.lastWd = '[]';
   }
 
   /** Reçoit les événements produits par le monde et garde ceux que ce joueur peut voir. */
@@ -229,11 +228,6 @@ export class SnapshotBuilder {
     if (me !== this.lastMe) { this.lastMe = me; snap.me = JSON.parse(me); }
     const players = JSON.stringify(w.players.map((p) => ({ n: p.name, c: p.civ, a: p.age, l: p.alive ? 1 : 0, ai: p.ai ? 1 : 0 })));
     if (players !== this.lastPl) { this.lastPl = players; snap.pl = JSON.parse(players); }
-    // merveilles achevées : [propriétaire, secondes restantes] (public)
-    const wd = [];
-    for (const b of w.buildings) if (!b.dead && b.done && b.wonderEnds !== undefined) wd.push([b.owner, Math.max(0, Math.ceil((b.wonderEnds - w.tick) / 20))]);
-    const wds = JSON.stringify(wd);
-    if (wds !== this.lastWd) { this.lastWd = wds; snap.wd = wd; }
     if (w.over) {
       snap.stats = w.players.map((p) => ({
         kills: p.kills, losses: p.losses, razed: p.razed, lostBuildings: p.lostBuildings, trained: p.trained,

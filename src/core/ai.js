@@ -560,16 +560,16 @@ class Bot {
       }
       if (nv >= 36 && !have('temple') && this.levelName === 'difficile') mil('temple', true);
     }
+    if (pl.age >= 3 && this.levelName !== 'facile' && nv >= 38 && have('slingtower') < 1 && world.tick - (pl.lastHitTick || -99999) < 20 * 90 && this.canSpend(pl, BUILDINGS.slingtower.cost)) {
+      const front = this.frontPoint(world, S.hall, 9);
+      this.buildNear(world, pl, S, 'slingtower', front.x, front.y, 2, 10, true);
+    }
     // marché : sert à convertir les surplus (souvent la nourriture) en or et en bois
     if (pl.age >= 2 && nv >= 28 && !have('market') && pl.res.wood >= 200) this.buildNear(world, pl, S, 'market', hall.x - 5 * sg, hall.y + 5 * sg, 4, 18, true);
     // pêche : un port au bord d'un banc de poissons proche
     if (nv >= 12 && !have('dock') && pl.res.wood >= 220) {
       const fish = this.nearestFish(world, S.hall, 34);
       if (fish) this.buildNear(world, pl, S, 'dock', fish.x, fish.y, 2, 9, false);
-    }
-    // les niveaux difficiles finissent par bâtir une merveille : il faut alors la détruire !
-    if (pl.age >= 3 && this.levelName === 'difficile' && nv >= 40 && !have('wonder') && world.tick > 20 * 60 * 16 && this.canSpend(pl, { wood: 550, stone: 600, gold: 600 })) {
-      this.buildNear(world, pl, S, 'wonder', hall.x - 4 * sg, hall.y + 4 * sg, 6, 20, false);
     }
     if (pl.age >= 3 && this.levelName !== 'facile' && nv >= 40 && !have('countersiege')) {
       let foeSiege = 0;
@@ -704,9 +704,8 @@ class Bot {
     if (!enemyBuildings.length) return;
     const enemyHall = enemyBuildings.find((b) => b.type === 'hall') || enemyBuildings[0];
     const wave = this.wave;
-    const wonder = enemyBuildings.find((b) => BUILDINGS[b.type].wonder && b.done);
     if (!wave.active) {
-      const ready = wonder ? army.length >= this.lv.waveSize / 2 : army.length >= this.lv.waveSize && (world.tick - this.lastWave) > this.lv.waveGap * 20;
+      const ready = army.length >= this.lv.waveSize && (world.tick - this.lastWave) > this.lv.waveGap * 20;
       if (!ready) return;
       wave.active = true;
       wave.count = army.length;
@@ -733,7 +732,6 @@ class Bot {
       const d = Math.hypot(b.x - cx, b.y - cy) - (b.type === 'hall' ? 8 : 0);
       if (d < bd) { bd = d; tgt = b; }
     }
-    if (wonder) tgt = wonder;
     const ids = [];
     for (const u of army) {
       const idle = !u.order || (u.order.t === 'move' && !u.order.aggressive && Math.hypot(u.x - u.order.x, u.y - u.order.y) < 2);

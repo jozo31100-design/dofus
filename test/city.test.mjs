@@ -139,3 +139,57 @@ test('contre-siège : dégâts de siège réduits autour, machines ennemies brû
   run(w, 4);
   assert.ok(ram.hp < hp0, 'le bélier brûle dans la zone');
 });
+
+test('formation automatique : tanks devant, tireurs derrière, vitesse du plus lent', () => {
+  const w = two();
+  const base = w.playerBuildings(0, 'hall')[0];
+  const x0 = base.x + 7;
+  const y0 = base.y;
+  const champ = w.addUnit('champion', 0, x0, y0);
+  const spear = w.addUnit('spearman', 0, x0, y0 + 1);
+  const arch = w.addUnit('archer', 0, x0 + 1, y0 + 1);
+  const arch2 = w.addUnit('archer', 0, x0 + 1, y0);
+  const ram = w.addUnit('ram', 0, x0 + 2, y0);
+  w.players[0].age = 3;
+  const tx = x0 - 16;
+  const ty = y0;
+  applyCommand(w, 0, { c: 'move', ids: [champ.id, spear.id, arch.id, arch2.id, ram.id], x: tx, y: ty });
+  const proj = (u) => (tx - u.order.x) * 0; // (lecture de l'ordre)
+  void proj;
+  // marche vers l'ouest : la direction est -x, donc « devant » = x le plus petit
+  assert.ok(champ.order.x < arch.order.x, 'le champion est devant les archers');
+  assert.ok(arch.order.x < ram.order.x + 0.01, 'la machine est en queue');
+  const caps = [champ, spear, arch, ram].map((u) => u.order.speedCap);
+  assert.ok(caps.every((c) => c === caps[0] && c > 0), 'même vitesse pour tous');
+  assert.ok(caps[0] <= w.stat(0, 'ram').speed + 1e-9, 'vitesse du plus lent (le bélier)');
+});
+
+test('l\'infirmerie soigne les unités proches et celles qui s\'y abritent', () => {
+  const w = two();
+  const hall = w.playerBuildings(0, 'hall')[0];
+  const inf = w.addBuilding('infirmary', 0, hall.tx + 8, hall.ty + 6, true);
+  const near = w.addUnit('swordsman', 0, inf.x + 3, inf.y);
+  const far = w.addUnit('swordsman', 0, inf.x + 20, inf.y);
+  near.hp = 10; far.hp = 10;
+  run(w, 5);
+  assert.ok(near.hp > 20, `proche soigné (${near.hp})`);
+  assert.equal(far.hp, 10);
+  const inside = w.addUnit('swordsman', 0, inf.x + 2, inf.y + 2);
+  inside.hp = 5;
+  applyCommand(w, 0, { c: 'garrison', ids: [inside.id], tid: inf.id });
+  run(w, 6);
+  assert.equal(inside.inside, inf.id);
+  assert.ok(inside.hp > 30, `réfugié soigné vite (${inside.hp})`);
+});
+
+test('tour lance-pierres : tir de zone sur un groupe', () => {
+  const w = two();
+  w.players[0].age = 3;
+  const hall = w.playerBuildings(0, 'hall')[0];
+  const t = w.addBuilding('slingtower', 0, hall.tx + 8, hall.ty + 6, true);
+  const grp = [0, 1, 2].map((i) => w.addUnit('militia', 1, t.x + 7 + (i % 2) * 0.6, t.y + i * 0.5));
+  const hp0 = grp.map((u) => u.hp);
+  run(w, 8);
+  const hurt = grp.filter((u, i) => u.hp < hp0[i]).length;
+  assert.ok(hurt >= 2, `la pierre touche plusieurs soldats (${hurt})`);
+});

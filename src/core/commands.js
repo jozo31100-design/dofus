@@ -62,6 +62,74 @@ function assignSlots(units, slots) {
   return out;
 }
 
+/** Rang dans la formation : 0 = tout devant (les « tanks »), puis fantassins, héros, cavaliers, tireurs, soutien, machines. */
+function formationRank(world, u) {
+  const d = DEFS[u.type];
+  const t = d.tags;
+  const st = world.stat(u.owner, u.type);
+  if (t.includes('siege')) return 6;
+  if (t.includes('healer') || t.includes('support')) return 5;
+  if (d.worker) return 4.5;
+  if (st.range > 0 || t.includes('archer') || t.includes('ranged')) return 4;
+  if (t.includes('cavalry')) return 3;
+  if (t.includes('hero')) return 2;
+  if (st.armor.melee >= 2 || st.hp >= 80) return 0;
+  return 1;
+}
+
+/**
+ * Formation automatique : les lignes se placent face au but, perpendiculairement à la direction de marche ;
+ * les plus solides au premier rang, les tireurs et le soutien derrière, les machines en queue.
+ */
+function formationSlotsRanked(world, units, x, y) {
+  const n = units.length;
+  let cx = 0;
+  let cy = 0;
+  for (const u of units) { cx += u.x; cy += u.y; }
+  cx /= n;
+  cy /= n;
+  let dx = x - cx;
+  let dy = y - cy;
+  const m = Math.hypot(dx, dy);
+  if (m < 1.5) { dx = 0.7; dy = 0.7; } else { dx /= m; dy /= m; }
+  const px = -dy;
+  const py = dx;
+  const cols = Math.max(3, Math.min(12, Math.ceil(Math.sqrt(n * 2.2))));
+  const sp = 0.95;
+  const grid = world.pf;
+  const S = world.S;
+  const valid = (sx, sy) => sx > 0.4 && sy > 0.4 && sx < S - 0.4 && sy < S - 0.4 && !grid.isBlocked(Math.floor(sx), Math.floor(sy));
+  const ranked = units.slice().sort((a, b) => formationRank(world, a) - formationRank(world, b) || a.id - b.id);
+  const out = new Map();
+  // une catégorie par ligne : mêlée, cavalerie, tireurs, soutien et machines (chacune sur autant de lignes qu'il faut)
+  const cls = (u) => { const k = formationRank(world, u); return k < 2.5 ? 0 : k < 3.5 ? 1 : k < 5 ? 2 : 3; };
+  const rows = [];
+  for (let c = 0; c < 4; c++) {
+    const g = ranked.filter((u) => cls(u) === c);
+    for (let i = 0; i < g.length; i += cols) rows.push(g.slice(i, i + cols));
+  }
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r];
+    const w = row.length;
+    const slots = [];
+    for (let k = 0; k < w; k++) {
+      const lat = (k - (w - 1) / 2) * sp;
+      let sx = x - dx * r * sp + px * lat;
+      let sy = y - dy * r * sp + py * lat;
+      if (!valid(sx, sy)) {
+        const f = grid.nearestFree(Math.floor(sx), Math.floor(sy), 6);
+        if (f) { sx = f[0] + 0.5; sy = f[1] + 0.5; } else { sx = x; sy = y; }
+      }
+      slots.push({ lat, sx, sy });
+    }
+    // dans une ligne, chacun prend la place latérale la plus proche de sa position actuelle (moins de croisements)
+    slots.sort((a, b) => a.lat - b.lat);
+    row.sort((a, b) => (a.x * px + a.y * py) - (b.x * px + b.y * py));
+    row.forEach((u, k) => out.set(u.id, [slots[k].sx, slots[k].sy]));
+  }
+  return out;
+}
+
 function cmdMove(world, pi, cmd) {
   const units = ownUnits(world, pi, cmd.ids);
   if (!units.length) return;
@@ -70,7 +138,9 @@ function cmdMove(world, pi, cmd) {
   const slots = new Map();
   for (const naval of [false, true]) {
     const group = units.filter((u) => !!u.naval === naval);
-    if (group.length) for (const [id, sl] of assignSlots(group, formationSlots(world, group.length, x, y, naval))) slots.set(id, sl);
+    if (!group.length) continue;
+    if (!naval && group.length > 1) for (const [id, sl] of formationSlotsRanked(world, group, x, y)) slots.set(id, sl);
+    else for (const [id, sl] of assignSlots(group, formationSlots(world, group.length, x, y, naval))) slots.set(id, sl);
   }
   let cap = 0;
   if (units.length > 1) {
