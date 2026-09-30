@@ -66,6 +66,12 @@ scramasaxe (`sp.sax`), moustache courte (`sp.moustacheShort`). Outil de contrôl
 - Personnages : shendyt plissé, nemes rayé, couronnes blanche / rouge / bleue / pschent, barbe postiche, kohl, collier ousekh, archers nubiens et arcs composites, grands boucliers de peau à sommet arrondi,
   khopesh, chars légers à deux chevaux à la place de la cavalerie, prêtres au crâne rasé et à la peau de léopard, barques de papyrus et navires de Pount (`unit-egypt-*.js`, planche `tools/artboard-egypt.js`).
 
+### Vikings (`civ === 'vikings'`)
+- Bâtiments : maisons longues de bois noirci à **toit de tourbe** et pignons à têtes de dragon, boucliers ronds peints, étendard au corbeau, forteresse circulaire (Trelleborg),
+  temple à clocher de bois (stavkirke), pierres runiques, port à hangar de drakkar ; tous les types ont un dessin propre (`building-vikings.js`, `-eco.js`, `-civic.js`, `-walls.js`, kit commun `-kit.js`) :
+  murs de pierre sèche à parapet de bois, portes à tours couvertes, rempart aux boucliers alignés, bastion rond de rondins. Même peintre « Age of Mythology » que Francs et Gaulois (`finishing` dans `buildings.js`).
+- Personnages : cottes de mailles, casques coniques à nasal ou « à lunettes » (jamais de cornes), boucliers ronds peints, hache danoise, barbes tressées, ulfhednar et berserkers ; drakkars à proue de dragon et voile rayée.
+
 ## 3. API (à respecter à l'identique)
 
 Tous les modules sont des modules ES sans dépendance, **Canvas 2D uniquement** (pas d'API Node, pas d'image externe,
