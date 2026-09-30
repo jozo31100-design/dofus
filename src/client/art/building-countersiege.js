@@ -429,7 +429,7 @@ function gauls(g) {
     g.box(-1.15, -1.15, 1.15, 1.15, 0, 1, MAT.murus, { plan: true });
     return;
   }
-  const hBase = st === 1 ? 14 : 30;
+  const hBase = st === 1 ? 16 : 36;
   // fosse à pieux au pied (sol, avant) : tranchée sombre hérissée de pieux
   if (g.drawing && st >= 2) {
     const c = g.ctx;
@@ -450,13 +450,13 @@ function gauls(g) {
   // socle : massif de murus gallicus, têtes de poutres en façade
   g.box(-1.15, -1.15, 1.15, 1.15, 0, hBase, MAT.murus, {
     plan: true,
-    topMat: { col: '#8d6d48' },
-    decoL: timberHeads([8, 22], 9),
-    decoR: timberHeads([8, 22], 9),
+    topMat: { col: '#8d6d48', tex: MAT.earth.tex, tile: true },
+    decoL: timberHeads([9, 26], 9),
+    decoR: timberHeads([9, 26], 9),
   });
   // bandeaux de poutres apparentes
   if (st >= 2) {
-    g.box(-1.19, -1.19, 1.19, 1.19, 12, 15, { col: '#7a5634' }, { ao: false, topMat: { col: '#8a6440' } });
+    g.box(-1.19, -1.19, 1.19, 1.19, 15, 18, { col: '#7a5634' }, { ao: false, topMat: { col: '#8a6440' } });
   }
   // pieux de la fosse
   if (st >= 2) {
@@ -464,14 +464,14 @@ function gauls(g) {
     for (const p of linePts(-1.35, 1.34, 1.35, 1.34, 0.17)) pts.push(p);
     for (const p of linePts(1.34, -1.35, 1.34, 1.2, 0.17)) pts.push(p);
     for (const p of linePts(1.34, 1.2, 1.34, 1.34, 0.17)) pts.push(p);
-    stakes(g, pts, 13, { col: '#9a7448' });
+    stakes(g, pts, 10, { col: '#9a7448' });
     const pts2 = linePts(1.34, -1.35, 1.34, 1.2, 0.17);
-    stakes(g, pts2, 13, { col: '#9a7448' });
+    stakes(g, pts2, 10, { col: '#9a7448' });
   }
   // tour de rondins
-  const hTop = st === 1 ? hBase : st === 2 ? 62 : 62;
+  const hTop = st === 1 ? hBase : 66;
   if (st >= 2) {
-    g.box(-0.78, -0.78, 0.78, 0.78, hBase, hTop, MAT.logs, {
+    g.box(-0.88, -0.88, 0.88, 0.88, hBase, hTop, MAT.logs, {
       decoL: gaulDeco(tc, true),
       decoR: (c, w, h) => {
         beamHeads(c, w, h, [h * 0.14, h * 0.88], 10);
@@ -481,16 +481,16 @@ function gauls(g) {
       topMat: { col: '#7a5e3c' },
     });
     // poteaux d'angle montant au-dessus
-    for (const [x, y] of [[-0.78, 0.78], [0.78, 0.78], [0.78, -0.78], [-0.78, -0.78]]) g.post(x, y, hBase, hTop + (st >= 3 ? 20 : 4), '#6a4526', 3.8);
+    for (const [x, y] of [[-0.88, 0.88], [0.88, 0.88], [0.88, -0.88], [-0.88, -0.88]]) g.post(x, y, hBase, hTop + (st >= 3 ? 20 : 4), '#6a4526', 3.8);
   }
   if (st >= 3) {
     // galerie en encorbellement et palissade de pieux
-    const gz = 62;
+    const gz = 66;
     for (const v of [-0.55, 0, 0.55]) {
-      g.beam(v, 0.78, gz - 9, v, 0.98, gz, WOOD_DARK, 2.6);
-      g.beam(0.78, v, gz - 9, 0.98, v, gz, WOOD_DARK, 2.6);
+      g.beam(v, 0.88, gz - 9, v, 1.0, gz, WOOD_DARK, 2.6);
+      g.beam(0.88, v, gz - 9, 1.0, v, gz, WOOD_DARK, 2.6);
     }
-    g.box(-1.0, -1.0, 1.0, 1.0, gz, gz + 4, { col: '#8a6440', tex: MAT.planks.tex, pw: 5, tile: true }, { ao: false, topMat: { col: '#8a6440' } });
+    g.box(-1.02, -1.02, 1.02, 1.02, gz, gz + 4, { col: '#8a6440', tex: MAT.planks.tex, pw: 5, tile: true }, { ao: false, topMat: { col: '#8a6440' } });
     const ring = [];
     for (const p of linePts(-1.0, 1.0, 1.0, 1.0, 0.16)) ring.push(p);
     for (const p of linePts(1.0, 1.0, 1.0, -1.0, 0.16)) ring.push(p);
@@ -557,7 +557,7 @@ function gauls(g) {
     scaffoldBox(g, -1.15, -1.15, 1.15, 1.15, 26, { deck: 12 });
     plankPile(g, 0.6, 1.3, 'x', 4);
   } else if (st === 2) {
-    scaffoldBox(g, -0.78, -0.78, 0.78, 0.78, 58, { deck: 44, gap: 0.3 });
+    scaffoldBox(g, -0.88, -0.88, 0.88, 0.88, 62, { deck: 48, gap: 0.3 });
     plankPile(g, -0.9, 1.3, 'x', 3);
   }
   void [tone, ink, WOOD, STEEL];

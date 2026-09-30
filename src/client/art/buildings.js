@@ -46,7 +46,7 @@ const HEIGHT = {
   dock: 101, market: 84, academy: 143, wonder: 224,
   // nouveaux types : maximum sur les 16 masques et les deux peuples (h = hauteur du sommet, fanions compris)
   palisade: 53, palisade_gate: 64, wall: 104, gate: 102, rampart: 130, great_gate: 167, bastion: 170, outpost: 130,
-  infirmary: 126, great_house: 133, monument: 125, pt_treasure: 90, pt_hill: 110, countersiege: 120,
+  infirmary: 126, great_house: 133, monument: 125, pt_treasure: 90, pt_hill: 122, countersiege: 124,
 };
 
 /** Types dont le dessin dépend des voisins (masque de connexion). */
