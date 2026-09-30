@@ -368,6 +368,7 @@ export function egyptBase(type, teamIdx) {
     case 'fishingboat':
     case 'warship': {
       const s = unitSpec(type, 'franks', teamIdx);
+      s.civ = 'egypt'; // coque de papyrus (unit-egypt-naval.js)
       s.sp = fisher(tm);
       if (s.archer) {
         const a = eg(tm, 0.84, { skin: SKIN_NUB, hem: 3.4, bracelet: COPPER });

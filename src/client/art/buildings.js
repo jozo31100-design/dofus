@@ -23,11 +23,13 @@ import { WALLS } from './building-walls.js';
 import { DEFENSE } from './building-defense.js';
 import { CITY } from './building-city.js';
 import { SPARTA } from './building-sparta.js';
+import { VIKINGS } from './building-vikings.js';
 
 const DESIGNS = {
   gauls: { ...GAULS, farm, dock: DOCK.gauls, market: MARKET.gauls, academy: ACADEMY.gauls, wonder: WONDER.gauls, ...WALLS.gauls, ...DEFENSE.gauls, ...CITY.gauls },
   franks: { ...FRANKS, farm, dock: DOCK.franks, market: MARKET.franks, academy: ACADEMY.franks, wonder: WONDER.franks, ...WALLS.franks, ...DEFENSE.franks, ...CITY.franks },
   sparta: SPARTA,
+  vikings: VIKINGS,
 };
 
 /**

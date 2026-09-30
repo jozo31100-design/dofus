@@ -26,7 +26,7 @@ export default {
     hall: 'Grande halle', house: 'Maison longue', barracks: 'Salle des guerriers', archery: 'Champ de tir', stable: 'Enclos à chevaux', forge: 'Forge du nain',
     temple: 'Temple d\'Odin', castle: 'Forteresse circulaire', market: 'Comptoir', academy: 'Skaldsal', wonder: 'Temple d\'Uppsala',
     dock: 'Port', healer: 'Völva', warship: 'Drakkar',
-    militia: 'Bondi', swordsman: 'Vikingr', champion: 'Hirdmann', fishingboat: 'Barque de pêche', vk_axe: 'Hache danoise',
+    militia: 'Bondi', swordsman: 'Vikingr', champion: 'Hirdmann', fishingboat: 'Barque de pêche',
   },
   units: [
     // --- Unité unique (château, âge III) ---
@@ -113,7 +113,7 @@ export default {
   ],
   techs: [
     { // technologie unique du château
-      id: 'vk_axe', building: 'castle', age: 3, cost: { food: 250, gold: 200 }, time: 55,
+      id: 'vk_axe', name: 'Hache danoise', building: 'castle', age: 3, cost: { food: 250, gold: 200 }, time: 55,
       effects: [
         { who: { ids: ['vk_housecarl'] }, stat: 'atk.melee', op: 'add', v: 3 },
         { who: { ids: ['vk_housecarl'] }, stat: 'armor.pierce', op: 'add', v: 1 },

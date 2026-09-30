@@ -9,6 +9,7 @@ import { mulberry32 } from './palette.js';
 import { drawHuman } from './unit-human.js';
 import { full, idlePose, attackPose, STANCE, WIDE } from './unit-poses.js';
 import { WOOD_D, GOLD, IRON, BRONZE } from './unit-gear.js';
+import { EG_HULLS, egBowHead, egSternHead } from './unit-egypt-naval.js';
 
 const LX = -0.42;
 const LY = 0.52;
@@ -26,6 +27,7 @@ const HULLS = {
   'war/vikings': { L: 92, B: 7.0, H: 6.0, hb: 16, hs: 12, wl: 0.46, pe: 2.4, pq: 0.72, ph: 2.6, strakes: 4, light: '#8a6440', dark: '#2c1e14' },
   'war/gauls': { L: 78, B: 10.6, H: 10.5, hb: 9.5, hs: 10.5, wl: 0.62, pe: 3.0, pq: 0.55, ph: 2.6, strakes: 5, light: '#7d5735', dark: '#4f3620' },
 };
+Object.assign(HULLS, EG_HULLS); // coques égyptiennes (clés 'fish/egypt' et 'war/egypt')
 const sampleCache = new Map();
 /** Points de la coque le long de la quille (resserrés aux extrémités) : { u, B, bw, H }. */
 function samples(hd, key) {
@@ -1061,8 +1063,10 @@ export function drawBoat(ctx, S, P) {
     const sp = pr(-uB - 0.5, 0, Hs - 1);
     if (S.prow) S.prow(ctx, bp, sp, hd, tm, flap);
     else {
-      dragonHead(ctx, bp[0] - 1, bp[1] + 2, 1.22, GOLD);
-      sternCurl(ctx, sp[0], sp[1] + 1, 1.2, hd.dark);
+      if (S.civ === 'egypt') egBowHead(ctx, bp[0] - 1, bp[1] + 2, 1.1, tm);
+    else dragonHead(ctx, bp[0] - 1, bp[1] + 2, 1.22, GOLD);
+      if (S.civ === 'egypt') egSternHead(ctx, sp[0], sp[1] + 1, 1.0, tm);
+    else sternCurl(ctx, sp[0], sp[1] + 1, 1.2, hd.dark);
     }
   } else {
     const bp = pr(uB + 0.5, 0, Hb + 0.5);
