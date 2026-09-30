@@ -551,7 +551,7 @@ const GAUL_WALL = {
   pillarTop(g, S, hp, A) {
     const pe = S.pe;
     g.box(-pe - 0.04, -pe - 0.04, pe + 0.04, pe + 0.04, hp - 4, hp, MAT.planksDark, { ao: false, topMat: { col: '#6f4f32' } });
-    thatchCone(g, { x: 0, y: 0, zb: hp - 1, R: pe + 0.13, za: hp + 25, th: 3, band: g.tc.main, mat: MAT.thatch });
+    thatchCone(g, { x: 0, y: 0, zb: hp - 1, R: pe + 0.13, za: hp + 20, th: 3, band: g.tc.main, mat: MAT.thatch });
     pennant(g, 0, 0, hp + 22, A.n <= 1 ? 17 : 12, { len: 19, h: 8 });
   },
 };

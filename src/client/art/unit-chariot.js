@@ -1,6 +1,6 @@
 // Essédaire : char de guerre gaulois à deux chevaux et roues à rayons, un conducteur et un guerrier lançant des javelots.
 // Genre `chariot` : le char regarde vers +x, roues au sol (y = 0) ; ~62 px de long.
-import { PI, TAU, clamp, lerp, smooth, tone, rgba, edge, ell, poly, paint, line, sideGrad, capsule } from './unit-kit.js';
+import { PI, TAU, clamp, lerp, smooth, tone, rgba, edge, poly, paint, line, sideGrad, capsule } from './unit-kit.js';
 import * as G from './unit-gear.js';
 import { drawHuman } from './unit-human.js';
 import { idlePose, attackPose, diePose, full } from './unit-poses.js';
@@ -159,14 +159,13 @@ export const CHARIOT = {
     ctx.stroke();
 
     // ----- équipage -----
-    const fx = (x) => x;
     // conducteur : les deux mains sur les rênes
     {
       const sp = C.driver;
       let P = idlePose('sword', walk ? q : (q * 0.5) % 1, null);
       P = full({ ...P, nT: 0.14, nS: -0.18, fT: -0.12, fS: -0.08, lean: 0.1, ikN: 1, tnx: 6.4, tny: 2.4, bendN: -1, ikF: 1, tfx: 5.4, tfy: 3.2, bendF: -1, cape: walk ? 0.8 : 0.15 });
       ctx.save();
-      ctx.translate(fx(-6), FLOOR + PLAT_FAR[1] * 0.2);
+      ctx.translate(-6, FLOOR + PLAT_FAR[1] * 0.2);
       if (dying) {
         const d = diePose(clamp(q * 1.1));
         P = d;

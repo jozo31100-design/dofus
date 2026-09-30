@@ -1,6 +1,6 @@
 // Postures propres aux héros et unités gauloises : grande épée à deux mains, javelot, fronde.
 // S'enregistrent dans unit-poses.js (REST pour l'attente et la marche, ATTACK_EXT pour l'attaque).
-import { PI, TAU, clamp, lerp, smooth, keyPose } from './unit-kit.js';
+import { TAU, clamp, lerp, smooth, keyPose } from './unit-kit.js';
 import { REST, ATTACK_EXT, STANCE, WIDE, full } from './unit-poses.js';
 
 REST.great = { nU: 0.6, nF: 1.45, wA: 2.5, two: 1, grip: 2.6, lean: 0.02 };
@@ -31,7 +31,6 @@ ATTACK_EXT.jav = (q) => full(keyPose(THROWJ, q));
 /** Fronde : on lève le bras, la poche tournoie plusieurs tours, puis on lâche vers la cible (aimA). */
 ATTACK_EXT.sling = (q, aimA) => {
   const up = smooth(clamp(q / 0.2));
-  const whirl = q >= 0.14 && q < 0.64;
   const rel = smooth(clamp((q - 0.6) / 0.12));
   const shot = q >= 0.66;
   const back = smooth(clamp((q - 0.78) / 0.22));
@@ -52,10 +51,8 @@ ATTACK_EXT.sling = (q, aimA) => {
     head: q < 0.6 ? lerp(0, -0.12, up) : 0,
     bx: q >= 0.6 ? 0.8 * rel * (1 - back) : 0,
   });
-  o.sl = q < 0.14 ? 0.3 : q * TAU * 4.6;
-  if (q < 0.1) o.sl = undefined;
-  if (q >= 0.64) o.sl = PI * 0.5;
+  // poche qui tournoie (absente au repos : la fronde pend), puis corde détendue après le lancer
+  o.sl = q < 0.1 ? undefined : q * TAU * 4.6;
   o.slShot = shot ? 1 : 0;
-  if (!whirl && q >= 0.1 && q < 0.14) o.sl = 0.3;
   return o;
 };

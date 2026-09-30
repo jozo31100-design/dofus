@@ -580,10 +580,13 @@ function frontGreaves(ctx, sp, R) {
   const z = R.z;
   const [kx, ky] = R.kneeN;
   const [ax, ay] = R.ankN;
+  const t0 = 0.3;
+  const sx = kx + (ax - kx) * t0;
+  const sy = ky + (ay - ky) * t0;
   ctx.beginPath();
-  capsule(ctx, kx, ky + 0.4 * z, 1.35 * z, ax, ay - 0.2 * z, 1.05 * z);
-  paint(ctx, sideGrad(ctx, Math.min(kx, ax) - 2, Math.max(kx, ax) + 2, BRONZE, 0.45, -0.3), edge(BRONZE, 0.85), 0.5);
-  line(ctx, kx - 0.3 * z, ky + 1.0 * z, ax - 0.3 * z, ay - 0.8 * z, 'rgba(255,240,190,0.6)', 0.35 * z);
+  capsule(ctx, sx, sy, 1.4 * z, ax, ay - 0.5 * z, 1.05 * z);
+  paint(ctx, sideGrad(ctx, Math.min(sx, ax) - 2, Math.max(sx, ax) + 2, BRONZE, 0.45, -0.3), edge(BRONZE, 0.85), 0.5);
+  line(ctx, sx - 0.3 * z, sy + 0.8 * z, ax - 0.3 * z, ay - 1.2 * z, 'rgba(255,240,190,0.6)', 0.35 * z);
 }
 
 // ---------------------------------------------------------------------------
@@ -634,33 +637,33 @@ function carnyx(ctx, x, y, a, z, P) {
   // défense et mâchoire basse
   ctx.beginPath();
   ctx.moveTo(-0.4, 0.2);
-  ctx.lineTo(5.6, 0.6 + open);
-  ctx.quadraticCurveTo(6.4, 1.6 + open, 5.4, 2.0 + open);
+  ctx.lineTo(4.8, 0.8 + open);
+  ctx.quadraticCurveTo(5.5, 1.8 + open, 4.6, 2.2 + open);
   ctx.lineTo(0.4, 2.2);
   ctx.closePath();
   paint(ctx, tone(BRONZE, -0.22), edge(BRONZE, 0.9), 0.4);
   ctx.beginPath();
-  poly(ctx, [0.8, 0.5, 5.0, 0.9 + open, 4.4, 1.4 + open, 1.0, 1.4]);
+  poly(ctx, [0.8, 0.5, 4.3, 1.0 + open, 3.8, 1.5 + open, 1.0, 1.4]);
   ctx.fillStyle = '#b8302a';
   ctx.fill();
   ctx.fillStyle = '#fff6e0';
   ctx.beginPath();
-  poly(ctx, [4.6, 0.8 + open, 5.3, -0.9 + open, 5.4, 0.9 + open]);
+  poly(ctx, [3.9, 1.0 + open, 4.6, -0.8 + open, 4.7, 1.0 + open]);
   ctx.fill();
   // crâne et groin relevé
   ctx.beginPath();
-  ctx.moveTo(-2.2, 0.6);
-  ctx.quadraticCurveTo(-2.6, -2.6, 0.6, -3.0);
-  ctx.quadraticCurveTo(3.0, -3.0, 5.2, -1.6);
-  ctx.quadraticCurveTo(6.8, -1.2, 6.8, -0.1);
-  ctx.quadraticCurveTo(6.6, 0.6, 5.4, 0.5);
-  ctx.quadraticCurveTo(2.6, 0.2, 0.2, 1.0);
+  ctx.moveTo(-2.4, 0.8);
+  ctx.quadraticCurveTo(-3.0, -3.4, 0.8, -3.9);
+  ctx.quadraticCurveTo(3.0, -3.6, 4.4, -1.8);
+  ctx.quadraticCurveTo(5.8, -1.5, 5.8, -0.2);
+  ctx.quadraticCurveTo(5.6, 0.6, 4.6, 0.6);
+  ctx.quadraticCurveTo(2.4, 0.3, 0.2, 1.2);
   ctx.closePath();
   paint(ctx, ballGrad(ctx, 1.4, -1.8, 4.8, BRONZE, 0.55, -0.3), edge(BRONZE, 0.9), 0.45);
   // narine
   ctx.fillStyle = tone(BRONZE, -0.6);
   ctx.beginPath();
-  ell(ctx, 6.1, -0.7, 0.32, 0.3);
+  ell(ctx, 5.2, -0.7, 0.32, 0.3);
   ctx.fill();
   // crête de soies hérissée
   ctx.beginPath();
@@ -677,11 +680,11 @@ function carnyx(ctx, x, y, a, z, P) {
   // œil rouge sous l'arcade, oreille dressée
   ctx.fillStyle = '#e8d86a';
   ctx.beginPath();
-  ell(ctx, 2.3, -1.3, 0.62, 0.55);
+  ell(ctx, 2.0, -1.4, 0.7, 0.62);
   ctx.fill();
   ctx.fillStyle = '#b8201a';
   ctx.beginPath();
-  ell(ctx, 2.4, -1.25, 0.32, 0.32);
+  ell(ctx, 2.1, -1.35, 0.36, 0.36);
   ctx.fill();
   ctx.beginPath();
   poly(ctx, [-0.2, -2.6, -0.5, -5.2, 1.6, -2.9]);
@@ -705,12 +708,14 @@ function sling(ctx, x, y, a, z, P) {
   if (P.sl !== undefined) {
     const R0 = 6.8 * z;
     const cy = y - 1.2 * z;
-    // trace du cercle parcouru (flou de mouvement)
-    ctx.beginPath();
-    ctx.ellipse(x, cy, R0, R0 * 0.36, 0, 0, TAU);
-    ctx.strokeStyle = 'rgba(255,246,214,0.22)';
-    ctx.lineWidth = 0.7 * z;
-    ctx.stroke();
+    // trace du cercle parcouru (flou de mouvement), tant que la poche tournoie
+    if (!P.slShot) {
+      ctx.beginPath();
+      ctx.ellipse(x, cy, R0, R0 * 0.36, 0, 0, TAU);
+      ctx.strokeStyle = 'rgba(255,246,214,0.22)';
+      ctx.lineWidth = 0.7 * z;
+      ctx.stroke();
+    }
     const sx = x + Math.cos(P.sl) * R0;
     const sy = cy + Math.sin(P.sl) * R0 * 0.36;
     if (P.slShot) {

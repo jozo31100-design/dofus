@@ -2,10 +2,10 @@
 // Genre `baliste` : elle regarde vers +x ; chargée et armée au repos, la corde claque au tir (les bras se détendent, le
 // carreau part), puis le servant la remet en tension au treuil. Coordonnées modèle : u vers l'avant, v vers le spectateur,
 // h vers le haut (projection oblique comme les autres engins).
-import { PI, TAU, clamp, lerp, smooth, tone, rgba, edge, ell, poly, paint, line, sideGrad, ballGrad, capsule, rot } from './unit-kit.js';
+import { PI, TAU, clamp, lerp, smooth, tone, rgba, edge, ell, poly, paint, line, sideGrad, ballGrad } from './unit-kit.js';
 import * as G from './unit-gear.js';
 import { drawHuman } from './unit-human.js';
-import { walkPose, idlePose, diePose, full } from './unit-poses.js';
+import { walkPose, idlePose, diePose } from './unit-poses.js';
 import { base } from './unit-base.js';
 import { spokedWheel, flagPole } from './unit-gauls-parts.js';
 

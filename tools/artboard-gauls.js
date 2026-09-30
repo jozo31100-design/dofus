@@ -77,10 +77,12 @@ function lineup(list, title, seed, rowH = 230, scale = 3, states = null) {
   cols.forEach(([name], k) => text(ctx, name, 20 + k * colW, 40));
   list.forEach((t, r) => {
     text(ctx, t, 6, 56 + r * rowH, 13, true);
+    // les engins et le char sont plus larges : échelle réduite pour qu'ils ne se chevauchent pas
+    const sc = t === 'essedaire' || t === 'baliste' ? 2.2 : scale;
     ctx.save();
-    ctx.scale(scale, scale);
+    ctx.scale(sc, sc);
     cols.forEach(([, o, team], k) => {
-      drawUnit(ctx, { type: t, civ: civOf(t), team, sx: (50 + k * colW) / scale + 6, sy: (50 + r * rowH + rowH - 34) / scale, dir: 1, ...o });
+      drawUnit(ctx, { type: t, civ: civOf(t), team, sx: (84 + k * colW) / sc, sy: (50 + r * rowH + rowH - 34) / sc, dir: 1, ...o });
     });
     ctx.restore();
   });
@@ -117,7 +119,7 @@ function etats() {
     ['soldurius attaque', { type: 'soldurius', team: 0, anim: 'attack' }, 0.55, 11],
     ['divico mort', { type: 'divico', team: 1, anim: 'die', deathT: 0 }, 0.8, 9],
   ];
-  const rowH = 96;
+  const rowH = 112;
   const H = 40 + strips.length * rowH;
   const ctx = canvas(H);
   grass(ctx, 0, 0, W, H, 11);

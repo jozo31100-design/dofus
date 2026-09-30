@@ -6,7 +6,7 @@ import * as art from '../src/client/art/index.js';
 import { BUILDINGS } from '../src/core/defs.js';
 
 const W = 2300;
-const H = 6900;
+const H = 8600;
 const cv = document.createElement('canvas');
 cv.width = W;
 cv.height = H;
@@ -55,7 +55,7 @@ function place(id, civ, team, stage, x, y, showDiamond = true) {
   return { s, dt };
 }
 
-const order = ['house', 'mill', 'lumber', 'mining', 'tower', 'farm', 'barracks', 'archery', 'stable', 'forge', 'temple', 'dock', 'market', 'academy', 'hall', 'siege', 'castle'];
+const order = ['house', 'mill', 'lumber', 'mining', 'tower', 'farm', 'barracks', 'archery', 'stable', 'forge', 'temple', 'dock', 'market', 'academy', 'hall', 'siege', 'castle', 'palisade', 'palisade_gate', 'wall', 'gate', 'rampart', 'great_gate', 'bastion', 'outpost', 'infirmary', 'great_house', 'monument'];
 const times = [];
 let y0 = 40;
 for (const [civ, team] of [['gauls', 0], ['franks', 1]]) {
@@ -150,7 +150,8 @@ for (const [civ, team] of [['gauls', 0], ['franks', 1]]) {
 
 // stades de construction (équipe opposée)
 const stageIds = [['house', 'franks', 0], ['house', 'gauls', 1], ['barracks', 'gauls', 1], ['barracks', 'franks', 0], ['tower', 'gauls', 1], ['tower', 'franks', 0], ['temple', 'franks', 0], ['temple', 'gauls', 1], ['farm', 'gauls', 1], ['hall', 'gauls', 1], ['hall', 'franks', 0], ['castle', 'franks', 0], ['castle', 'gauls', 1], ['mill', 'franks', 0], ['forge', 'gauls', 1], ['siege', 'franks', 0],
-  ['dock', 'gauls', 0], ['dock', 'franks', 1], ['market', 'franks', 0], ['market', 'gauls', 1], ['academy', 'franks', 0], ['academy', 'gauls', 1]];
+  ['dock', 'gauls', 0], ['dock', 'franks', 1], ['market', 'franks', 0], ['market', 'gauls', 1], ['academy', 'franks', 0], ['academy', 'gauls', 1],
+  ['bastion', 'gauls', 0], ['bastion', 'franks', 1], ['outpost', 'franks', 0], ['outpost', 'gauls', 1], ['infirmary', 'gauls', 0], ['infirmary', 'franks', 1], ['great_house', 'franks', 0], ['great_house', 'gauls', 1], ['monument', 'gauls', 0], ['monument', 'franks', 1], ['great_gate', 'franks', 0], ['great_gate', 'gauls', 1]];
 let x = 20;
 let rowTop = y0;
 let rowH = 0;

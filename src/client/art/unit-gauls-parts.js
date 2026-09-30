@@ -1,5 +1,5 @@
 // Pièces communes aux engins gaulois (char de guerre, baliste) : roue à rayons, fanion d'équipe, tressage d'osier.
-import { PI, TAU, tone, rgba, edge, ell, poly, paint, line, sideGrad, ballGrad } from './unit-kit.js';
+import { PI, TAU, tone, rgba, edge, ell, poly, paint, line, sideGrad, ballGrad, pattern } from './unit-kit.js';
 
 /**
  * Roue à rayons vue de trois-quarts (légère ellipse), centrée en (x, y), de rayon r. spin = rotation (rad), n rayons.
@@ -78,39 +78,25 @@ export function flagPole(ctx, x, y, h, c, wave = 0, len = 9) {
   paint(ctx, '#e8b93a', edge('#e8b93a', 0.8), 0.4);
 }
 
-/** Polygone tressé (panneau d'osier) : remplissage plus hachures croisées, sans découpage. */
+/** Polygone tressé (panneau d'osier) : motif de hachures croisées répété (plus rapide qu'un découpage). */
 export function wicker(ctx, pts, c = '#b08a4e') {
+  const pat = pattern(ctx, 'wick' + c, 8, 2.4, (g, n) => {
+    g.fillStyle = c;
+    g.fillRect(0, 0, n, n);
+    g.fillStyle = rgba(tone(c, -0.45), 0.55);
+    g.fillRect(0, 0, n, 1.6);
+    g.fillRect(0, n / 2, n, 1.6);
+    g.fillStyle = rgba(tone(c, 0.35), 0.55);
+    g.fillRect(n / 4, 0, 1.4, n);
+    g.fillRect((3 * n) / 4, 0, 1.4, n);
+  });
   ctx.beginPath();
   poly(ctx, pts);
-  paint(ctx, c, edge(c, 0.8), 0.6);
-  let x0 = 1e9;
-  let x1 = -1e9;
-  let y0 = 1e9;
-  let y1 = -1e9;
-  for (let i = 0; i < pts.length; i += 2) {
-    x0 = Math.min(x0, pts[i]);
-    x1 = Math.max(x1, pts[i]);
-    y0 = Math.min(y0, pts[i + 1]);
-    y1 = Math.max(y1, pts[i + 1]);
-  }
-  ctx.save();
-  ctx.clip();
-  ctx.strokeStyle = rgba(tone(c, -0.45), 0.5);
-  ctx.lineWidth = 0.45;
-  ctx.beginPath();
-  for (let y = y0 - 1; y < y1 + 1; y += 1.7) {
-    ctx.moveTo(x0, y);
-    ctx.lineTo(x1, y);
-  }
+  ctx.fillStyle = pat;
+  ctx.fill();
+  ctx.strokeStyle = edge(c, 0.8);
+  ctx.lineWidth = 0.6;
   ctx.stroke();
-  ctx.strokeStyle = rgba(tone(c, 0.3), 0.55);
-  ctx.beginPath();
-  for (let x = x0; x < x1 + 1; x += 2.2) {
-    ctx.moveTo(x, y0);
-    ctx.lineTo(x, y1);
-  }
-  ctx.stroke();
-  ctx.restore();
 }
 
 export { PI };

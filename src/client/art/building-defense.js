@@ -82,7 +82,7 @@ function timberBraces(g, S, axis, a, b, hh, st) {
 const slabPlanks = { col: '#6b4b2d' };
 
 const FRANK_RAMP = {
-  civ: 'franks', e: 0.42, pe: 0.58, R: 1, h: 68, hp: 84,
+  civ: 'franks', e: 0.42, pe: 0.58, R: 1, h: 66, hp: 74,
   mat: WMAT.ashlar, pmat: MAT.stoneLight, topCol: '#b9b3a4', coreCol: '#8f897c', merCol: '#cfc9bb', mh: 10, mt: 0.11, mw: 0.22,
   centers: [-0.8, -0.4, 0, 0.4, 0.8], over: 0.07, ovh: 8, slabMat: { col: '#a8a295' }, buttC: [-0.5, 0.5],
   faceExtra: buttresses,
@@ -108,16 +108,16 @@ const FRANK_RAMP = {
     const d = 0.07;
     g.box(-pe - d, -pe - d, pe + d, pe + d, hp - 7, hp, MAT.stone, { ao: false, topMat: { col: '#a8a294' } });
     crenels(g, -pe - d, -pe - d, pe + d, pe + d, hp, { col: S.merCol }, { h: 9, t: 0.12, mw: 0.19, gap: 0.12, hp: 3, between: () => {
-      pyramidRoof(g, { x0: -pe + 0.1, y0: -pe + 0.1, x1: pe - 0.1, y1: pe - 0.1, zb: hp + 3, za: hp + 40, mat: MAT.slate, ov: 0.05, th: 2.5, edge: '#3e4652', finial: false });
+      pyramidRoof(g, { x0: -pe + 0.1, y0: -pe + 0.1, x1: pe - 0.1, y1: pe - 0.1, zb: hp + 3, za: hp + 34, mat: MAT.slate, ov: 0.05, th: 2.5, edge: '#3e4652', finial: false });
     } });
-    banner(g, 0, 0, hp + 36, 26, { w: 13, h: 18, pole: true });
+    banner(g, 0, 0, hp + 30, 22, { w: 13, h: 18, pole: true });
     if (A.n >= 2) pennant(g, pe * 0.7, pe * 0.7, hp + 6, 14, { len: 15, h: 7, symbol: false, knob: GOLD });
   },
 };
 FRANK_RAMP.slabDeco = slabDecoOf(FRANK_RAMP);
 
 const GAUL_RAMP = {
-  civ: 'gauls', e: 0.42, pe: 0.58, R: 1, h: 64, hp: 80, planks: true,
+  civ: 'gauls', e: 0.42, pe: 0.58, R: 1, h: 62, hp: 70, planks: true,
   mat: WMAT.murusBig, pmat: WMAT.murusBig, topCol: '#8d6d48', coreCol: '#7a6346', merCol: '#b3a78f', mh: 10, mt: 0.11, mw: 0.22,
   centers: [-0.8, -0.4, 0, 0.4, 0.8], over: 0.07, ovh: 9, slabMat: slabPlanks, buttC: [-0.5, 0.5],
   faceExtra: timberBraces,
@@ -153,8 +153,8 @@ const GAUL_RAMP = {
       for (let u = w * 0.14; u < w * 0.9; u += w * 0.22) c.fillRect(u, h * 0.3, 2.4, h * 0.42);
     };
     g.box(-pe - 0.06, -pe - 0.06, pe + 0.06, pe + 0.06, hp - 2, hp + 14, MAT.planks, { ao: false, topMat: { col: '#6f4f32' }, decoL: slits, decoR: slits });
-    pyramidRoof(g, { x0: -pe - 0.03, y0: -pe - 0.03, x1: pe + 0.03, y1: pe + 0.03, zb: hp + 13, za: hp + 50, mat: MAT.thatch, ov: 0.12, th: 4.5, edge: '#9a7a36', finial: false });
-    pennant(g, 0, 0, hp + 46, 16, { len: 20, h: 9 });
+    pyramidRoof(g, { x0: -pe - 0.03, y0: -pe - 0.03, x1: pe + 0.03, y1: pe + 0.03, zb: hp + 13, za: hp + 42, mat: MAT.thatch, ov: 0.12, th: 4.5, edge: '#9a7a36', finial: false });
+    pennant(g, 0, 0, hp + 38, 14, { len: 20, h: 9 });
     if (A.n >= 2) carnyx(g, pe * 0.8, pe * 0.8, hp + 10, 32, { dir: 1, s: 1.3 });
   },
 };
@@ -306,7 +306,7 @@ function bastionFr(g) {
   const Rc = 1.44;
   const hc = st === 1 ? 7 : 17;
   const r = 1.0;
-  const H = st === 1 ? 40 : 92;
+  const H = st === 1 ? 36 : 80;
   // chemise basse crénelée : corps, puis parapet (arrière, tour au milieu, avant)
   g.cyl(0, 0, Rc, 0, hc, MAT.stoneLight, { top: st >= 2 ? undefined : MAT.stone });
   const drum = () => {
@@ -336,7 +336,7 @@ function bastionFr(g) {
         }
       },
     });
-    const G = g.cone(0, 0, H + 16, r + 0.28, H + 16 + 62, MAT.slate);
+    const G = g.cone(0, 0, H + 16, r + 0.28, H + 16 + 50, MAT.slate);
     if (g.drawing) {
       const c = g.ctx;
       c.strokeStyle = '#3e4652';
@@ -345,7 +345,7 @@ function bastionFr(g) {
       c.ellipse(G.X, G.Yb + 0.5, G.rx, G.ry, 0, 0, PI);
       c.stroke();
     }
-    banner(g, 0, 0, H + 16 + 60, 26, { w: 14, h: 19, pole: true });
+    banner(g, 0, 0, H + 16 + 48, 22, { w: 14, h: 19, pole: true });
   };
   if (st >= 3) {
     roundCrenels(g, 0, 0, Rc, hc, MAT.stoneLight, { h: 9, n: 26, depth: 4, t: 0.14, inside: drum });

@@ -21,10 +21,11 @@ import { ACADEMY } from './building-academy.js';
 import { WONDER } from './building-wonder.js';
 import { WALLS } from './building-walls.js';
 import { DEFENSE } from './building-defense.js';
+import { CITY } from './building-city.js';
 
 const DESIGNS = {
-  gauls: { ...GAULS, farm, dock: DOCK.gauls, market: MARKET.gauls, academy: ACADEMY.gauls, wonder: WONDER.gauls, ...WALLS.gauls, ...DEFENSE.gauls },
-  franks: { ...FRANKS, farm, dock: DOCK.franks, market: MARKET.franks, academy: ACADEMY.franks, wonder: WONDER.franks, ...WALLS.franks, ...DEFENSE.franks },
+  gauls: { ...GAULS, farm, dock: DOCK.gauls, market: MARKET.gauls, academy: ACADEMY.gauls, wonder: WONDER.gauls, ...WALLS.gauls, ...DEFENSE.gauls, ...CITY.gauls },
+  franks: { ...FRANKS, farm, dock: DOCK.franks, market: MARKET.franks, academy: ACADEMY.franks, wonder: WONDER.franks, ...WALLS.franks, ...DEFENSE.franks, ...CITY.franks },
 };
 
 /**
@@ -35,8 +36,9 @@ const HEIGHT = {
   hall: 150, house: 68, farm: 54, mill: 94, lumber: 67, mining: 67, barracks: 114, archery: 112,
   stable: 108, forge: 107, tower: 168, temple: 137, siege: 141, castle: 220,
   dock: 101, market: 84, academy: 143, wonder: 224,
-  palisade: 60, palisade_gate: 70, wall: 100, gate: 110, rampart: 150, great_gate: 150, bastion: 160, outpost: 130,
-  infirmary: 100, great_house: 110, monument: 120,
+  // nouveaux types : maximum sur les 16 masques et les deux peuples (h = hauteur du sommet, fanions compris)
+  palisade: 53, palisade_gate: 64, wall: 104, gate: 102, rampart: 130, great_gate: 167, bastion: 170, outpost: 130,
+  infirmary: 126, great_house: 133, monument: 125,
 };
 
 /** Types dont le dessin dépend des voisins (masque de connexion). */
