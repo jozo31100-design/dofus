@@ -28,15 +28,17 @@ export class World {
    *                       startRes: 'standard' | 'riche', revealMap: boolean }
    */
   constructor(cfg = {}) {
-    const S = MAP_SIZE;
+    const nPlayers = (cfg.players || []).length;
+    // 2 joueurs : un duel (La Rivière des Carnutes ou La Forêt Hercynienne) ; 3 à 8 : la « Grande arène » ; taille au choix
+    const mapSize = cfg.mapSize || MAP_SIZE;
+    this.map = nPlayers > 2 ? generateArena(cfg.mapSeed ?? DEFAULT_SEED, nPlayers, mapSize) : generateMap(cfg.mapSeed ?? DEFAULT_SEED, mapSize, cfg.mapKind || 'river');
+    const S = this.map.size;
     this.S = S;
     this.cfg = cfg;
     this.tick = 0;
     this.nextId = 1;
     this.rng = mulberry32((cfg.seed ?? 12345) >>> 0);
-    const nPlayers = (cfg.players || []).length;
-    // 2 joueurs : le duel sur « La Rivière des Carnutes » ; 3 à 8 : la « Grande arène »
-    this.map = nPlayers > 2 ? generateArena(cfg.mapSeed ?? DEFAULT_SEED, nPlayers) : generateMap(cfg.mapSeed ?? DEFAULT_SEED);
+    // (la carte est générée plus haut)
     this.terrain = this.map.terrain;
     this.terrainBlock = new Uint8Array(S * S);
     for (let i = 0; i < S * S; i++) this.terrainBlock[i] = this.terrain[i] === WATER ? 1 : 0;

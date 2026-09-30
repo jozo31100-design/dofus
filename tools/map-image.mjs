@@ -7,14 +7,16 @@ import { generateArena, checkArena } from '../src/core/arena.js';
 const out = process.argv[2] || '.scratch/map.png';
 const seed = process.argv[3] ? Number(process.argv[3]) : undefined;
 const nPl = process.argv[4] ? Number(process.argv[4]) : 2;
-const map = nPl > 2 ? generateArena(seed, nPl) : generateMap(seed);
+const kind = process.argv[5] || 'river';
+const size = process.argv[6] ? Number(process.argv[6]) : undefined;
+const map = nPl > 2 ? generateArena(seed, nPl, size) : generateMap(seed, size, kind);
 const problems = nPl > 2 ? checkArena(map) : checkMap(map);
 console.log(problems.length ? 'PROBLÈMES : ' + problems.join(' | ') : 'carte valide');
 const counts = {};
 for (const n of map.nodes) counts[n.type] = (counts[n.type] || 0) + 1;
 console.log('nœuds :', JSON.stringify(counts), 'animaux :', map.animals.length);
 
-const K = 8; // pixels par case
+const K = map.size > 150 ? 6 : 8; // pixels par case
 const S = map.size;
 const W = S * K;
 const px = Buffer.alloc(W * W * 3);

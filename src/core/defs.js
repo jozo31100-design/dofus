@@ -7,7 +7,9 @@ export const TICK_RATE = 20; // pas de simulation par seconde de jeu
 export const DT = 1 / TICK_RATE;
 /** Hauteur (px) du chemin de ronde des murs, pour dessiner les soldats qui s'y trouvent. */
 export const DECK_TOP = { palisade: 30, palisade_gate: 34, wall: 58, gate: 58, rampart: 94, great_gate: 94 };
-export const MAP_SIZE = 140; // la carte est un carré de 140 x 140 cases
+export const MAP_SIZE = 140; // taille par défaut (Moyenne) ; Petite 100, Grande 180 : choisies par partie (cfg.mapSize)
+export const MAP_SIZES = { small: 100, medium: 140, large: 180 };
+export const MAP_KINDS = { river: 'La Rivière des Carnutes', forest: 'La Forêt Hercynienne' };
 export const MAX_POP = 150;
 
 export const RESOURCES = ['food', 'wood', 'gold', 'stone'];

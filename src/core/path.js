@@ -95,7 +95,7 @@ export class PathGrid {
    * Cherche un chemin. Renvoie { path: [x0, y0, x1, y1, ...], partial } ou null si rien de mieux que sur place.
    * `path` est vide si le point de départ satisfait déjà le but.
    */
-  find(sx, sy, goal, radius = 0.3, maxExpand = 7000) {
+  find(sx, sy, goal, radius = 0.3, maxExpand = 12000) {
     const S = this.S;
     const blocked = this.blocked;
     let stx = Math.floor(sx);

@@ -46,3 +46,21 @@ test('dernier debout : la partie se termine quand un seul camp reste', () => {
   w.checkVictory();
   assert.ok(w.over && w.winner === 0);
 });
+
+test('tailles (petite, moyenne, grande) et cartes (rivière, forêt) : toutes valides et jouables', async () => {
+  const { generateMap, checkMap } = await import('../src/core/mapgen.js');
+  for (const kind of ['river', 'forest']) {
+    for (const size of [100, 140, 180]) {
+      const map = generateMap(1789, size, kind);
+      assert.equal(map.size, size);
+      assert.deepEqual(checkMap(map), [], `${kind} ${size}`);
+      const w = new World({ seed: 3, mapSize: size, mapKind: kind, players: [{ name: 'A', civ: 'franks', ai: 'moyen' }, { name: 'B', civ: 'gauls', ai: 'moyen' }] });
+      assert.equal(w.S, size);
+      for (let t = 0; t < 20 * 60; t++) w.step();
+      assert.ok(w.players.every((p) => p.pop >= 6), `${kind} ${size} : les camps se développent`);
+    }
+  }
+  const w8 = new World({ seed: 3, mapSize: 180, players: Array.from({ length: 6 }, (_, i) => ({ name: `I${i}`, civ: civs[i % civs.length], ai: 'facile' })) });
+  assert.equal(w8.S, 180);
+  for (let t = 0; t < 20 * 30; t++) w8.step();
+});

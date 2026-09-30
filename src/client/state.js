@@ -9,10 +9,10 @@ import { generateArena } from '../core/arena.js';
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export class ClientState {
-  constructor({ myIdx, mapSeed, nPlayers = 2 }) {
+  constructor({ myIdx, mapSeed, nPlayers = 2, mapSize, mapKind }) {
     this.myIdx = myIdx;
-    this.S = MAP_SIZE;
-    const map = nPlayers > 2 ? generateArena(mapSeed, nPlayers) : generateMap(mapSeed);
+    const map = nPlayers > 2 ? generateArena(mapSeed, nPlayers, mapSize) : generateMap(mapSeed, mapSize, mapKind || 'river');
+    this.S = map.size;
     this.terrain = map.terrain;
     this.ents = new Map();
     this.ghosts = new Map();

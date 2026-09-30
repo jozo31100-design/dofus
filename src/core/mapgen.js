@@ -10,11 +10,13 @@
 import { MAP_SIZE, NODES } from './defs.js';
 import { mulberry32, fbm } from './util.js';
 
-const S = MAP_SIZE;
-const HALF = S / 2;
 // La carte a été dessinée pour 96 x 96 cases. Agrandie, les camps s'éloignent (F) mais gardent leur disposition locale :
 // `loc` déplace ce qui appartient au camp, `mid` étire ce qui se trouve entre les camps.
-const F = S / 96;
+// La taille est choisie à la génération (Petite 100, Moyenne 140, Grande 180) : `configure` recalcule toute la géométrie.
+let S = MAP_SIZE;
+let HALF = S / 2;
+let F = S / 96;
+let KIND = 'river';
 
 export const GRASS = 0;
 export const FORD = 1;
@@ -36,7 +38,7 @@ function riverHalfWidth(s) {
   return 2.5 + 0.7 * Math.cos(6 * Math.PI * t);
 }
 
-const FORD_CENTERS = [S - 40 * F, S, S + 40 * F]; // positions le long de la diagonale (x + y)
+let FORD_CENTERS = [];
 const FORD_HALF_LEN = 5;
 
 function terrainAt(tx, ty) {
@@ -46,7 +48,7 @@ function terrainAt(tx, ty) {
   const d = cx - cy;
   const lateral = Math.abs(d - riverCenter(s)) / Math.SQRT2;
   const hw = riverHalfWidth(s);
-  if (lateral < hw) {
+  if (KIND === 'river' && lateral < hw) {
     for (const f of FORD_CENTERS) if (Math.abs(s - f) < FORD_HALF_LEN) return FORD;
     return WATER;
   }
@@ -57,19 +59,38 @@ function terrainAt(tx, ty) {
   return GRASS;
 }
 
-const HALL_TL = [Math.round(S / 2 + (72 - 48) * F), Math.round(S / 2 + (19 - 48) * F)]; // coin haut-gauche de l'emprise 4x4 du camp du haut
-const SHIFT = [HALL_TL[0] - 72, HALL_TL[1] - 19];
+let HALL_TL = [0, 0]; // coin haut-gauche de l'emprise 4x4 du camp du haut
+let SHIFT = [0, 0];
 const loc = (x, y) => [x + SHIFT[0], y + SHIFT[1]];
 const mid = (x, y) => [S / 2 + (x - 48) * F, S / 2 + (y - 48) * F];
+let PONDS = [];
 
-const PONDS = [
-  { x: 62.5 + SHIFT[0], y: 30.5 + SHIFT[1], r: 3.1 },
-  { x: mid(20.5, 40.5)[0], y: mid(20.5, 40.5)[1], r: 2.8 },
-];
+/** Recalcule toute la géométrie de la carte pour une taille et un type donnés. */
+function configure(size, kind = 'river') {
+  S = size;
+  HALF = S / 2;
+  F = S / 96;
+  KIND = kind;
+  FORD_CENTERS = [S - 40 * F, S, S + 40 * F]; // positions le long de la diagonale (x + y)
+  HALL_TL = [Math.round(S / 2 + (72 - 48) * F), Math.round(S / 2 + (19 - 48) * F)];
+  SHIFT = [HALL_TL[0] - 72, HALL_TL[1] - 19];
+  PONDS = [
+    { x: 62.5 + SHIFT[0], y: 30.5 + SHIFT[1], r: 3.1 },
+    { x: mid(20.5, 40.5)[0], y: mid(20.5, 40.5)[1], r: 2.8 },
+  ];
+  if (kind === 'forest') PONDS.push({ x: mid(40, 34)[0], y: mid(40, 34)[1], r: 3.4 }, { x: mid(62, 12)[0], y: mid(62, 12)[1], r: 3 }, { x: mid(72, 28)[0], y: mid(72, 28)[1], r: 3.2 });
+}
+configure(MAP_SIZE);
 
 // Positions de départ (moitié haute = joueur 1, côté droit de l'écran ; joueur 0 = miroir).
 
-export function generateMap(seed = DEFAULT_SEED) {
+/**
+ * @param {number} seed graine
+ * @param {number} size côté de la carte (100, 140 ou 180)
+ * @param {'river'|'forest'} kind « La Rivière des Carnutes » ou « La Forêt Hercynienne »
+ */
+export function generateMap(seed = DEFAULT_SEED, size = MAP_SIZE, kind = 'river') {
+  configure(size, kind);
   const rng = mulberry32(seed);
   const terrain = new Uint8Array(S * S);
   const used = new Uint8Array(S * S); // 1 = case prise par un nœud ou une zone protégée
@@ -169,7 +190,7 @@ export function generateMap(seed = DEFAULT_SEED) {
   // Espaces dégagés autour des gués
   for (const f of FORD_CENTERS) {
     const c = f / 2;
-    protect(c, c, 6);
+    protect(c, c, KIND === 'forest' ? 8.5 : 6);
   }
 
   // --- Points stratégiques : un au milieu du gué central, deux symétriques sur les flancs (à égale distance des deux camps) ---
@@ -219,6 +240,25 @@ export function generateMap(seed = DEFAULT_SEED) {
   cluster('gold', ...mid(32, 24), 5, { jitter: 1.2 });
   cluster('stone', ...mid(38, 8), 5, { jitter: 1.2 });
   cluster('gold', ...mid(76, 34), 5, { jitter: 1.2 });
+  // la carte est plus vaste : d'autres gisements, baies et gibier répartis entre les camps (seulement sur les grandes tailles)
+  if (S >= 160) {
+  cluster('gold', ...mid(48, 30), 5, { jitter: 1.2 });
+  cluster('gold', ...mid(28, 10), 5, { jitter: 1.2 });
+  cluster('gold', ...mid(84, 20), 5, { jitter: 1.2 });
+  cluster('stone', ...mid(84, 38), 6, { jitter: 1.2 });
+  cluster('stone', ...mid(20, 12), 6, { jitter: 1.2 });
+  cluster('stone', ...mid(36, 20), 5, { jitter: 1.2 });
+  cluster('berries', ...mid(44, 8), 5, { jitter: 1.2 });
+  cluster('berries', ...mid(62, 34), 5, { jitter: 1.2 });
+  cluster('berries', ...mid(80, 30), 5, { jitter: 1.2 });
+  cluster('gold', ...mid(60, 6), 5, { jitter: 1.2 });
+  cluster('gold', ...mid(70, 52), 5, { jitter: 1.2 });
+  cluster('gold', ...mid(16, 26), 5, { jitter: 1.2 });
+  cluster('stone', ...mid(72, 8), 5, { jitter: 1.2 });
+  cluster('stone', ...mid(56, 44), 5, { jitter: 1.2 });
+  cluster('stone', ...mid(14, 34), 5, { jitter: 1.2 });
+  cluster('berries', ...mid(26, 22), 5, { jitter: 1.2 });
+  }
   // davantage de carrières : la pierre manquait
   cluster('stone', ...mid(62, 22), 6, { jitter: 1.2 });
   cluster('stone', ...mid(34, 36), 6, { jitter: 1.2 });
@@ -250,6 +290,15 @@ export function generateMap(seed = DEFAULT_SEED) {
     gv(68, 34, 5, 4.5, 0.75, false),
     gv(34, 20, 5.5, 5, 0.75, false),
   ];
+  if (KIND === 'forest') {
+    // la forêt hercynienne : une épaisse ceinture d'arbres le long de la diagonale, percée de trois clairières (les anciens gués)
+    for (let t = 2; t < HALF; t += 4) {
+      const sPos = 2 * t;
+      if (FORD_CENTERS.some((f) => Math.abs(sPos - f) < 15)) continue;
+      const d = riverCenter(sPos);
+      groves.push({ x: (sPos + d) / 2, y: (sPos - d) / 2, rx: 8.5, ry: 8.5, p: 1 });
+    }
+  }
   const treeSeed = seed * 7 + 3;
   for (let ty = 0; ty < HALF; ty++) {
     for (let tx = 0; tx < S; tx++) {
@@ -277,7 +326,7 @@ export function generateMap(seed = DEFAULT_SEED) {
   }
 
   // --- Gibier ------------------------------------------------------------------------
-  for (const [hx, hy] of [loc(58, 9), loc(89, 39), mid(70, 42), mid(40, 20), mid(56, 24), mid(28, 34)]) {
+  for (const [hx, hy] of [loc(58, 9), loc(89, 39), mid(70, 42), mid(40, 20), mid(56, 24), mid(28, 34), mid(80, 14), mid(36, 6), mid(64, 18), mid(22, 20), mid(50, 40)]) {
     for (let i = 0; i < 4; i++) addAnimal('deer', hx + (rng() - 0.5) * 3, hy + (rng() - 0.5) * 3);
   }
 
@@ -320,9 +369,11 @@ export function generateMap(seed = DEFAULT_SEED) {
     }
   }
   for (const p of PONDS) fishCluster(p.x, p.y, 4, 3);
-  for (const sPos of [24 * F, 42 * F, 74 * F]) {
-    const d = riverCenter(sPos);
-    fishCluster((sPos + d) / 2, (sPos - d) / 2, 3, 4);
+  if (KIND === 'river') {
+    for (const sPos of [24 * F, 42 * F, 74 * F]) {
+      const d = riverCenter(sPos);
+      fishCluster((sPos + d) / 2, (sPos - d) / 2, 3, 4);
+    }
   }
 
   // --- Accès : on abat les arbres qui enferment une ressource --------------------------------
@@ -341,7 +392,7 @@ export function generateMap(seed = DEFAULT_SEED) {
   starts[0] = p0;
   starts[1] = p1;
 
-  return { size: S, seed, terrain, nodes, animals, starts, points };
+  return { size: S, seed, kind: KIND, terrain, nodes, animals, starts, points };
 }
 
 /** Cases atteignables à pied depuis un point (l'eau et les arbres bloquent ; les mines et baies s'épuiseront). */
@@ -399,6 +450,7 @@ function carveAccess(terrain, nodes) {
 
 /** Vérifie l'équité et l'accessibilité de la carte (utilisé par les tests). */
 export function checkMap(map) {
+  configure(map.size, map.kind || 'river');
   const problems = [];
   const { size, terrain, nodes, starts } = map;
   // symétrie du terrain

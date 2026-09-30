@@ -17,7 +17,8 @@ window.__audio = audio;
   if (mode === 'menu') return;
   if (mode === 'solo') { app.showSolo(); return; }
   const t0 = performance.now();
-  await app.startLocal({ seed: 4, mapSeed: 1789, players: [{ name: 'Jo', civ: 'franks' }, { name: 'Ordinateur', civ: 'gauls', ai: 'moyen' }], startRes: 'riche', speed: 1 }, null);
+  const big = mode === 'large';
+  await app.startLocal({ seed: 4, mapSeed: 1789, mapSize: big ? 180 : undefined, mapKind: big ? 'forest' : undefined, players: [{ name: 'Jo', civ: 'franks' }, { name: 'Ordinateur', civ: 'gauls', ai: 'moyen' }], startRes: 'riche', speed: 1 }, null);
   console.log('chargement (terrain + sprites) :', Math.round(performance.now() - t0), 'ms');
   const s = window.__game.session;
   for (let i = 0; i < 20 * 100; i++) { s.world.step(); const ev = s.world.events; s.world.events = []; s.builder.pushEvents(ev); }

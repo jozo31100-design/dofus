@@ -8,18 +8,20 @@ import { MAP_SIZE, NODES } from './defs.js';
 import { mulberry32, fbm } from './util.js';
 import { GRASS, WATER, DEFAULT_SEED } from './mapgen.js';
 
-const S = MAP_SIZE;
-const C = S / 2;
+let S = MAP_SIZE;
+let C = S / 2;
 
 /** Emplacement (centre de la salle) du camp i parmi n. */
 export function campCenter(i, n) {
-  const R = n <= 4 ? 44 : 50;
+  const R = (n <= 4 ? 44 : 50) * (S / 140);
   const a = 0.75 * Math.PI + (i * 2 * Math.PI) / n;
   return { x: Math.round(C + R * Math.cos(a)), y: Math.round(C + R * Math.sin(a)), a, R };
 }
 
-export function generateArena(seed = DEFAULT_SEED, n = 4) {
+export function generateArena(seed = DEFAULT_SEED, n = 4, size = MAP_SIZE) {
   n = Math.max(3, Math.min(8, n | 0));
+  S = Math.max(n > 4 ? 140 : 100, size);
+  C = S / 2;
   const rng = mulberry32((seed ^ (n * 7919)) >>> 0);
   const terrain = new Uint8Array(S * S); // tout en herbe (GRASS = 0)
   const used = new Uint8Array(S * S);
@@ -152,6 +154,17 @@ export function generateArena(seed = DEFAULT_SEED, n = 4) {
     cluster('gold', mx, my, 6);
     cluster('stone', mx + Math.cos(a + 1.5) * 6, my + Math.sin(a + 1.5) * 6, 7);
     for (let k = 0; k < 4; k++) animal('deer', mx + (rng() - 0.5) * 4, my + (rng() - 0.5) * 4);
+  }
+  // terres sauvages : gisements, baies et gibier répartis au hasard (graine fixe) entre les camps
+  const wild = Math.round(n * 2.2 * (S / 140));
+  for (let k = 0; k < wild; k++) {
+    const a = rng() * Math.PI * 2;
+    const r = 12 + rng() * (S * 0.42 - 12);
+    const wx = C + Math.cos(a) * r;
+    const wy = C + Math.sin(a) * r;
+    if (camps.some((c) => Math.hypot(c.x - wx, c.y - wy) < 16)) continue;
+    cluster(k % 3 === 0 ? 'gold' : k % 3 === 1 ? 'stone' : 'berries', wx, wy, 5);
+    if (k % 2 === 0) for (let j = 0; j < 3; j++) animal('deer', wx + (rng() - 0.5) * 4, wy + (rng() - 0.5) * 4);
   }
   cluster('gold', C + 9, C - 4, 5);
   cluster('stone', C - 9, C + 4, 5);

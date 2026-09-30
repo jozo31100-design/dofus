@@ -1,6 +1,6 @@
 // Écrans hors partie : menu principal, partie solo, salon d'hébergement, rejoindre une partie, chargement.
 
-import { CIVS, CIV_IDS, START_RESOURCES, AGE_NAMES, TEAM_COLORS } from '../core/defs.js';
+import { CIVS, CIV_IDS, START_RESOURCES, AGE_NAMES, TEAM_COLORS, MAP_SIZES, MAP_KINDS } from '../core/defs.js';
 import { DEFAULT_SEED } from '../core/mapgen.js';
 import { HostSession, GuestSession } from './session.js';
 import { GameUI } from './ui.js';
@@ -151,7 +151,7 @@ export class App {
   // ---------------------------------------------------------------------------------------
 
   showSolo() {
-    const opts = { ai: 'moyen', res: 'standard', speed: '1', reveal: false, aiCiv: 'random', aiCount: '1' };
+    const opts = { ai: 'moyen', res: 'standard', speed: '1', reveal: false, aiCiv: 'random', aiCount: '1', mapSize: 'medium', mapKind: 'river' };
     const sel = (label, key, choices) => h('div', { class: 'field' }, h('label', { text: label }),
       h('select', { onchange: (e) => { opts[key] = e.target.value; } }, choices.map(([v, t]) => h('option', { value: v, text: t, selected: opts[key] === v ? 'selected' : false }))));
     this.frame(h('div', { class: 'menu-box wide' },
@@ -162,7 +162,11 @@ export class App {
         sel('Niveau des ordinateurs', 'ai', [['facile', 'Facile'], ['moyen', 'Moyen'], ['difficile', 'Difficile']]),
         sel('Nombre d\'ordinateurs', 'aiCount', [1, 2, 3, 4, 5, 6, 7].map((n) => [String(n), n === 1 ? '1 (duel)' : `${n} (chacun pour soi)`]))),
       h('div', { class: 'row2' },
-        sel('Leur peuple', 'aiCiv', [['random', 'Au hasard'], ...CIV_IDS.map((id) => [id, CIVS[id].name])])),
+        sel('Leur peuple', 'aiCiv', [['random', 'Au hasard'], ...CIV_IDS.map((id) => [id, CIVS[id].name])]),
+        sel('Taille de la carte', 'mapSize', [['small', 'Petite (100)'], ['medium', 'Moyenne (140)'], ['large', 'Grande (180)']])),
+      h('div', { class: 'row2' },
+        sel('Carte (duel)', 'mapKind', Object.entries(MAP_KINDS)),
+        h('div', { class: 'hint', text: 'Avec 3 joueurs ou plus : « Grande arène », camps en cercle.' })),
       h('div', { class: 'row2' },
         sel('Ressources de départ', 'res', Object.entries(START_RESOURCES).map(([k, v]) => [k, v.label])),
         sel('Vitesse du jeu', 'speed', [['1', 'Normale'], ['1.5', 'Rapide (×1,5)'], ['2', 'Très rapide (×2)']])),
@@ -174,6 +178,8 @@ export class App {
         this.startLocal({
           seed: randomSeed(),
           mapSeed: DEFAULT_SEED,
+          mapSize: MAP_SIZES[opts.mapSize] || 140,
+          mapKind: opts.mapKind,
           players: [{ name: this.name, civ: this.civ }, ...ais],
           startRes: opts.res,
           speed: Number(opts.speed),
@@ -188,7 +194,7 @@ export class App {
   // ---------------------------------------------------------------------------------------
 
   async showHost() {
-    const st = { civ: this.civ, guest: null, opts: { startRes: 'standard', speed: 1, revealMap: false, aiCount: 0, aiLevel: 'moyen' } };
+    const st = { civ: this.civ, guest: null, opts: { startRes: 'standard', speed: 1, revealMap: false, aiCount: 0, aiLevel: 'moyen', mapSize: 'medium', mapKind: 'river' } };
     const errBox = h('div', { class: 'err' });
     const loading = h('div', { class: 'box' }, h('span', { class: 'spin' }), 'Ouverture de la partie…');
     this.frame(h('div', { class: 'menu-box' }, h('h2', { text: 'Héberger une partie' }), loading));
@@ -232,6 +238,9 @@ export class App {
       h('div', { class: 'row2' },
         sel('Ordinateurs en plus (8 joueurs au plus)', 'aiCount', [0, 1, 2, 3, 4, 5, 6].map((n) => [n, n === 0 ? 'Aucun (duel)' : String(n)])),
         sel('Niveau des ordinateurs', 'aiLevel', [['facile', 'Facile'], ['moyen', 'Moyen'], ['difficile', 'Difficile']])),
+      h('div', { class: 'row2' },
+        sel('Taille de la carte', 'mapSize', [['small', 'Petite (100)'], ['medium', 'Moyenne (140)'], ['large', 'Grande (180)']]),
+        sel('Carte (duel)', 'mapKind', Object.entries(MAP_KINDS))),
       h('label', { class: 'hint' }, h('input', { type: 'checkbox', onchange: (e) => { st.opts.revealMap = e.target.checked; sendLobby(); } }), ' Révéler toute la carte (sans brouillard de guerre)'),
       errBox,
       startBtn,
@@ -261,6 +270,8 @@ export class App {
       const cfg = {
         seed: randomSeed(),
         mapSeed: DEFAULT_SEED,
+        mapSize: MAP_SIZES[st.opts.mapSize] || 140,
+        mapKind: st.opts.mapKind,
         players: [{ name: this.name, civ: st.civ }, { name: st.guest.name, civ: st.guest.civ },
           ...Array.from({ length: Math.min(6, st.opts.aiCount || 0) }, (_, i) => ({ name: `Ordinateur ${i + 1}`, civ: CIV_IDS[Math.floor(Math.random() * CIV_IDS.length)], ai: st.opts.aiLevel }))],
         startRes: st.opts.startRes,
@@ -332,7 +343,7 @@ export class App {
         h('div', { class: 'player-row' }, h('span', { class: 'dot', style: `background:${TEAM_COLORS[0].main}` }), h('span', { class: 'pname', text: `${st.host.name} (hôte)` }), h('span', { class: 'pciv', text: CIVS[st.host.civ].name })),
         h('div', { class: 'player-row' }, h('span', { class: 'dot', style: `background:${TEAM_COLORS[1].main}` }), h('span', { class: 'pname', text: `${this.name} (vous)` }), h('span', { class: 'pciv', text: CIVS[st.civ].name })));
       const o = st.opts || {};
-      optsEl.innerHTML = `Ressources : <b>${(START_RESOURCES[o.startRes] || START_RESOURCES.standard).label}</b> · Vitesse : <b>×${o.speed || 1}</b>${o.revealMap ? ' · <b>carte révélée</b>' : ''}${o.aiCount ? ` · <b>+${o.aiCount} ordinateur(s)</b>` : ''}`;
+      optsEl.innerHTML = `Ressources : <b>${(START_RESOURCES[o.startRes] || START_RESOURCES.standard).label}</b> · Vitesse : <b>×${o.speed || 1}</b>${o.revealMap ? ' · <b>carte révélée</b>' : ''}${o.aiCount ? ` · <b>+${o.aiCount} ordinateur(s)</b>` : ''} · Carte : <b>${MAP_KINDS[o.mapKind] || MAP_KINDS.river}</b>, ${({ small: 'petite', medium: 'moyenne', large: 'grande' })[o.mapSize] || 'moyenne'}`;
     };
     const sendCiv = () => window.tdg.send(JSON.stringify({ k: 'civ', civ: st.civ }));
     this.frame(h('div', { class: 'menu-box wide' },
@@ -399,7 +410,7 @@ export class App {
   /** Partie hébergée sur l'autre PC : on reçoit des instantanés. */
   async startGuest(cfg) {
     const progress = this.loadingScreen('Connexion à la partie…');
-    const session = new GuestSession({ send: (line) => window.tdg.send(line), mapSeed: cfg.mapSeed, myIdx: 1, revealMap: !!cfg.revealMap, nPlayers: (cfg.players || []).length });
+    const session = new GuestSession({ send: (line) => window.tdg.send(line), mapSeed: cfg.mapSeed, myIdx: 1, revealMap: !!cfg.revealMap, nPlayers: (cfg.players || []).length, mapSize: cfg.mapSize, mapKind: cfg.mapKind });
     session.speed = cfg.speed || 1;
     // les instantanés déjà en route doivent être conservés
     this.netOff.push(window.tdg.onMessage((line) => session.onMessage(line)));
